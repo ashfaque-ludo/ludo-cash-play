@@ -1,0 +1,2 @@
+/* App-specific minimal styles. Tailwind handles most things. */
+.App { min-height: 100vh; background: #0A0A0E; }
