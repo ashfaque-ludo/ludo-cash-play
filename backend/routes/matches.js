@@ -175,7 +175,7 @@ router.post("/:id/submit-result", async (req, res) => {
     const { result, screenshot_b64, screenshot, note } = req.body;
     const screenshotData = screenshot_b64 || screenshot || "";
     const match = await Match.findById(req.params.id);
-    if (!match || match.status !== "in_progress") return res.status(400).json({ detail: "Match not in progress." });
+    if (!match || !["in_progress", "awaiting_review"].includes(match.status)) return res.status(400).json({ detail: "Match not in progress." });
     const idx = match.players.findIndex(p => p.user.toString() === req.user._id.toString());
     if (idx === -1) return res.status(403).json({ detail: "Not a player." });
 
@@ -193,7 +193,7 @@ router.post("/:id/submit-result", async (req, res) => {
     match.players[idx].claimed_win = result === "won";
     match.players[idx].result_claim = result;
 
-    const both = match.players.every(p => p.result_claim !== null && p.result_claim !== undefined);
+    const both = match.players.every(p => (p.result_claim !== null && p.result_claim !== undefined) || p.claimed_win !== null);
     if (both) {
       const allWin = match.players.every(p => p.claimed_win === true);
       const allLose = match.players.every(p => p.claimed_win === false);
