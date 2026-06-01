@@ -16,7 +16,7 @@ import {
   Table, TableHeader, TableRow, TableHead, TableBody, TableCell
 } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
-import { ShieldCheck, ShieldAlert, ShieldOff, Users, Wallet as WalletIcon, ArrowDownToLine, Trophy, Tag, Megaphone, BarChart3, FileText, Lock, Ban, KeyRound, Settings, Layers, UserPlus, Trash2, Camera, ZoomIn, Share2, Clock } from "lucide-react";
+import { ShieldCheck, ShieldAlert, ShieldOff, Users, Wallet as WalletIcon, ArrowDownToLine, Trophy, Tag, Megaphone, BarChart3, FileText, Lock, Ban, KeyRound, Settings, Layers, UserPlus, Trash2, Camera, ZoomIn, Share2, Clock, MessageSquare, Image, PlusCircle, MinusCircle, Gift, Phone } from "lucide-react";
 import { toast } from "sonner";
 
 const ROLES = ["user", "support_agent", "staff_manager", "admin", "super_admin"];
@@ -54,6 +54,10 @@ export default function Admin() {
             {can("super_admin") && <TabsTrigger value="tables" data-testid="tab-tables"><Layers className="w-3.5 h-3.5 mr-1" /> Tables</TabsTrigger>}
             {can("super_admin") && <TabsTrigger value="staff" data-testid="tab-staff"><UserPlus className="w-3.5 h-3.5 mr-1" /> Staff</TabsTrigger>}
             {can("super_admin") && <TabsTrigger value="settings" data-testid="tab-settings"><Settings className="w-3.5 h-3.5 mr-1" /> Settings</TabsTrigger>}
+            {can("staff_manager") && <TabsTrigger value="penalty" data-testid="tab-penalty"><WalletIcon className="w-3.5 h-3.5 mr-1" /> Penalty/Bonus</TabsTrigger>}
+            {can("super_admin") && <TabsTrigger value="ref-settings" data-testid="tab-ref-settings"><Gift className="w-3.5 h-3.5 mr-1" /> Referral Settings</TabsTrigger>}
+            {can("admin") && <TabsTrigger value="banners" data-testid="tab-banners"><Image className="w-3.5 h-3.5 mr-1" /> Banners</TabsTrigger>}
+            <TabsTrigger value="support-mgmt" data-testid="tab-support"><Phone className="w-3.5 h-3.5 mr-1" /> Support</TabsTrigger>
           </TabsList>
 
           <TabsContent value="analytics"><AnalyticsTab /></TabsContent>
@@ -70,6 +74,10 @@ export default function Admin() {
           <TabsContent value="tables"><TablesTab /></TabsContent>
           <TabsContent value="staff"><StaffTab /></TabsContent>
           <TabsContent value="settings"><SettingsTab /></TabsContent>
+          <TabsContent value="penalty"><PenaltyBonusTab actor={user} /></TabsContent>
+          <TabsContent value="ref-settings"><ReferralSettingsTab /></TabsContent>
+          <TabsContent value="banners"><BannersTab /></TabsContent>
+          <TabsContent value="support-mgmt"><SupportMgmtTab /></TabsContent>
         </Tabs>
       </div>
     </div>
@@ -1122,6 +1130,347 @@ function KycTab() {
           <button onClick={() => setZoomedUrl(null)} className="fixed top-5 right-5 bg-white/10 rounded-full w-9 h-9 grid place-items-center text-white text-lg">✕</button>
         </div>
       )}
+    </Card>
+  );
+}
+
+// ─── Penalty / Bonus Tab ───────────────────────────────────────────────────
+function PenaltyBonusTab({ actor }) {
+  const [q, setQ] = useState("");
+  const [users, setUsers] = useState([]);
+  const [sel, setSel] = useState(null);
+  const [amount, setAmount] = useState("");
+  const [type, setType] = useState("bonus");
+  const [reason, setReason] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const search = async () => {
+    if (!q.trim()) return;
+    try { const r = await api.get(`/admin/users?q=${encodeURIComponent(q)}`); setUsers(r.data.users); } catch {}
+  };
+
+  const apply = async () => {
+    if (!sel || !reason.trim() || !amount) return;
+    if (!actor || actor.role !== "super_admin") return toast.error("super_admin only");
+    setBusy(true);
+    try {
+      const wallet = { deposit: sel.wallet?.deposit || 0, winning: sel.wallet?.winning || 0, bonus: sel.wallet?.bonus || 0 };
+      const num = Number(amount);
+      if (type === "bonus") { wallet.bonus += num; }
+      else if (type === "penalty") { wallet.deposit = Math.max(0, wallet.deposit - num); }
+      else if (type === "add_winning") { wallet.winning += num; }
+      await api.post(`/admin/users/${sel.id}/wallet`, { ...wallet, reason });
+      toast.success(`Applied ${type} of ₹${num} to ${sel.name}`);
+      setAmount(""); setReason(""); setSel(null); setUsers([]);
+    } catch (e) { toast.error(formatApiError(e.response?.data?.detail) || e.message); }
+    finally { setBusy(false); }
+  };
+
+  return (
+    <Card className="glass-strong border-white/10 text-white mt-5">
+      <CardHeader><CardTitle>Penalty / Bonus</CardTitle></CardHeader>
+      <CardContent className="space-y-4">
+        <div className="flex gap-2">
+          <Input placeholder="Search user by email or name" value={q} onChange={e => setQ(e.target.value)} onKeyDown={e => e.key === "Enter" && search()} className="bg-black/40 border-white/10 text-white" />
+          <Button onClick={search} className="rounded-full bg-purple-600 text-white">Search</Button>
+        </div>
+        {users.length > 0 && (
+          <div className="divide-y divide-white/5 border border-white/10 rounded-xl overflow-hidden">
+            {users.slice(0, 8).map(u => (
+              <button key={u.id} onClick={() => { setSel(u); setUsers([]); }}
+                className="w-full text-left px-4 py-3 hover:bg-white/5 flex items-center justify-between">
+                <div>
+                  <div className="font-medium">{u.name}</div>
+                  <div className="text-xs text-slate-400">{u.email}</div>
+                </div>
+                <div className="text-sm text-emerald-400">{fmtINR((u.wallet?.deposit||0)+(u.wallet?.winning||0)+(u.wallet?.bonus||0))}</div>
+              </button>
+            ))}
+          </div>
+        )}
+        {sel && (
+          <div className="rounded-2xl bg-black/40 border border-white/10 p-4 space-y-3">
+            <div className="font-semibold text-purple-300">{sel.name} — {sel.email}</div>
+            <div className="text-xs text-slate-400">
+              Deposit: {fmtINR(sel.wallet?.deposit)} | Winning: {fmtINR(sel.wallet?.winning)} | Bonus: {fmtINR(sel.wallet?.bonus)}
+            </div>
+            <Select value={type} onValueChange={setType}>
+              <SelectTrigger className="bg-black/40 border-white/10 text-white"><SelectValue /></SelectTrigger>
+              <SelectContent className="bg-[#0F0F14] border-white/10 text-white">
+                <SelectItem value="bonus">Add Bonus</SelectItem>
+                <SelectItem value="add_winning">Add Winning</SelectItem>
+                <SelectItem value="penalty">Deduct from Deposit (Penalty)</SelectItem>
+              </SelectContent>
+            </Select>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <Label className="text-slate-300 text-xs">Amount (₹)</Label>
+                <Input type="number" value={amount} onChange={e => setAmount(e.target.value)} className="bg-black/40 border-white/10 text-white mt-1" placeholder="0" />
+              </div>
+              <div>
+                <Label className="text-slate-300 text-xs">Reason (required)</Label>
+                <Input value={reason} onChange={e => setReason(e.target.value)} className="bg-black/40 border-white/10 text-white mt-1" placeholder="Admin note" />
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <Button onClick={apply} disabled={busy || !amount || !reason.trim()} className="rounded-full bg-gradient-to-r from-purple-600 to-blue-600 text-white font-bold">
+                {busy ? "Applying…" : "Apply"}
+              </Button>
+              <Button onClick={() => setSel(null)} variant="outline" className="rounded-full border-white/20 bg-white/5 text-white">Cancel</Button>
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ─── Referral Settings Tab ────────────────────────────────────────────────
+function ReferralSettingsTab() {
+  const [bonus, setBonus] = useState(50);
+  const [wa, setWa] = useState("919090000000");
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    api.get("/admin/referral-settings").then(r => {
+      setBonus(r.data.referral_bonus ?? 50);
+      setWa(r.data.whatsapp_number ?? "919090000000");
+    }).catch(() => {});
+  }, []);
+
+  const save = async () => {
+    setBusy(true);
+    try {
+      await api.post("/admin/referral-settings", { referral_bonus: Number(bonus), whatsapp_number: wa });
+      toast.success("Settings saved");
+    } catch (e) { toast.error(formatApiError(e.response?.data?.detail) || e.message); }
+    finally { setBusy(false); }
+  };
+
+  return (
+    <Card className="glass-strong border-white/10 text-white mt-5">
+      <CardHeader><CardTitle>Referral &amp; Contact Settings</CardTitle></CardHeader>
+      <CardContent className="space-y-4 max-w-md">
+        <div>
+          <Label className="text-slate-300">Referral Bonus Amount (₹)</Label>
+          <Input type="number" value={bonus} onChange={e => setBonus(e.target.value)} className="bg-black/40 border-white/10 text-white mt-1" />
+          <p className="text-xs text-slate-500 mt-1">Bonus credited to referrer when referred user joins</p>
+        </div>
+        <div>
+          <Label className="text-slate-300">WhatsApp Number (with country code)</Label>
+          <Input value={wa} onChange={e => setWa(e.target.value)} className="bg-black/40 border-white/10 text-white mt-1" placeholder="919090000000" />
+          <p className="text-xs text-slate-500 mt-1">Used for the WhatsApp floating button (no + or spaces)</p>
+        </div>
+        <Button onClick={save} disabled={busy} className="rounded-full bg-gradient-to-r from-purple-600 to-blue-600 text-white font-bold">
+          {busy ? "Saving…" : "Save Settings"}
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ─── Banner Management Tab ────────────────────────────────────────────────
+function BannersTab() {
+  const [banners, setBanners] = useState([]);
+  const [form, setForm] = useState({ title: "", subtitle: "", image_url: "", link: "/play", bg_from: "#581c87", bg_to: "#1e3a8a", active: true, position: 0 });
+  const load = async () => { try { const r = await api.get("/admin/banners"); setBanners(r.data.banners || []); } catch {} };
+  useEffect(() => { load(); }, []);
+
+  const create = async () => {
+    if (!form.title.trim()) return toast.error("Title required");
+    try { await api.post("/admin/banners", form); toast.success("Banner created"); setForm(f => ({ ...f, title: "", subtitle: "" })); load(); }
+    catch (e) { toast.error(formatApiError(e.response?.data?.detail) || e.message); }
+  };
+
+  const toggleBanner = async (b) => {
+    try { await api.patch(`/admin/banners/${b.id}`, { active: !b.active }); load(); } catch {}
+  };
+
+  const del = async (id) => {
+    try { await api.delete(`/admin/banners/${id}`); toast.success("Deleted"); load(); }
+    catch (e) { toast.error(formatApiError(e.response?.data?.detail) || e.message); }
+  };
+
+  return (
+    <Card className="glass-strong border-white/10 text-white mt-5">
+      <CardHeader><CardTitle>Banner Management</CardTitle></CardHeader>
+      <CardContent className="space-y-4">
+        <div className="grid sm:grid-cols-2 gap-3 p-4 rounded-xl border border-white/10 bg-black/20">
+          <div>
+            <Label className="text-slate-300 text-xs">Title *</Label>
+            <Input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} className="bg-black/40 border-white/10 text-white mt-1" placeholder="e.g. Weekend Special!" />
+          </div>
+          <div>
+            <Label className="text-slate-300 text-xs">Subtitle</Label>
+            <Input value={form.subtitle} onChange={e => setForm(f => ({ ...f, subtitle: e.target.value }))} className="bg-black/40 border-white/10 text-white mt-1" placeholder="Short description" />
+          </div>
+          <div>
+            <Label className="text-slate-300 text-xs">Image URL (optional)</Label>
+            <Input value={form.image_url} onChange={e => setForm(f => ({ ...f, image_url: e.target.value }))} className="bg-black/40 border-white/10 text-white mt-1" placeholder="https://..." />
+          </div>
+          <div>
+            <Label className="text-slate-300 text-xs">Link</Label>
+            <Input value={form.link} onChange={e => setForm(f => ({ ...f, link: e.target.value }))} className="bg-black/40 border-white/10 text-white mt-1" placeholder="/play" />
+          </div>
+          <div>
+            <Label className="text-slate-300 text-xs">BG From (hex)</Label>
+            <Input value={form.bg_from} onChange={e => setForm(f => ({ ...f, bg_from: e.target.value }))} className="bg-black/40 border-white/10 text-white mt-1" />
+          </div>
+          <div>
+            <Label className="text-slate-300 text-xs">BG To (hex)</Label>
+            <Input value={form.bg_to} onChange={e => setForm(f => ({ ...f, bg_to: e.target.value }))} className="bg-black/40 border-white/10 text-white mt-1" />
+          </div>
+          <div className="flex items-end pb-1 col-span-full">
+            <Button onClick={create} className="rounded-full bg-gradient-to-r from-purple-600 to-blue-600 text-white font-bold">Create Banner</Button>
+          </div>
+        </div>
+        {form.title && (
+          <div className="rounded-2xl p-5 text-white" style={{ background: `linear-gradient(135deg, ${form.bg_from}, ${form.bg_to})` }}>
+            <div className="text-xs uppercase tracking-widest opacity-70 mb-1">Preview</div>
+            <div className="font-extrabold text-xl">{form.title}</div>
+            {form.subtitle && <div className="text-sm opacity-80 mt-1">{form.subtitle}</div>}
+          </div>
+        )}
+        <div className="space-y-3 mt-2">
+          {banners.map(b => (
+            <div key={b.id} className="flex items-center gap-3 rounded-xl bg-black/30 border border-white/10 p-3">
+              <div className="w-12 h-12 rounded-xl flex-shrink-0" style={{ background: `linear-gradient(135deg, ${b.bg_from}, ${b.bg_to})` }} />
+              <div className="flex-1 min-w-0">
+                <div className="font-semibold truncate">{b.title}</div>
+                {b.subtitle && <div className="text-xs text-slate-400 truncate">{b.subtitle}</div>}
+                <div className="text-xs text-slate-500">→ {b.link} · pos {b.position}</div>
+              </div>
+              <Switch checked={b.active} onCheckedChange={() => toggleBanner(b)} />
+              <Button onClick={() => del(b.id)} size="sm" variant="outline" className="rounded-full border-red-500/30 text-red-300">
+                <Trash2 className="w-3.5 h-3.5" />
+              </Button>
+            </div>
+          ))}
+          {banners.length === 0 && <div className="text-slate-500 text-sm text-center py-6">No banners yet.</div>}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ─── Support Management Tab ───────────────────────────────────────────────
+function SupportMgmtTab() {
+  const [tickets, setTickets] = useState([]);
+  const [filter, setFilter] = useState("open");
+  const [expandedId, setExpandedId] = useState(null);
+  const [replyText, setReplyText] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const r = await api.get(`/admin/support?status=${filter}`);
+      setTickets(r.data.tickets || []);
+    } catch {} finally { setLoading(false); }
+  }, [filter]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const sendReply = async (id) => {
+    if (!replyText.trim()) return;
+    setBusy(true);
+    try {
+      await api.post(`/admin/support/${id}/reply`, { message: replyText });
+      toast.success("Reply sent");
+      setReplyText("");
+      load();
+    } catch (e) { toast.error(formatApiError(e.response?.data?.detail) || e.message); }
+    finally { setBusy(false); }
+  };
+
+  const setTicketStatus = async (id, status) => {
+    try {
+      await api.patch(`/admin/support/${id}/status`, { status });
+      toast.success(`Ticket marked ${status}`);
+      load();
+    } catch (e) { toast.error(formatApiError(e.response?.data?.detail) || e.message); }
+  };
+
+  const STATUS_COLOR = {
+    open: "border-blue-500/30 text-blue-300",
+    in_progress: "border-amber-500/30 text-amber-300",
+    resolved: "border-emerald-500/30 text-emerald-300",
+    closed: "border-slate-500/30 text-slate-400",
+  };
+
+  return (
+    <Card className="glass-strong border-white/10 text-white mt-5">
+      <CardHeader className="flex flex-row items-center gap-3 flex-wrap">
+        <CardTitle>Support Tickets</CardTitle>
+        <div className="flex gap-2 ml-auto flex-wrap">
+          {["open","in_progress","resolved","closed","any"].map(s => (
+            <Button key={s} size="sm" onClick={() => setFilter(s)} variant="outline"
+              className={`rounded-full capitalize border-white/20 ${filter === s ? "bg-purple-600 border-purple-600 text-white" : "bg-white/5 text-slate-300"}`}>
+              {s.replace("_"," ")}
+            </Button>
+          ))}
+        </div>
+      </CardHeader>
+      <CardContent>
+        {loading ? <div className="text-slate-400 text-center py-8">Loading…</div> :
+         tickets.length === 0 ? <div className="text-slate-500 text-center py-8">No {filter.replace("_"," ")} tickets.</div> : (
+          <div className="space-y-3">
+            {tickets.map(t => {
+              const expanded = expandedId === t.id;
+              return (
+                <div key={t.id} className="rounded-2xl bg-black/30 border border-white/10 p-4">
+                  <div className="flex items-start justify-between gap-2 flex-wrap">
+                    <button className="text-left flex-1" onClick={() => setExpandedId(expanded ? null : t.id)}>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-semibold">{t.subject}</span>
+                        <Badge variant="outline" className={`text-xs ${STATUS_COLOR[t.status]}`}>{t.status.replace("_"," ")}</Badge>
+                        <Badge variant="outline" className="text-xs border-slate-600 text-slate-400 capitalize">{t.category}</Badge>
+                      </div>
+                      <div className="text-xs text-slate-400 mt-0.5">
+                        {t.user_name} · {t.user_email} · {new Date(t.created_at || t.createdAt).toLocaleString("en-IN")}
+                        {t.replies?.length > 0 && ` · ${t.replies.length} replies`}
+                      </div>
+                    </button>
+                    <div className="flex gap-1 flex-wrap">
+                      {t.status !== "resolved" && (
+                        <Button size="sm" onClick={() => setTicketStatus(t.id, "resolved")} className="rounded-full bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 text-xs">Resolve</Button>
+                      )}
+                      {t.status !== "closed" && (
+                        <Button size="sm" onClick={() => setTicketStatus(t.id, "closed")} variant="outline" className="rounded-full border-white/20 bg-white/5 text-slate-400 text-xs">Close</Button>
+                      )}
+                    </div>
+                  </div>
+                  {expanded && (
+                    <div className="mt-4 space-y-2">
+                      <div className="rounded-xl bg-purple-500/10 border border-purple-500/20 p-3">
+                        <div className="text-xs text-purple-300 font-semibold mb-1">User Message</div>
+                        <div className="text-sm text-slate-200 whitespace-pre-wrap">{t.message}</div>
+                      </div>
+                      {(t.replies || []).map((r, i) => (
+                        <div key={i} className={`rounded-xl p-3 ${r.from === "admin" ? "bg-emerald-500/10 border border-emerald-500/20 ml-4" : "bg-white/5 border border-white/10"}`}>
+                          <div className={`text-xs font-semibold mb-1 ${r.from === "admin" ? "text-emerald-300" : "text-purple-300"}`}>
+                            {r.from === "admin" ? `Support (${r.author_name || "Admin"})` : "User"}
+                          </div>
+                          <div className="text-sm text-slate-200 whitespace-pre-wrap">{r.message}</div>
+                        </div>
+                      ))}
+                      {t.status !== "closed" && (
+                        <div className="flex gap-2 mt-2">
+                          <Input value={expanded ? replyText : ""} onChange={e => setReplyText(e.target.value)}
+                            placeholder="Type admin reply…" className="flex-1 bg-black/40 border-white/10 text-white text-sm" />
+                          <Button onClick={() => sendReply(t.id)} disabled={busy || !replyText.trim()}
+                            size="sm" className="rounded-full bg-purple-600 text-white">Send</Button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </CardContent>
     </Card>
   );
 }

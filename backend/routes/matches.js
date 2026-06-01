@@ -88,12 +88,8 @@ router.get("/tables", async (req, res) => {
 });
 
 // POST /matches — create (frontend calls POST /matches without /create suffix)
-router.post("/", handleCreate);
-
 // POST /matches/create — explicit create endpoint
-router.post("/create", handleCreate);
-
-async function handleCreate(req, res) {
+const handleCreate = async (req, res) => {
   try {
     const { stake } = req.body;
     const table = await StakeTable.findOne({ stake: Number(stake), active: true });
@@ -114,7 +110,10 @@ async function handleCreate(req, res) {
     });
     res.status(201).json({ ok: true, match: serializeMatch(match) });
   } catch (e) { res.status(400).json({ detail: e.message }); }
-}
+};
+
+router.post("/", handleCreate);
+router.post("/create", handleCreate);
 
 // POST /matches/:id/join
 router.post("/:id/join", async (req, res) => {

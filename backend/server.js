@@ -38,6 +38,7 @@ app.use("/api/matches",auth,require("./routes/matches"));
 app.use("/api/referral",auth,require("./routes/referral"));
 app.use("/api/profile",auth,require("./routes/profile"));
 app.use("/api/kyc",auth,require("./routes/kyc"));
+app.use("/api/support",auth,require("./routes/support"));
 app.use(require("./routes/upload"));
 app.use(require("./routes/rooms"));
 
@@ -50,6 +51,8 @@ app.use("/api/admin/matches",adm,require("./routes/admin/matches"));
 app.use("/api/admin/screenshots",adm,require("./routes/admin/screenshots"));
 app.use("/api/admin/referrals",adm,require("./routes/admin/referrals"));
 app.use("/api/admin/kyc",adm,require("./routes/admin/kyc"));
+app.use("/api/admin/support",adm,require("./routes/admin/support"));
+app.use("/api/admin/banners",adm,require("./routes/admin/banners"));
 app.use("/api/admin",adm,require("./routes/admin/misc"));
 
 app.use((req,res)=>res.status(404).json({detail:`Not found: ${req.method} ${req.path}`}));

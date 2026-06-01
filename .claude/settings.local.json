@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git config *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)",
+      "PowerShell(Get-ChildItem \"C:\\\\Users\\\\mcc computers nuh\\\\fitpro-mobile-10\\\\LudoCashplay\\\\frontend\\\\src\" -Recurse -File | Where-Object { $_.Name -match \"\\\\.\\(js|jsx|ts|tsx|css\\)$\" } | Select-Object -ExpandProperty FullName | Sort-Object)",
+      "Bash(echo \"---ROOT GIT EXIT: $?\")"
+    ]
+  }
+}

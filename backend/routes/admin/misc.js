@@ -6,6 +6,7 @@ const ActivityLog=require("../../models/ActivityLog");
 const StakeTable=require("../../models/StakeTable");
 const Config=require("../../models/Config");
 const {logActivity}=require("../../middleware/activityLogger");
+const SupportTicket=require("../../models/SupportTicket");
 
 router.get("/promos", async (req,res)=>{ res.json({promos:await Promo.find().sort({createdAt:-1})}); });
 router.post("/promos", async (req,res)=>{
@@ -60,6 +61,20 @@ router.post("/staff/create", async (req,res)=>{
     await logActivity(req,"staff_created",email,{role});
     res.status(201).json({ok:true,user:s.toPublic()});
   }catch(e){ res.status(500).json({detail:"Server error."}); }
+});
+
+// Referral settings
+router.get("/referral-settings", async (req,res)=>{
+  const bonus = await Config.get("referral_bonus", 50);
+  const wa = await Config.get("whatsapp_number", "919090000000");
+  res.json({ referral_bonus: bonus, whatsapp_number: wa });
+});
+router.post("/referral-settings", async (req,res)=>{
+  const { referral_bonus, whatsapp_number } = req.body;
+  if (referral_bonus !== undefined) await Config.set("referral_bonus", Number(referral_bonus));
+  if (whatsapp_number !== undefined) await Config.set("whatsapp_number", String(whatsapp_number).replace(/\D/g,""));
+  await logActivity(req,"referral_settings_updated","",req.body);
+  res.json({ ok:true });
 });
 
 module.exports=router;
