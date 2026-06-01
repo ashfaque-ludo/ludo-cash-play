@@ -12,7 +12,11 @@ backend/dist/
 .env.local
 .env.production
 frontend/.env
+frontend/.env.local
 backend/.env
+backend/.env.production
+# Allow frontend/.env.production so REACT_APP_BACKEND_URL is baked in at build time
+!frontend/.env.production
 
 # Logs
 *.log
