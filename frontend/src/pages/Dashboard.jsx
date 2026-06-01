@@ -19,7 +19,7 @@ export default function Dashboard() {
       try {
         const [t, m] = await Promise.all([
           api.get("/wallet/transactions?limit=8"),
-          api.get("/matches"),
+          api.get("/matches/my/list"),
         ]);
         setTx(t.data.transactions);
         setMatches(m.data.matches);

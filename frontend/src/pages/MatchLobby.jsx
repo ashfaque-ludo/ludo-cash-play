@@ -41,9 +41,10 @@ export default function MatchLobby() {
     setBusy(true);
     try {
       const { data } = await api.post("/matches", { stake });
-      toast.success(`Match created — room ${data.room_code}`);
+      const m = data.match || data;
+      toast.success(`Match created — room ${m.room_code}`);
       await refresh();
-      nav(`/match/${data.id}`);
+      nav(`/match/${m.id}`);
     } catch (e) {
       toast.error(formatApiError(e.response?.data?.detail) || e.message);
     } finally { setBusy(false); setCreating(null); }
@@ -53,9 +54,10 @@ export default function MatchLobby() {
     setBusy(true);
     try {
       const { data } = await api.post(`/matches/${mid}/join`, {});
+      const m = data.match || data;
       toast.success("Joined match!");
       await refresh();
-      nav(`/match/${data.id}`);
+      nav(`/match/${m.id}`);
     } catch (e) { toast.error(formatApiError(e.response?.data?.detail) || e.message); }
     finally { setBusy(false); }
   };

@@ -88,6 +88,17 @@ export default function MatchRoom() {
     reader.readAsDataURL(f);
   };
 
+  const cancelMatch = async () => {
+    setBusy(true);
+    try {
+      await api.post(`/matches/${id}/cancel`);
+      toast.success("Battle cancelled — stake refunded to your deposit wallet.");
+      await refresh();
+      nav("/play");
+    } catch (e) { toast.error(formatApiError(e.response?.data?.detail) || e.message); }
+    finally { setBusy(false); }
+  };
+
   const submit = async (result) => {
     if (result === "won" && !screenshot) return toast.error("Upload a winning screenshot first");
     setBusy(true);
@@ -218,6 +229,17 @@ export default function MatchRoom() {
                 </div>
               </div>
             </div>
+            {user && match.creator_id === user.id && (
+              <Button
+                disabled={busy}
+                onClick={cancelMatch}
+                variant="outline"
+                className="mt-4 w-full rounded-xl border-red-500/30 bg-red-500/5 text-red-300 font-semibold"
+                data-testid="cancel-waiting-match"
+              >
+                <X className="w-4 h-4 mr-2" /> Cancel Battle & Refund
+              </Button>
+            )}
           </div>
         )}
 
