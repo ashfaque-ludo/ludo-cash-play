@@ -87,6 +87,7 @@ export default function MatchLobby() {
             <div className="text-xs uppercase tracking-[0.25em] text-purple-400 font-bold">Match lobby</div>
             <h1 className="text-3xl sm:text-4xl font-extrabold mt-1">Pick your <span className="grad-text">arena</span></h1>
             <p className="text-slate-400 mt-1 text-sm">Create a challenge or join an open one. Game is played on Ludo King app using the room code.</p>
+            <p className="text-xs text-slate-500 mt-1">Min stake: ₹50 · Max stake: ₹50,000</p>
           </div>
           <Dialog>
             <DialogTrigger asChild>
@@ -113,24 +114,35 @@ export default function MatchLobby() {
           </TabsList>
 
           <TabsContent value="tables">
-            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5 mt-5">
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-5 mt-5">
               {tables.map(t => {
                 const isVip = t.tier === "vip";
+                const isPremium = t.tier === "premium";
+                const isPopular = t.stake === 500;
+                const isHighVip = t.stake >= 25000;
                 return (
                   <Card key={t.stake} data-testid={`lobby-stake-${t.stake}`}
                     className={`text-white transition-all ${isVip
                       ? "bg-gradient-to-br from-amber-500/10 to-amber-900/20 border-amber-500/30 glow-ring-gold"
-                      : t.tier === "premium" ? "glass-strong border-purple-500/30" : "glass-strong border-white/10"}`}>
-                    <CardHeader className="flex flex-row items-center justify-between">
-                      <CardTitle className="text-sm uppercase tracking-widest text-slate-400">{t.label}</CardTitle>
-                      {isVip ? <Crown className="w-5 h-5 text-amber-300" /> : <Dice5 className="w-5 h-5 text-purple-300" />}
+                      : isPremium ? "bg-gradient-to-br from-purple-900/30 to-blue-900/20 border-purple-500/30"
+                      : "glass-strong border-white/10"}`}>
+                    <CardHeader className="flex flex-row items-start justify-between pb-1">
+                      <div className="space-y-1">
+                        <CardTitle className="text-sm uppercase tracking-widest text-slate-400">{t.label}</CardTitle>
+                        <div className="flex gap-1">
+                          {isPopular && <Badge className="text-[10px] bg-emerald-600/80 text-white border-0 px-1.5 h-4">Popular</Badge>}
+                          {isHighVip && <Badge className="text-[10px] bg-amber-500/80 text-black border-0 px-1.5 h-4">VIP</Badge>}
+                        </div>
+                      </div>
+                      {isVip ? <Crown className="w-5 h-5 text-amber-300 shrink-0" /> : <Dice5 className="w-5 h-5 text-purple-300 shrink-0" />}
                     </CardHeader>
                     <CardContent>
-                      <div className={`text-3xl font-black ${isVip ? "grad-text-gold" : "text-white"}`}>{fmtINR(t.stake)}</div>
+                      <div className={`text-3xl font-black ${isVip ? "grad-text-gold" : isPremium ? "text-purple-200" : "text-white"}`}>{fmtINR(t.stake)}</div>
                       <div className="text-xs text-slate-400 mt-1">Prize <span className={`${isVip ? "text-amber-300" : "text-emerald-400"} font-semibold`}>{fmtINR(t.prize)}</span></div>
                       <div className="mt-3 text-xs text-slate-500">{t.active} active matches</div>
                       <Button onClick={() => setCreating(t)} className={`mt-4 w-full rounded-full font-bold ${isVip
                         ? "bg-gradient-to-r from-amber-500 to-amber-700 text-black"
+                        : isPremium ? "bg-gradient-to-r from-purple-600 to-blue-600 text-white"
                         : "bg-gradient-to-r from-purple-600 to-blue-600 text-white"}`} data-testid={`create-${t.stake}`}>
                         Create challenge
                       </Button>

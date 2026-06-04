@@ -71,7 +71,8 @@ app.use("/api/admin",adm,require("./routes/admin/misc"));
 app.use((req,res)=>res.status(404).json({detail:`Not found: ${req.method} ${req.path}`}));
 app.use((err,req,res,next)=>res.status(500).json({detail:err.message||"Server error."}));
 
-connectDB().then(()=>{
+connectDB().then(async ()=>{
+  await require("./models/StakeTable").seedDefaults();
   const PORT=process.env.PORT||5000;
   app.listen(PORT,()=>console.log(`\n🎲  Ludo Cash Play backend → http://localhost:${PORT}\n`));
 });
