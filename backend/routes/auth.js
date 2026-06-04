@@ -7,11 +7,12 @@ const auth = require("../middleware/auth");
 const { authLimiter } = require("../middleware/rateLimiter");
 const { v4: uuidv4 } = require("uuid");
 
+const IS_PROD = process.env.NODE_ENV === "production";
 const COOKIE = {
-  httpOnly:true,
-  secure: process.env.NODE_ENV==="production",
-  sameSite: process.env.NODE_ENV==="production" ? "none" : "lax",
-  maxAge: 7*24*60*60*1000
+  httpOnly: true,
+  secure: IS_PROD,      // HTTPS only in production
+  sameSite: IS_PROD ? "none" : "lax",  // "none" required for cross-origin cookies
+  maxAge: 7*24*60*60*1000,
 };
 
 const sign = (id) => jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn:"7d" });

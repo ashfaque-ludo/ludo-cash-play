@@ -15,9 +15,21 @@ const app=express();
 app.use(helmet({crossOriginResourcePolicy:{policy:"cross-origin"}}));
 app.set("trust proxy",1);
 
+const ALLOWED_ORIGINS = [
+  "https://ludo-cash-play-frontend-ashfaque-s-projects1.vercel.app",
+  "https://ludocashplay.in",
+  "https://www.ludocashplay.in",
+  "http://localhost:3000",
+  "http://localhost:3001",
+];
+
 app.use(cors({
-  origin: function(origin, callback) { callback(null, true); },
-  credentials: true
+  origin: (origin, callback) => {
+    // Allow no-origin requests (curl / mobile native) and all listed origins
+    if (!origin || ALLOWED_ORIGINS.includes(origin)) return callback(null, true);
+    callback(null, false);
+  },
+  credentials: true,
 }));
 app.use(express.json({limit:"10mb"}));
 app.use(cookieParser());
