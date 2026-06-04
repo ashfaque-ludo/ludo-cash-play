@@ -23,6 +23,7 @@ export function AuthProvider({ children }) {
   const login = async (email, password) => {
     try {
       const { data } = await api.post("/auth/login", { email, password });
+      if (data.token) localStorage.setItem("lcp_token", data.token);
       setUser(data);
       return { ok: true, user: data };
     } catch (e) {
@@ -33,6 +34,7 @@ export function AuthProvider({ children }) {
   const register = async (payload) => {
     try {
       const { data } = await api.post("/auth/register", payload);
+      if (data.token) localStorage.setItem("lcp_token", data.token);
       setUser(data);
       return { ok: true, user: data };
     } catch (e) {
@@ -42,6 +44,7 @@ export function AuthProvider({ children }) {
 
   const logout = async () => {
     try { await api.post("/auth/logout"); } catch {}
+    localStorage.removeItem("lcp_token");
     setUser(false);
   };
 

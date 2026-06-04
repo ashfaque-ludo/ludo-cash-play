@@ -9,6 +9,16 @@ export const api = axios.create({
   headers: { "Content-Type": "application/json" },
 });
 
+// Send stored JWT as Authorization header on every request.
+// This is the fallback for browsers that block third-party cookies
+// (Safari ITP, Chrome with third-party cookie restrictions) when the
+// frontend and backend are on different domains.
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem("lcp_token");
+  if (token) config.headers.Authorization = `Bearer ${token}`;
+  return config;
+});
+
 export function formatApiError(detail) {
   if (detail == null) return "Something went wrong. Please try again.";
   if (typeof detail === "string") return detail;

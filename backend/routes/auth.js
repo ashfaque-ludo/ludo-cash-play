@@ -31,8 +31,9 @@ router.post("/login", authLimiter, async (req,res) => {
     if (!await user.comparePassword(password)) return res.status(401).json({ detail:"Invalid credentials." });
     user.last_login_at = new Date(); user.last_login_ip = req.ip;
     await user.save();
-    res.cookie("lcp_token", sign(user._id), COOKIE);
-    res.json(user.toPublic());
+    const token = sign(user._id);
+    res.cookie("lcp_token", token, COOKIE);
+    res.json({ ...user.toPublic(), token });
   } catch(e) { res.status(500).json({ detail:"Server error." }); }
 });
 
@@ -54,8 +55,9 @@ router.post("/register", authLimiter, async (req,res) => {
         await Referral.create({ referrer:referrer._id, referred:user._id, referral_code:referral_code.toUpperCase(), commission_earned:25, status:"credited" });
       } else { await user.save(); }
     } else { await user.save(); }
-    res.cookie("lcp_token", sign(user._id), COOKIE);
-    res.status(201).json(user.toPublic());
+    const token = sign(user._id);
+    res.cookie("lcp_token", token, COOKIE);
+    res.status(201).json({ ...user.toPublic(), token });
   } catch(e) { console.error(e); res.status(500).json({ detail:"Server error." }); }
 });
 
