@@ -47,7 +47,7 @@ app.get("/test-route",(_, res)=>res.json({message:"Backend is fresh!", v:"7"}));
 app.use("/api/auth",require("./routes/auth"));
 app.use("/api/public",require("./routes/public"));
 app.use("/api/wallet",auth,require("./routes/wallet"));
-app.use("/api/matches",auth,require("./routes/matches"));
+app.use("/api/matches",require("./middleware/optionalAuth"),require("./routes/matches"));
 app.use("/api/referral",auth,require("./routes/referral"));
 app.use("/api/profile",auth,require("./routes/profile"));
 app.use("/api/kyc",auth,require("./routes/kyc"));

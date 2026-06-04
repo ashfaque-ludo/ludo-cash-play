@@ -54,13 +54,19 @@ function serializeMatch(m) {
   };
 }
 
-// GET /matches — all waiting + user's active matches (for lobby + dashboard)
+// GET /matches — all waiting + user's active matches (public; richer when logged in)
 router.get("/", async (req, res) => {
   try {
-    const [open, mine] = await Promise.all([
+    const queries = [
       Match.find({ status: "waiting" }).sort({ createdAt: -1 }).limit(50),
-      Match.find({ "players.user": req.user._id, status: { $nin: ["ended", "cancelled"] } }).sort({ createdAt: -1 }).limit(20),
-    ]);
+    ];
+    if (req.user) {
+      queries.push(
+        Match.find({ "players.user": req.user._id, status: { $nin: ["ended", "cancelled"] } })
+          .sort({ createdAt: -1 }).limit(20)
+      );
+    }
+    const [open, mine = []] = await Promise.all(queries);
     const map = {};
     for (const m of [...open, ...mine]) map[m._id.toString()] = m;
     res.json({ matches: Object.values(map).map(m => serializeMatch(m)) });
@@ -90,6 +96,7 @@ router.get("/tables", async (req, res) => {
 // POST /matches — create (frontend calls POST /matches without /create suffix)
 // POST /matches/create — explicit create endpoint
 const handleCreate = async (req, res) => {
+  if (!req.user) return res.status(401).json({ detail: "Not authenticated." });
   try {
     const { stake } = req.body;
     const table = await StakeTable.findOne({ stake: Number(stake), active: true });
@@ -117,6 +124,7 @@ router.post("/create", handleCreate);
 
 // POST /matches/:id/join
 router.post("/:id/join", async (req, res) => {
+  if (!req.user) return res.status(401).json({ detail: "Not authenticated." });
   try {
     const match = await Match.findById(req.params.id);
     if (!match) return res.status(404).json({ detail: "Match not found." });
@@ -134,6 +142,7 @@ router.post("/:id/join", async (req, res) => {
 
 // GET /matches/my/list — user's own matches only
 router.get("/my/list", async (req, res) => {
+  if (!req.user) return res.status(401).json({ detail: "Not authenticated." });
   try {
     const matches = await Match.find({ "players.user": req.user._id }).sort({ createdAt: -1 }).limit(20);
     res.json({ matches: matches.map(m => serializeMatch(m)) });
@@ -142,6 +151,7 @@ router.get("/my/list", async (req, res) => {
 
 // POST /matches/:id/cancel — cancel with refund
 router.post("/:id/cancel", async (req, res) => {
+  if (!req.user) return res.status(401).json({ detail: "Not authenticated." });
   try {
     const match = await Match.findById(req.params.id);
     if (!match) return res.status(404).json({ detail: "Not found." });
@@ -170,6 +180,7 @@ router.get("/:id", async (req, res) => {
 
 // POST /matches/:id/submit-result
 router.post("/:id/submit-result", async (req, res) => {
+  if (!req.user) return res.status(401).json({ detail: "Not authenticated." });
   try {
     const { result, screenshot_b64, screenshot, note } = req.body;
     const screenshotData = screenshot_b64 || screenshot || "";
