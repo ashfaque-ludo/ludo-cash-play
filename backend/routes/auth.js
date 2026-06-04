@@ -7,12 +7,14 @@ const auth = require("../middleware/auth");
 const { authLimiter } = require("../middleware/rateLimiter");
 const { v4: uuidv4 } = require("uuid");
 
-const IS_PROD = process.env.NODE_ENV === "production";
+// Always use SameSite=None + Secure so cookies work cross-origin on the custom domain.
+// The app is HTTPS-only in production (Render/Vercel) so Secure=true is always safe.
 const COOKIE = {
   httpOnly: true,
-  secure: IS_PROD,      // HTTPS only in production
-  sameSite: IS_PROD ? "none" : "lax",  // "none" required for cross-origin cookies
-  maxAge: 7*24*60*60*1000,
+  secure: true,
+  sameSite: "none",
+  path: "/",
+  maxAge: 7 * 24 * 60 * 60 * 1000,
 };
 
 const sign = (id) => jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn:"7d" });
@@ -58,7 +60,7 @@ router.post("/register", authLimiter, async (req,res) => {
 });
 
 router.post("/logout", (req,res) => {
-  res.clearCookie("lcp_token", { httpOnly:true, secure:process.env.NODE_ENV==="production", sameSite:process.env.NODE_ENV==="production"?"none":"lax" });
+  res.clearCookie("lcp_token", { httpOnly:true, secure:true, sameSite:"none", path:"/" });
   res.json({ ok:true });
 });
 
