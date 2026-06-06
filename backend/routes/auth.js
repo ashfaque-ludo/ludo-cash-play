@@ -8,6 +8,7 @@ const Referral = require("../models/Referral");
 const auth = require("../middleware/auth");
 const { authLimiter } = require("../middleware/rateLimiter");
 const { v4: uuidv4 } = require("uuid");
+const { verifyIdToken } = require("../utils/firebase");
 
 const COOKIE = {
   httpOnly: true,
@@ -176,6 +177,66 @@ router.post("/register", authLimiter, async (req,res) => {
     res.cookie("lcp_token", token, COOKIE);
     res.status(201).json({ ...user.toPublic(), token });
   } catch(e) { console.error(e); res.status(500).json({ detail:"Server error." }); }
+});
+
+// POST /api/auth/verify-firebase-otp
+// Frontend sends Firebase ID token after phone OTP verified client-side
+router.post("/verify-firebase-otp", async (req, res) => {
+  try {
+    const { idToken, referral_code } = req.body;
+    if (!idToken) return res.status(400).json({ detail: "Firebase ID token required." });
+
+    let decoded;
+    try {
+      decoded = await verifyIdToken(idToken);
+    } catch (e) {
+      console.error("[Firebase] Token verify failed:", e.message);
+      return res.status(401).json({ detail: "Invalid or expired Firebase token. Please try again." });
+    }
+
+    const firebasePhone = decoded.phone_number;
+    if (!firebasePhone) return res.status(400).json({ detail: "Token has no phone number." });
+
+    const normalized = normalizePhone(firebasePhone);
+    let user = await findUserByPhone(normalized);
+    let is_new_user = false;
+
+    if (!user) {
+      is_new_user = true;
+      let refCode;
+      do { refCode = uuidv4().slice(0, 8).toUpperCase(); } while (await User.findOne({ referral_code: refCode }));
+
+      user = new User({
+        name: "",
+        phone: normalized,
+        referral_code: refCode,
+        wallet: { deposit: 0, winning: 0, bonus: 0 },
+      });
+
+      if (referral_code) {
+        const referrer = await User.findOne({ referral_code: referral_code.toUpperCase() });
+        if (referrer && referrer._id.toString() !== user._id.toString()) {
+          user.referred_by = referrer._id;
+          user.wallet.bonus = 50;
+          await user.save();
+          await User.findByIdAndUpdate(referrer._id, { $inc: { "wallet.bonus": 25 } });
+          await Referral.create({ referrer: referrer._id, referred: user._id, referral_code: referral_code.toUpperCase(), commission_earned: 25, status: "credited" });
+        } else { await user.save(); }
+      } else { await user.save(); }
+    } else {
+      if (user.banned) return res.status(403).json({ detail: "Account banned." });
+      user.last_login_at = new Date();
+      user.last_login_ip = req.ip;
+      await user.save();
+    }
+
+    const token = sign(user._id);
+    res.cookie("lcp_token", token, COOKIE);
+    res.json({ ...user.toPublic(), token, is_new_user, needs_name: !user.name });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ detail: "Server error." });
+  }
 });
 
 router.post("/logout", (req,res) => {

@@ -1,23 +1,36 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useCallback } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Dice5, Phone, Mail, ArrowRight, RefreshCw } from "lucide-react";
+import { Dice5, Phone, Mail, ArrowRight, RefreshCw, Shield } from "lucide-react";
 import { toast } from "sonner";
+import { auth, FIREBASE_READY } from "@/lib/firebase";
 
 const STEP = { PHONE: "phone", OTP: "otp", NAME: "name", EMAIL: "email" };
 
 function redirectPath(user, from) {
   if (user.role === "super_admin") return "/super-admin";
-  if (["admin","staff_manager","support_agent"].includes(user.role)) return "/admin";
+  if (["admin", "staff_manager", "support_agent"].includes(user.role)) return "/admin";
   return from || "/";
 }
 
+function parseFirebaseError(err) {
+  const code = err?.code || "";
+  if (code === "auth/invalid-verification-code") return "Incorrect OTP. Please try again.";
+  if (code === "auth/code-expired") return "OTP expired. Please request a new one.";
+  if (code === "auth/too-many-requests") return "Too many attempts. Please wait and try again.";
+  if (code === "auth/invalid-phone-number") return "Invalid phone number format.";
+  if (code === "auth/quota-exceeded") return "SMS quota exceeded. Please try again later.";
+  if (code === "auth/captcha-check-failed") return "reCAPTCHA check failed. Please refresh and try again.";
+  if (code === "auth/missing-phone-number") return "Phone number is required.";
+  return err?.message || "Something went wrong. Please try again.";
+}
+
 export default function Login() {
-  const { login, sendOtp, verifyOtp, setName } = useAuth();
+  const { login, sendOtp, verifyOtp, verifyFirebaseOtp, setName } = useAuth();
   const nav = useNavigate();
   const loc = useLocation();
   const from = loc.state?.from;
@@ -31,35 +44,93 @@ export default function Login() {
   const [error, setError] = useState("");
   const [resendCount, setResendCount] = useState(0);
 
-  // Email fallback state
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+
+  // Firebase refs
+  const recaptchaRef = useRef(null);
+  const confirmationRef = useRef(null);
+
+  const clearRecaptcha = useCallback(() => {
+    if (recaptchaRef.current) {
+      try { recaptchaRef.current.clear(); } catch {}
+      recaptchaRef.current = null;
+    }
+    const el = document.getElementById("recaptcha-container");
+    if (el) el.innerHTML = "";
+  }, []);
 
   const onSendOtp = async (e) => {
     e?.preventDefault();
     if (phone.length !== 10) return setError("Enter a valid 10-digit phone number.");
     setLoading(true); setError("");
-    const r = await sendOtp(phone);
-    setLoading(false);
-    if (r.ok) {
-      setStep(STEP.OTP);
-      setResendCount(c => c + 1);
-      if (r.dev_otp) { setDevOtp(r.dev_otp); toast.info(`Dev OTP: ${r.dev_otp}`); }
-      else toast.success("OTP sent! Check your phone.");
-    } else setError(r.error);
+
+    if (FIREBASE_READY) {
+      // Firebase SMS path
+      try {
+        const { RecaptchaVerifier, signInWithPhoneNumber } = await import("firebase/auth");
+        clearRecaptcha();
+        const verifier = new RecaptchaVerifier(auth, "recaptcha-container", {
+          size: "invisible",
+          callback: () => {},
+          "expired-callback": () => setError("reCAPTCHA expired. Please try again."),
+        });
+        recaptchaRef.current = verifier;
+        const confirmation = await signInWithPhoneNumber(auth, `+91${phone}`, verifier);
+        confirmationRef.current = confirmation;
+        setStep(STEP.OTP);
+        setResendCount(c => c + 1);
+        toast.success("OTP sent via Firebase SMS!");
+      } catch (err) {
+        clearRecaptcha();
+        setError(parseFirebaseError(err));
+      } finally {
+        setLoading(false);
+      }
+    } else {
+      // Fallback: dev OTP via our backend (no SMS provider)
+      const r = await sendOtp(phone);
+      setLoading(false);
+      if (r.ok) {
+        setStep(STEP.OTP);
+        setResendCount(c => c + 1);
+        if (r.dev_otp) { setDevOtp(r.dev_otp); toast.info(`Dev OTP: ${r.dev_otp}`); }
+        else toast.success("OTP sent! Check your phone.");
+      } else setError(r.error);
+    }
   };
 
   const onVerifyOtp = async (e) => {
     e?.preventDefault();
     if (otp.length !== 6) return setError("Enter the 6-digit OTP.");
     setLoading(true); setError("");
-    const r = await verifyOtp(phone, otp);
-    setLoading(false);
-    if (r.ok) {
-      if (r.needs_name) { setStep(STEP.NAME); return; }
-      toast.success("Welcome to Ludo Cash Play!");
-      nav(redirectPath(r.user, from), { replace: true });
-    } else setError(r.error);
+
+    if (FIREBASE_READY && confirmationRef.current) {
+      // Firebase verification path
+      try {
+        const result = await confirmationRef.current.confirm(otp);
+        const idToken = await result.user.getIdToken();
+        const r = await verifyFirebaseOtp(idToken);
+        if (r.ok) {
+          if (r.needs_name) { setStep(STEP.NAME); setLoading(false); return; }
+          toast.success("Welcome to Ludo Cash Play!");
+          nav(redirectPath(r.user, from), { replace: true });
+        } else setError(r.error);
+      } catch (err) {
+        setError(parseFirebaseError(err));
+      } finally {
+        setLoading(false);
+      }
+    } else {
+      // Fallback: dev OTP path
+      const r = await verifyOtp(phone, otp);
+      setLoading(false);
+      if (r.ok) {
+        if (r.needs_name) { setStep(STEP.NAME); return; }
+        toast.success("Welcome to Ludo Cash Play!");
+        nav(redirectPath(r.user, from), { replace: true });
+      } else setError(r.error);
+    }
   };
 
   const onSetName = async (e) => {
@@ -81,7 +152,19 @@ export default function Login() {
     else setError(r.error);
   };
 
-  const resetToPhone = () => { setStep(STEP.PHONE); setOtp(""); setError(""); setDevOtp(""); };
+  const resetToPhone = () => {
+    clearRecaptcha();
+    confirmationRef.current = null;
+    setStep(STEP.PHONE); setOtp(""); setError(""); setDevOtp("");
+  };
+
+  const onResend = async () => {
+    if (resendCount >= 3) return;
+    clearRecaptcha();
+    confirmationRef.current = null;
+    setOtp(""); setError("");
+    await onSendOtp();
+  };
 
   if (step === STEP.EMAIL) {
     return (
@@ -128,6 +211,9 @@ export default function Login() {
 
   return (
     <div className="min-h-screen pt-20 pb-12 bg-[#0A0A0E] grid place-items-center px-4 relative overflow-hidden">
+      {/* invisible reCAPTCHA mount point — must always be in DOM */}
+      <div id="recaptcha-container" />
+
       <div className="absolute inset-0 grid-bg opacity-25 pointer-events-none" />
       <div className="absolute top-1/4 left-1/4 w-64 h-64 rounded-full bg-purple-600/10 blur-3xl pointer-events-none" />
       <div className="absolute bottom-1/4 right-1/4 w-64 h-64 rounded-full bg-blue-600/10 blur-3xl pointer-events-none" />
@@ -163,7 +249,7 @@ export default function Login() {
                   <Input
                     type="tel"
                     value={phone}
-                    onChange={e => { setPhone(e.target.value.replace(/\D/g,"").slice(0,10)); setError(""); }}
+                    onChange={e => { setPhone(e.target.value.replace(/\D/g, "").slice(0, 10)); setError(""); }}
                     placeholder="10-digit number"
                     maxLength={10}
                     className="bg-black/40 border-white/10 text-white rounded-xl h-11 tracking-widest text-lg"
@@ -172,6 +258,12 @@ export default function Login() {
                   />
                 </div>
               </div>
+              {FIREBASE_READY && (
+                <div className="flex items-center gap-2 text-xs text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded-xl px-3 py-2">
+                  <Shield className="w-3.5 h-3.5 shrink-0" />
+                  SMS delivered via Firebase · Protected by reCAPTCHA
+                </div>
+              )}
               {error && <div className="text-red-400 text-sm bg-red-500/10 border border-red-500/20 rounded-xl px-3 py-2">{error}</div>}
               <Button type="submit" disabled={loading || phone.length !== 10}
                 className="w-full rounded-xl btn-neon text-white font-black h-12" data-testid="login-send-otp">
@@ -199,7 +291,7 @@ export default function Login() {
                   type="text"
                   inputMode="numeric"
                   value={otp}
-                  onChange={e => { setOtp(e.target.value.replace(/\D/g,"").slice(0,6)); setError(""); }}
+                  onChange={e => { setOtp(e.target.value.replace(/\D/g, "").slice(0, 6)); setError(""); }}
                   placeholder="------"
                   maxLength={6}
                   className="bg-black/40 border-white/10 text-white mt-1 rounded-xl h-12 text-center text-2xl tracking-[0.5em] font-mono"
@@ -215,7 +307,7 @@ export default function Login() {
               <div className="flex items-center justify-between text-sm text-slate-400">
                 <button type="button" onClick={resetToPhone} className="hover:text-white transition-colors">← Change number</button>
                 {resendCount < 3 && (
-                  <button type="button" onClick={onSendOtp} disabled={loading}
+                  <button type="button" onClick={onResend} disabled={loading}
                     className="flex items-center gap-1 text-purple-300 hover:text-white transition-colors">
                     <RefreshCw className="w-3.5 h-3.5" /> Resend OTP
                   </button>

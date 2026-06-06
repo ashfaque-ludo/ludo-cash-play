@@ -55,6 +55,19 @@ export function AuthProvider({ children }) {
     }
   };
 
+  const verifyFirebaseOtp = async (idToken, referral_code) => {
+    try {
+      const payload = { idToken };
+      if (referral_code) payload.referral_code = referral_code;
+      const { data } = await api.post("/auth/verify-firebase-otp", payload);
+      if (data.token) localStorage.setItem("lcp_token", data.token);
+      setUser(data);
+      return { ok: true, user: data, is_new_user: data.is_new_user, needs_name: data.needs_name };
+    } catch (e) {
+      return { ok: false, error: formatApiError(e.response?.data?.detail) || e.message };
+    }
+  };
+
   const setName = async (name) => {
     try {
       const { data } = await api.post("/auth/set-name", { name });
@@ -83,7 +96,7 @@ export function AuthProvider({ children }) {
   };
 
   return (
-    <AuthCtx.Provider value={{ user, ready, login, sendOtp, verifyOtp, setName, register, logout, refresh, setUser }}>
+    <AuthCtx.Provider value={{ user, ready, login, sendOtp, verifyOtp, verifyFirebaseOtp, setName, register, logout, refresh, setUser }}>
       {children}
     </AuthCtx.Provider>
   );
