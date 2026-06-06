@@ -9,7 +9,7 @@ async function getPCT() {
     const v = await Config.get("commission_pct", null);
     if (v !== null && !isNaN(Number(v))) return Number(v);
   } catch {}
-  return Number(process.env.PLATFORM_COMMISSION_PCT || 5);
+  return 5; // default 5%; override via Admin > Payment Settings
 }
 
 function genCode(len, alpha = false) {
