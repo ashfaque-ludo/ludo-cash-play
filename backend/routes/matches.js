@@ -2,8 +2,15 @@ const router = require("express").Router();
 const User = require("../models/User");
 const Match = require("../models/Match");
 const StakeTable = require("../models/StakeTable");
+const Config = require("../models/Config");
 
-const PCT = Number(process.env.PLATFORM_COMMISSION_PCT || 5);
+async function getPCT() {
+  try {
+    const v = await Config.get("commission_pct", null);
+    if (v !== null && !isNaN(Number(v))) return Number(v);
+  } catch {}
+  return Number(process.env.PLATFORM_COMMISSION_PCT || 5);
+}
 
 function genCode(len, alpha = false) {
   if (alpha) {
@@ -76,6 +83,7 @@ router.get("/", async (req, res) => {
 // GET /matches/tables
 router.get("/tables", async (req, res) => {
   try {
+    const PCT = await getPCT();
     const tables = await StakeTable.find({ active: true }).sort({ stake: 1 });
     const counts = await Match.aggregate([
       { $match: { status: { $in: ["waiting", "in_progress"] } } },
@@ -98,6 +106,7 @@ router.get("/tables", async (req, res) => {
 const handleCreate = async (req, res) => {
   if (!req.user) return res.status(401).json({ detail: "Not authenticated." });
   try {
+    const PCT = await getPCT();
     const { stake, custom_stake } = req.body;
     const isCustom = !!custom_stake;
     const stakeAmount = Number(custom_stake || stake);

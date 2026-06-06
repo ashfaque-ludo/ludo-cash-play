@@ -68,7 +68,7 @@ router.post("/send-otp", otpLimiter, async (req, res) => {
     }
 
     const resp = { ok: true, message: "OTP sent to your phone." };
-    if (process.env.NODE_ENV !== "production") resp.dev_otp = otp;
+    if (!process.env.MSG91_AUTH_KEY) resp.dev_otp = otp;
     res.json(resp);
   } catch (e) { console.error(e); res.status(500).json({ detail: "Server error." }); }
 });
