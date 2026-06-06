@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Wallet as WalletIcon, Plus, ArrowDownToLine, Tag, Upload } from "lucide-react";
+import { Wallet as WalletIcon, Plus, ArrowDownToLine, Tag, QrCode, Copy, CheckCircle } from "lucide-react";
 
 const COINS_BG = "https://static.prod-images.emergentagent.com/jobs/77b22318-d6be-4e76-845b-53f7f99d9a1e/images/c765d3a9a13fc650b446f0ae3c6800da5f663c2812e9f113da67af4b201d0966.png";
 
@@ -24,11 +24,22 @@ export default function Wallet() {
   const [promo, setPromo] = useState("");
   const [tab, setTab] = useState(loc.state?.tab || "deposit");
   const [screenshot, setScreenshot] = useState("");
+  const [paymentInfo, setPaymentInfo] = useState(null);
+  const [copied, setCopied] = useState(false);
 
   const loadTx = async () => {
     try { const r = await api.get("/wallet/transactions?limit=50"); setTx(r.data.transactions); } catch {}
   };
-  useEffect(() => { loadTx(); }, []);
+
+  const loadPaymentInfo = async () => {
+    try {
+      const r = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/public/payment-info`);
+      const data = await r.json();
+      setPaymentInfo(data);
+    } catch {}
+  };
+
+  useEffect(() => { loadTx(); loadPaymentInfo(); }, []);
 
   const w = user?.wallet || {deposit:0, winning:0, bonus:0};
   const total = (w.deposit||0)+(w.winning||0)+(w.bonus||0);
@@ -40,12 +51,22 @@ export default function Wallet() {
     reader.readAsDataURL(f);
   };
 
+  const validateDepositAmount = (val) => {
+    const amt = Number(val);
+    if (!val || isNaN(amt)) return "Enter a valid amount";
+    if (!Number.isInteger(amt)) return "Amount must be a whole number (no decimals)";
+    if (amt < 50) return "Minimum deposit is ₹50";
+    if (amt > 100000) return "Maximum deposit is ₹1,00,000";
+    return null;
+  };
+
   const handleDeposit = async () => {
+    const err = validateDepositAmount(amount);
+    if (err) return toast.error(err);
     try {
-      const amt = parseFloat(amount);
-      if (!amt || amt < 50) return toast.error("Minimum deposit is ₹50");
+      const amt = Number(amount);
       await api.post("/wallet/deposit", { amount: amt, method: "upi", upi_id: upi || null, screenshot_b64: screenshot || null });
-      toast.success("Deposit submitted (MOCK Razorpay). Awaiting admin approval.");
+      toast.success("Deposit request submitted! Admin will verify and credit your wallet.");
       setAmount(""); setUpi(""); setScreenshot("");
       await loadTx(); await refresh();
     } catch (e) { toast.error(formatApiError(e.response?.data?.detail) || e.message); }
@@ -70,6 +91,24 @@ export default function Wallet() {
       setPromo(""); await refresh(); await loadTx();
     } catch (e) { toast.error(formatApiError(e.response?.data?.detail) || e.message); }
   };
+
+  const copyUpi = () => {
+    if (paymentInfo?.admin_upi_id) {
+      navigator.clipboard.writeText(paymentInfo.admin_upi_id).then(() => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      });
+    }
+  };
+
+  const parsedAmt = Number(amount);
+  const showQR = paymentInfo && amount && !validateDepositAmount(amount) && parsedAmt >= 50;
+  const qrData = showQR
+    ? `upi://pay?pa=${paymentInfo.admin_upi_id}&pn=${encodeURIComponent(paymentInfo.admin_upi_name)}&am=${parsedAmt}&cu=INR`
+    : null;
+  const qrUrl = qrData
+    ? `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(qrData)}&bgcolor=0F0F14&color=FFFFFF&qzone=2`
+    : null;
 
   return (
     <div className="min-h-screen pt-24 pb-16 bg-[#0A0A0E] text-white">
@@ -106,30 +145,88 @@ export default function Wallet() {
               </TabsList>
               <TabsContent value="deposit">
                 <Card className="glass-strong border-white/10 text-white mt-4">
-                  <CardHeader><CardTitle className="flex items-center gap-2"><Plus className="w-4 h-4 text-emerald-400" /> Add money <Badge variant="outline" className="ml-2 text-amber-300 border-amber-500/40 text-[10px]">MOCK Razorpay</Badge></CardTitle></CardHeader>
+                  <CardHeader><CardTitle className="flex items-center gap-2"><Plus className="w-4 h-4 text-emerald-400" /> Add money</CardTitle></CardHeader>
                   <CardContent className="space-y-4">
-                    <div className="flex gap-2 flex-wrap">
-                      {[100, 500, 1000, 2000, 5000].map(v=>(
-                        <Button key={v} variant="outline" className="rounded-full border-white/20 bg-white/5 text-white" onClick={()=>setAmount(String(v))} data-testid={`deposit-q-${v}`}>{fmtINR(v)}</Button>
-                      ))}
-                    </div>
+                    {/* Quick amount buttons */}
                     <div>
-                      <Label className="text-slate-300">Amount (min ₹50)</Label>
-                      <Input type="number" value={amount} onChange={(e)=>setAmount(e.target.value)} className="bg-black/40 border-white/10 text-white mt-1" data-testid="deposit-amount" />
+                      <Label className="text-slate-300 text-xs mb-2 block">Quick select</Label>
+                      <div className="flex gap-2 flex-wrap">
+                        {[100, 500, 1000, 2000, 5000, 10000].map(v=>(
+                          <Button key={v} variant="outline" className="rounded-full border-white/20 bg-white/5 text-white" onClick={()=>setAmount(String(v))} data-testid={`deposit-q-${v}`}>{fmtINR(v)}</Button>
+                        ))}
+                      </div>
                     </div>
+
+                    {/* Custom amount input */}
                     <div>
-                      <Label className="text-slate-300">UPI ID (optional)</Label>
+                      <Label className="text-slate-300">Enter any amount (₹50 – ₹1,00,000)</Label>
+                      <Input
+                        type="number"
+                        value={amount}
+                        onChange={(e) => setAmount(e.target.value)}
+                        placeholder="e.g. 250, 750, 1500"
+                        min={50} max={100000} step={1}
+                        className="bg-black/40 border-white/10 text-white mt-1"
+                        data-testid="deposit-amount"
+                      />
+                      {amount && validateDepositAmount(amount) && (
+                        <p className="text-red-400 text-xs mt-1">{validateDepositAmount(amount)}</p>
+                      )}
+                    </div>
+
+                    {/* UPI QR Code — shown when valid amount entered */}
+                    {showQR && paymentInfo && (
+                      <div className="rounded-2xl bg-emerald-500/5 border border-emerald-500/20 p-4 space-y-3" data-testid="qr-section">
+                        <div className="flex items-center gap-2 text-emerald-400 font-semibold text-sm">
+                          <QrCode className="w-4 h-4" /> Scan & Pay ₹{parsedAmt}
+                        </div>
+                        <div className="flex flex-col sm:flex-row gap-4 items-center">
+                          <div className="rounded-xl overflow-hidden border border-white/10 bg-white p-1">
+                            <img
+                              src={qrUrl}
+                              alt="UPI QR Code"
+                              width={160}
+                              height={160}
+                              className="block"
+                              data-testid="upi-qr-img"
+                            />
+                          </div>
+                          <div className="flex-1 space-y-3 text-sm">
+                            <div>
+                              <div className="text-slate-400 text-xs uppercase tracking-widest mb-1">Pay to UPI ID</div>
+                              <div className="flex items-center gap-2">
+                                <code className="bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-white font-mono text-sm flex-1" data-testid="upi-id">
+                                  {paymentInfo.admin_upi_id}
+                                </code>
+                                <Button variant="outline" size="icon" onClick={copyUpi} className="border-white/20 bg-white/5 text-white shrink-0" data-testid="copy-upi">
+                                  {copied ? <CheckCircle className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
+                                </Button>
+                              </div>
+                            </div>
+                            <div className="text-slate-400 text-xs space-y-1">
+                              <div>1. Scan QR or copy UPI ID</div>
+                              <div>2. Pay exactly <span className="text-white font-semibold">{fmtINR(parsedAmt)}</span></div>
+                              <div>3. Take a screenshot of payment</div>
+                              <div>4. Upload screenshot below &amp; submit</div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    <div>
+                      <Label className="text-slate-300">Your UPI ID (optional, for reference)</Label>
                       <Input value={upi} onChange={(e)=>setUpi(e.target.value)} placeholder="yourname@upi" className="bg-black/40 border-white/10 text-white mt-1" data-testid="deposit-upi" />
                     </div>
                     <div>
-                      <Label className="text-slate-300">Payment screenshot (optional)</Label>
+                      <Label className="text-slate-300">Payment screenshot <span className="text-emerald-400">(required for faster approval)</span></Label>
                       <div className="mt-1 flex items-center gap-3">
                         <input type="file" accept="image/*" onChange={onFile} className="text-slate-300 text-sm" data-testid="deposit-screenshot" />
                         {screenshot && <img src={screenshot} alt="ss" className="w-12 h-12 rounded-md object-cover border border-white/10" />}
                       </div>
                     </div>
                     <Button onClick={handleDeposit} className="rounded-full bg-emerald-500 hover:bg-emerald-400 text-black font-bold w-full h-11" data-testid="deposit-submit">
-                      Add {amount ? fmtINR(parseFloat(amount)) : "money"}
+                      Submit deposit request {amount && !validateDepositAmount(amount) ? `— ${fmtINR(parsedAmt)}` : ""}
                     </Button>
                   </CardContent>
                 </Card>

@@ -7,7 +7,7 @@ import { fmtINR } from "@/lib/api";
 import {
   Dice5, Menu, X, Wallet as WalletIcon, Trophy, ShieldCheck, LogOut,
   User as UserIcon, Swords, Play, History, Phone, CreditCard, ArrowDownToLine,
-  Share2, Shield, Home, ChevronDown,
+  Share2, Shield, Home, ChevronDown, Download,
 } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem,
@@ -40,8 +40,28 @@ export default function Header() {
   const navigate = useNavigate();
   const loc = useLocation();
   const [open, setOpen] = useState(false);
+  const [installPrompt, setInstallPrompt] = useState(null);
+  const [showInstall, setShowInstall] = useState(false);
 
   useEffect(() => { setOpen(false); }, [loc.pathname]);
+
+  useEffect(() => {
+    const handler = (e) => {
+      e.preventDefault();
+      setInstallPrompt(e);
+      setShowInstall(true);
+    };
+    window.addEventListener('beforeinstallprompt', handler);
+    return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, []);
+
+  const handleInstall = async () => {
+    if (!installPrompt) return;
+    installPrompt.prompt();
+    const { outcome } = await installPrompt.userChoice;
+    if (outcome === 'accepted') setShowInstall(false);
+    setInstallPrompt(null);
+  };
 
   const isAdminRole = user && user !== false && ["super_admin", "admin", "staff_manager", "support_agent"].includes(user.role);
   const isSuperAdmin = user && user !== false && user.role === "super_admin";
@@ -95,6 +115,17 @@ export default function Header() {
 
           {/* Right section */}
           <div className="flex items-center gap-2">
+            {/* PWA Install button */}
+            {showInstall && (
+              <button
+                onClick={handleInstall}
+                data-testid="pwa-install-btn"
+                className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-purple-600 to-blue-600 text-white text-xs font-bold hover:opacity-90 transition-opacity"
+                title="Install app on your device"
+              >
+                <Download className="w-3.5 h-3.5" /> Install App
+              </button>
+            )}
             {/* Language toggle */}
             <button
               onClick={toggleLang}
@@ -217,6 +248,22 @@ export default function Header() {
                 className="mt-2 py-2 text-slate-400 text-sm flex items-center gap-2">
                 {lang === "en" ? "🇮🇳 Switch to Hindi" : "🇬🇧 Switch to English"}
               </button>
+
+              {/* PWA Install — Chrome/Android */}
+              {showInstall && (
+                <button onClick={handleInstall} data-testid="pwa-install-mobile"
+                  className="mt-2 py-2 text-purple-300 text-sm flex items-center gap-2 font-semibold">
+                  <Download className="w-4 h-4" /> Install App on your phone
+                </button>
+              )}
+
+              {/* iOS Safari install hint */}
+              {!showInstall && /iphone|ipad|ipod/i.test(navigator.userAgent) && (
+                <div className="mt-3 rounded-xl bg-white/5 border border-white/10 p-3 text-xs text-slate-400">
+                  <div className="font-semibold text-white mb-1">Install on iPhone / iPad</div>
+                  <div>Tap <span className="text-blue-400">Share</span> → <span className="text-blue-400">Add to Home Screen</span> to install the app.</div>
+                </div>
+              )}
             </div>
           </div>
         )}

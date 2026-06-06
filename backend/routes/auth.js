@@ -23,9 +23,17 @@ router.get("/me", auth, (req,res) => res.json(req.user.toPublic()));
 
 router.post("/login", authLimiter, async (req,res) => {
   try {
-    const { email, password } = req.body;
-    if (!email||!password) return res.status(400).json({ detail:"Email and password required." });
-    const user = await User.findOne({ email:email.toLowerCase().trim() }).select("+password");
+    const { email, phone, password } = req.body;
+    if ((!email && !phone) || !password) return res.status(400).json({ detail:"Email/phone and password required." });
+    let user;
+    if (phone) {
+      const digits = phone.replace(/\D/g, "").slice(-10);
+      user = await User.findOne({
+        $or: [{ phone: digits }, { phone: `+91${digits}` }, { phone: `91${digits}` }, { phone: phone.trim() }]
+      }).select("+password");
+    } else {
+      user = await User.findOne({ email:email.toLowerCase().trim() }).select("+password");
+    }
     if (!user) return res.status(401).json({ detail:"Invalid credentials." });
     if (user.banned) return res.status(403).json({ detail:"Account banned." });
     if (!await user.comparePassword(password)) return res.status(401).json({ detail:"Invalid credentials." });

@@ -32,4 +32,14 @@ router.get('/banners', async (req, res) => {
   }
 });
 
+router.get('/payment-info', async (req, res) => {
+  try {
+    const admin_upi_id = await Config.get('admin_upi_id', 'ludocashplay@upi');
+    const admin_upi_name = await Config.get('admin_upi_name', 'Ludo Cash Play');
+    res.json({ admin_upi_id, admin_upi_name });
+  } catch {
+    res.json({ admin_upi_id: 'ludocashplay@upi', admin_upi_name: 'Ludo Cash Play' });
+  }
+});
+
 module.exports = router;

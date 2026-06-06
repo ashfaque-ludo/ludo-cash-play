@@ -1,5 +1,4 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { tables } from "../data/stakeTables";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { api, fmtINR, formatApiError } from "@/lib/api";
@@ -10,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Crown, Dice5, Users, Sparkles, ChevronRight } from "lucide-react";
+import { Crown, Dice5, Users, Sparkles, ChevronRight, PenLine } from "lucide-react";
 import { toast } from "sonner";
 
 export default function MatchLobby() {
@@ -18,9 +17,11 @@ export default function MatchLobby() {
   const nav = useNavigate();
   const [tables, setTables] = useState([]);
   const [matches, setMatches] = useState([]);
-  const [creating, setCreating] = useState(null); // stake
+  const [creating, setCreating] = useState(null); // table object or { custom: true }
   const [busy, setBusy] = useState(false);
   const [joinCode, setJoinCode] = useState("");
+  const [customAmt, setCustomAmt] = useState("");
+  const [customOpen, setCustomOpen] = useState(false);
 
   const total = useMemo(() => {
     if (!user || user === false) return 0;
@@ -36,18 +37,29 @@ export default function MatchLobby() {
   };
   useEffect(()=>{ load(); const id = setInterval(load, 5000); return ()=>clearInterval(id); }, []);
 
-  const createMatch = async (stake) => {
-    if (total < stake) return toast.error("Insufficient balance for this table");
+  const createMatch = async (stake, isCustom = false) => {
+    if (total < stake) return toast.error("Insufficient balance for this stake");
     setBusy(true);
     try {
-      const { data } = await api.post("/matches", { stake });
+      const payload = isCustom ? { custom_stake: stake } : { stake };
+      const { data } = await api.post("/matches", payload);
       const m = data.match || data;
       toast.success(`Match created — room ${m.room_code}`);
       await refresh();
       nav(`/match/${m.id}`);
     } catch (e) {
       toast.error(formatApiError(e.response?.data?.detail) || e.message);
-    } finally { setBusy(false); setCreating(null); }
+    } finally { setBusy(false); setCreating(null); setCustomOpen(false); }
+  };
+
+  const handleCustomCreate = () => {
+    const amt = Number(customAmt);
+    if (!customAmt || isNaN(amt)) return toast.error("Enter a valid amount");
+    if (!Number.isInteger(amt) || amt % 10 !== 0) return toast.error("Amount must be a whole number and multiple of ₹10");
+    if (amt < 10) return toast.error("Minimum custom stake is ₹10");
+    if (amt > 50000) return toast.error("Maximum custom stake is ₹50,000");
+    setCreating({ custom: true, stake: amt, label: `Custom ₹${amt}`, prize: Math.round(amt * 2 * 0.9) });
+    setCustomOpen(false);
   };
 
   const joinMatch = async (mid) => {
@@ -67,7 +79,6 @@ export default function MatchLobby() {
     if (!code) return;
     const m = matches.find(x => x.room_code === code && x.status === "waiting");
     if (m) return joinMatch(m.id);
-    // fall back: fetch open and filter
     try {
       const { data } = await api.get("/matches?status=waiting");
       const cand = data.matches.find(x => x.room_code === code);
@@ -87,7 +98,7 @@ export default function MatchLobby() {
             <div className="text-xs uppercase tracking-[0.25em] text-purple-400 font-bold">Match lobby</div>
             <h1 className="text-3xl sm:text-4xl font-extrabold mt-1">Pick your <span className="grad-text">arena</span></h1>
             <p className="text-slate-400 mt-1 text-sm">Create a challenge or join an open one. Game is played on Ludo King app using the room code.</p>
-            <p className="text-xs text-slate-500 mt-1">Min stake: ₹50 · Max stake: ₹50,000</p>
+            <p className="text-xs text-slate-500 mt-1">Min stake: ₹10 custom · Max stake: ₹50,000</p>
           </div>
           <Dialog>
             <DialogTrigger asChild>
@@ -150,6 +161,60 @@ export default function MatchLobby() {
                   </Card>
                 );
               })}
+
+              {/* Custom Battle Card */}
+              <Card data-testid="lobby-custom-stake"
+                className="text-white transition-all bg-gradient-to-br from-teal-900/30 to-cyan-900/20 border-teal-500/30 border-2 border-dashed">
+                <CardHeader className="flex flex-row items-start justify-between pb-1">
+                  <div className="space-y-1">
+                    <CardTitle className="text-sm uppercase tracking-widest text-slate-400">Custom</CardTitle>
+                    <Badge className="text-[10px] bg-teal-600/80 text-white border-0 px-1.5 h-4">Any amount</Badge>
+                  </div>
+                  <PenLine className="w-5 h-5 text-teal-300 shrink-0" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-3xl font-black text-teal-300">₹?</div>
+                  <div className="text-xs text-slate-400 mt-1">Prize <span className="text-emerald-400 font-semibold">stake × 1.8</span></div>
+                  <div className="mt-3 text-xs text-slate-500">₹10–₹50,000 · multiple of ₹10</div>
+                  <Dialog open={customOpen} onOpenChange={setCustomOpen}>
+                    <DialogTrigger asChild>
+                      <Button className="mt-4 w-full rounded-full font-bold bg-gradient-to-r from-teal-600 to-cyan-600 text-white" data-testid="create-custom-open">
+                        Set amount
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="bg-[#0F0F14] border-white/10 text-white">
+                      <DialogHeader><DialogTitle>Custom battle amount</DialogTitle></DialogHeader>
+                      <div className="space-y-4">
+                        <div>
+                          <Label className="text-slate-300">Stake amount (₹)</Label>
+                          <Input
+                            type="number"
+                            value={customAmt}
+                            onChange={(e) => setCustomAmt(e.target.value)}
+                            placeholder="e.g. 70, 150, 777"
+                            min={10} max={50000} step={10}
+                            className="bg-black/40 border-white/10 text-white mt-1"
+                            data-testid="custom-stake-input"
+                          />
+                          <p className="text-xs text-slate-500 mt-1">Min ₹10 · Max ₹50,000 · Must be multiple of ₹10</p>
+                        </div>
+                        {customAmt && Number(customAmt) >= 10 && (
+                          <div className="rounded-xl bg-teal-500/10 border border-teal-500/20 p-3 text-sm space-y-1">
+                            <div className="flex justify-between"><span className="text-slate-400">Entry</span><span className="font-semibold">{fmtINR(Number(customAmt))}</span></div>
+                            <div className="flex justify-between"><span className="text-slate-400">Prize on win</span><span className="text-emerald-400 font-semibold">{fmtINR(Math.round(Number(customAmt) * 2 * 0.9))}</span></div>
+                            <div className="flex justify-between"><span className="text-slate-400">Commission</span><span>10%</span></div>
+                          </div>
+                        )}
+                      </div>
+                      <DialogFooter>
+                        <Button onClick={handleCustomCreate} className="rounded-full bg-gradient-to-r from-teal-600 to-cyan-600 text-white" data-testid="custom-stake-confirm">
+                          Continue
+                        </Button>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
+                </CardContent>
+              </Card>
             </div>
           </TabsContent>
 
@@ -161,12 +226,14 @@ export default function MatchLobby() {
                   <div className="mt-2">No open challenges right now. Create one above.</div>
                 </div>
               ) : openMatches.map(m=>(
-                <Card key={m.id} className={`text-white ${m.tier === "vip" ? "border-amber-500/30 bg-amber-500/5" : "glass-strong border-white/10"}`} data-testid={`open-match-${m.id}`}>
+                <Card key={m.id} className={`text-white ${m.tier === "vip" ? "border-amber-500/30 bg-amber-500/5" : m.tier === "custom" ? "border-teal-500/30 bg-teal-500/5" : "glass-strong border-white/10"}`} data-testid={`open-match-${m.id}`}>
                   <CardContent className="py-4 flex flex-wrap items-center justify-between gap-3">
                     <div className="flex items-center gap-3">
-                      {m.tier === "vip" ? <Crown className="w-6 h-6 text-amber-300" /> : <Dice5 className="w-6 h-6 text-purple-300" />}
+                      {m.tier === "vip" ? <Crown className="w-6 h-6 text-amber-300" /> : m.tier === "custom" ? <PenLine className="w-6 h-6 text-teal-300" /> : <Dice5 className="w-6 h-6 text-purple-300" />}
                       <div>
-                        <div className="font-semibold">{m.label} · {fmtINR(m.stake)} <Badge variant="outline" className="ml-2 text-emerald-300 border-emerald-500/30">Win {fmtINR(m.prize)}</Badge></div>
+                        <div className="font-semibold">{m.label} · {fmtINR(m.stake)} <Badge variant="outline" className="ml-2 text-emerald-300 border-emerald-500/30">Win {fmtINR(m.prize)}</Badge>
+                          {m.tier === "custom" && <Badge className="ml-1 text-[10px] bg-teal-600/80 text-white border-0 px-1.5 h-4">Custom</Badge>}
+                        </div>
                         <div className="text-xs text-slate-400">by {m.creator_name} · room {m.room_code}</div>
                       </div>
                     </div>
@@ -187,7 +254,7 @@ export default function MatchLobby() {
                 <Card key={m.id} className="glass-strong border-white/10 text-white">
                   <CardContent className="py-4 flex flex-wrap items-center justify-between gap-3">
                     <div className="flex items-center gap-3">
-                      {m.tier === "vip" ? <Crown className="w-6 h-6 text-amber-300" /> : <Dice5 className="w-6 h-6 text-purple-300" />}
+                      {m.tier === "vip" ? <Crown className="w-6 h-6 text-amber-300" /> : m.tier === "custom" ? <PenLine className="w-6 h-6 text-teal-300" /> : <Dice5 className="w-6 h-6 text-purple-300" />}
                       <div>
                         <div className="font-semibold">{m.label} · {fmtINR(m.stake)}</div>
                         <div className="text-xs text-slate-400">{m.status.replace("_"," ")} · room {m.room_code}</div>
@@ -201,7 +268,8 @@ export default function MatchLobby() {
           </TabsContent>
         </Tabs>
 
-        <Dialog open={!!creating} onOpenChange={(o)=>!o && setCreating(null)}>
+        {/* Confirm dialog for table stakes */}
+        <Dialog open={!!creating && !creating?.custom} onOpenChange={(o)=>!o && setCreating(null)}>
           <DialogContent className="bg-[#0F0F14] border-white/10 text-white">
             <DialogHeader><DialogTitle>Create {creating?.label} challenge</DialogTitle></DialogHeader>
             <div className="space-y-3 text-sm">
@@ -211,7 +279,26 @@ export default function MatchLobby() {
               <div className="flex justify-between"><span className="text-slate-400">Your balance</span><span className="font-semibold">{fmtINR(total)}</span></div>
             </div>
             <DialogFooter>
-              <Button disabled={busy} onClick={()=>createMatch(creating.stake)} className="rounded-full bg-gradient-to-r from-purple-600 to-blue-600 text-white" data-testid="confirm-create">
+              <Button disabled={busy} onClick={()=>createMatch(creating.stake, false)} className="rounded-full bg-gradient-to-r from-purple-600 to-blue-600 text-white" data-testid="confirm-create">
+                {busy ? "Creating…" : "Create & open room"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Confirm dialog for custom stakes */}
+        <Dialog open={!!creating?.custom} onOpenChange={(o)=>!o && setCreating(null)}>
+          <DialogContent className="bg-[#0F0F14] border-white/10 text-white">
+            <DialogHeader><DialogTitle>Create custom battle</DialogTitle></DialogHeader>
+            <div className="space-y-3 text-sm">
+              <div className="flex justify-between"><span className="text-slate-400">Entry</span><span className="font-semibold">{fmtINR(creating?.stake || 0)}</span></div>
+              <div className="flex justify-between"><span className="text-slate-400">Prize on win</span><span className="font-semibold text-emerald-400">{fmtINR(creating?.prize || 0)}</span></div>
+              <div className="flex justify-between"><span className="text-slate-400">Platform commission</span><span>10%</span></div>
+              <div className="flex justify-between"><span className="text-slate-400">Your balance</span><span className="font-semibold">{fmtINR(total)}</span></div>
+              <Badge className="bg-teal-600/80 text-white border-0">Custom Battle</Badge>
+            </div>
+            <DialogFooter>
+              <Button disabled={busy} onClick={()=>createMatch(creating.stake, true)} className="rounded-full bg-gradient-to-r from-teal-600 to-cyan-600 text-white" data-testid="confirm-create-custom">
                 {busy ? "Creating…" : "Create & open room"}
               </Button>
             </DialogFooter>

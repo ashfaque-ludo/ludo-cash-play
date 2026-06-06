@@ -98,18 +98,34 @@ router.get("/tables", async (req, res) => {
 const handleCreate = async (req, res) => {
   if (!req.user) return res.status(401).json({ detail: "Not authenticated." });
   try {
-    const { stake } = req.body;
-    const table = await StakeTable.findOne({ stake: Number(stake), active: true });
-    if (!table) return res.status(400).json({ detail: "Invalid stake table." });
-    await debit(req.user._id, stake);
-    const commission = Math.round(stake * 2 * PCT / 100);
+    const { stake, custom_stake } = req.body;
+    const isCustom = !!custom_stake;
+    const stakeAmount = Number(custom_stake || stake);
+
+    let label, tier;
+    if (isCustom) {
+      if (!Number.isInteger(stakeAmount) || stakeAmount % 10 !== 0)
+        return res.status(400).json({ detail: "Custom stake must be a whole number and multiple of ₹10." });
+      if (stakeAmount < 10 || stakeAmount > 50000)
+        return res.status(400).json({ detail: "Custom stake must be between ₹10 and ₹50,000." });
+      label = `Custom ₹${stakeAmount}`;
+      tier = "custom";
+    } else {
+      const table = await StakeTable.findOne({ stake: stakeAmount, active: true });
+      if (!table) return res.status(400).json({ detail: "Invalid stake table." });
+      label = table.label;
+      tier = table.tier;
+    }
+
+    await debit(req.user._id, stakeAmount);
+    const commission = Math.round(stakeAmount * 2 * PCT / 100);
     const room_code = genCode(6, true);
     const room_password = genCode(4);
     const match = await Match.create({
-      label: table.label,
-      stake: table.stake,
-      tier: table.tier,
-      prize_pool: stake * 2 - commission,
+      label,
+      stake: stakeAmount,
+      tier,
+      prize_pool: stakeAmount * 2 - commission,
       commission,
       room_code,
       room_password,

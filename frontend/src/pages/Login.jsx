@@ -5,14 +5,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Dice5, LogIn } from "lucide-react";
+import { Dice5, LogIn, Mail, Phone } from "lucide-react";
 import { toast } from "sonner";
 
 export default function Login() {
   const { login } = useAuth();
   const nav = useNavigate();
   const loc = useLocation();
-  const [email, setEmail] = useState("");
+  const [loginMode, setLoginMode] = useState("email"); // "email" | "phone"
+  const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -20,7 +21,7 @@ export default function Login() {
   const onSubmit = async (e) => {
     e.preventDefault();
     setLoading(true); setError("");
-    const r = await login(email.trim(), password);
+    const r = await login(identifier.trim(), password, loginMode === "phone");
     setLoading(false);
     if (r.ok) {
       toast.success("Welcome back!");
@@ -29,6 +30,12 @@ export default function Login() {
                  (loc.state?.from || "/dashboard");
       nav(to, { replace: true });
     } else setError(r.error);
+  };
+
+  const switchMode = (mode) => {
+    setLoginMode(mode);
+    setIdentifier("");
+    setError("");
   };
 
   return (
@@ -47,15 +54,53 @@ export default function Login() {
           <CardDescription className="text-slate-400">Login to continue your winning streak</CardDescription>
         </CardHeader>
         <CardContent>
+          {/* Login mode toggle */}
+          <div className="flex rounded-xl bg-white/5 border border-white/10 p-1 mb-5" data-testid="login-mode-toggle">
+            <button
+              type="button"
+              onClick={() => switchMode("email")}
+              className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-semibold transition-all ${
+                loginMode === "email" ? "bg-purple-600 text-white" : "text-slate-400 hover:text-white"
+              }`}
+              data-testid="mode-email"
+            >
+              <Mail className="w-3.5 h-3.5" /> Email
+            </button>
+            <button
+              type="button"
+              onClick={() => switchMode("phone")}
+              className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-semibold transition-all ${
+                loginMode === "phone" ? "bg-purple-600 text-white" : "text-slate-400 hover:text-white"
+              }`}
+              data-testid="mode-phone"
+            >
+              <Phone className="w-3.5 h-3.5" /> Phone
+            </button>
+          </div>
+
           <form onSubmit={onSubmit} className="space-y-4" data-testid="login-form">
-            <div>
-              <Label htmlFor="email" className="text-[10px] uppercase tracking-widest text-slate-400">Email</Label>
-              <Input id="email" type="email" value={email} onChange={(e)=>setEmail(e.target.value)} required
-                className="bg-black/40 border-white/10 text-white mt-1 rounded-xl h-11" data-testid="login-email" />
-            </div>
+            {loginMode === "email" ? (
+              <div>
+                <Label htmlFor="email" className="text-[10px] uppercase tracking-widest text-slate-400">Email</Label>
+                <Input id="email" type="email" value={identifier} onChange={(e) => setIdentifier(e.target.value)} required
+                  className="bg-black/40 border-white/10 text-white mt-1 rounded-xl h-11" data-testid="login-email" />
+              </div>
+            ) : (
+              <div>
+                <Label htmlFor="phone" className="text-[10px] uppercase tracking-widest text-slate-400">Phone number</Label>
+                <div className="flex gap-2 mt-1">
+                  <div className="flex items-center justify-center px-3 rounded-xl bg-black/40 border border-white/10 text-slate-300 text-sm font-semibold shrink-0">
+                    +91
+                  </div>
+                  <Input id="phone" type="tel" value={identifier} onChange={(e) => setIdentifier(e.target.value.replace(/\D/g, "").slice(0, 10))}
+                    required placeholder="10-digit number"
+                    className="bg-black/40 border-white/10 text-white rounded-xl h-11" data-testid="login-phone" />
+                </div>
+              </div>
+            )}
             <div>
               <Label htmlFor="password" className="text-[10px] uppercase tracking-widest text-slate-400">Password</Label>
-              <Input id="password" type="password" value={password} onChange={(e)=>setPassword(e.target.value)} required
+              <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required
                 className="bg-black/40 border-white/10 text-white mt-1 rounded-xl h-11" data-testid="login-password" />
             </div>
             {error && <div className="text-red-400 text-sm bg-red-500/10 border border-red-500/20 rounded-xl px-3 py-2" data-testid="login-error">{error}</div>}

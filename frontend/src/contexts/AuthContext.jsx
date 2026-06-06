@@ -20,9 +20,10 @@ export function AuthProvider({ children }) {
 
   useEffect(() => { refresh(); }, [refresh]);
 
-  const login = async (email, password) => {
+  const login = async (identifier, password, isPhone = false) => {
     try {
-      const { data } = await api.post("/auth/login", { email, password });
+      const payload = isPhone ? { phone: identifier, password } : { email: identifier, password };
+      const { data } = await api.post("/auth/login", payload);
       if (data.token) localStorage.setItem("lcp_token", data.token);
       setUser(data);
       return { ok: true, user: data };
