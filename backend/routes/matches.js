@@ -3,7 +3,7 @@ const User = require("../models/User");
 const Match = require("../models/Match");
 const StakeTable = require("../models/StakeTable");
 
-const PCT = Number(process.env.PLATFORM_COMMISSION_PCT || 10);
+const PCT = Number(process.env.PLATFORM_COMMISSION_PCT || 5);
 
 function genCode(len, alpha = false) {
   if (alpha) {

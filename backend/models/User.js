@@ -7,10 +7,10 @@ const walletSchema = new mongoose.Schema(
 );
 
 const userSchema = new mongoose.Schema({
-  name:            { type: String, required: true, trim: true },
-  email:           { type: String, required: true, unique: true, lowercase: true, trim: true },
-  password:        { type: String, required: true, select: false },
-  phone:           { type: String, default: "" },
+  name:            { type: String, trim: true, default: "" },
+  email:           { type: String, unique: true, sparse: true, lowercase: true, trim: true },
+  password:        { type: String, select: false },
+  phone:           { type: String, unique: true, sparse: true, default: null },
   role:            { type: String, enum: ["user","support_agent","staff_manager","admin","super_admin"], default: "user" },
   is_master_owner: { type: Boolean, default: false },
   banned:          { type: Boolean, default: false },
@@ -24,12 +24,13 @@ const userSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 userSchema.pre("save", async function(next) {
-  if (!this.isModified("password")) return next();
+  if (!this.password || !this.isModified("password")) return next();
   this.password = await bcrypt.hash(this.password, 12);
   next();
 });
 
 userSchema.methods.comparePassword = function(plain) {
+  if (!this.password) return Promise.resolve(false);
   return bcrypt.compare(plain, this.password);
 };
 

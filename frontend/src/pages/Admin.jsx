@@ -58,6 +58,7 @@ export default function Admin() {
             {can("super_admin") && <TabsTrigger value="ref-settings" data-testid="tab-ref-settings"><Gift className="w-3.5 h-3.5 mr-1" /> Referral Settings</TabsTrigger>}
             {can("admin") && <TabsTrigger value="banners" data-testid="tab-banners"><Image className="w-3.5 h-3.5 mr-1" /> Banners</TabsTrigger>}
             <TabsTrigger value="support-mgmt" data-testid="tab-support"><Phone className="w-3.5 h-3.5 mr-1" /> Support</TabsTrigger>
+            {can("admin") && <TabsTrigger value="payment-settings" data-testid="tab-payment"><WalletIcon className="w-3.5 h-3.5 mr-1" /> Payment Settings</TabsTrigger>}
           </TabsList>
 
           <TabsContent value="analytics"><AnalyticsTab /></TabsContent>
@@ -78,6 +79,7 @@ export default function Admin() {
           <TabsContent value="ref-settings"><ReferralSettingsTab /></TabsContent>
           <TabsContent value="banners"><BannersTab /></TabsContent>
           <TabsContent value="support-mgmt"><SupportMgmtTab /></TabsContent>
+          <TabsContent value="payment-settings"><PaymentSettingsTab /></TabsContent>
         </Tabs>
       </div>
     </div>
@@ -1472,5 +1474,115 @@ function SupportMgmtTab() {
         )}
       </CardContent>
     </Card>
+  );
+}
+
+function PaymentSettingsTab() {
+  const [form, setForm] = useState({ admin_upi_id: "", admin_upi_name: "", admin_qr_image: "", whatsapp_number: "", support_email: "" });
+  const [commission, setCommission] = useState(5);
+  const [announcement, setAnnouncement] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const load = useCallback(async () => {
+    try {
+      const [p, c, a] = await Promise.all([
+        api.get("/admin/payment-settings"),
+        api.get("/admin/commission-settings"),
+        api.get("/admin/announcement"),
+      ]);
+      setForm(p.data);
+      setCommission(c.data.commission_pct);
+      setAnnouncement(a.data.announcement || "");
+    } catch {}
+  }, []);
+  useEffect(() => { load(); }, [load]);
+
+  const savePayment = async () => {
+    setBusy(true);
+    try { await api.post("/admin/payment-settings", form); toast.success("Payment settings saved"); }
+    catch (e) { toast.error(formatApiError(e.response?.data?.detail) || e.message); }
+    finally { setBusy(false); }
+  };
+  const saveCommission = async () => {
+    setBusy(true);
+    try { await api.post("/admin/commission-settings", { commission_pct: commission }); toast.success("Commission updated"); }
+    catch (e) { toast.error(formatApiError(e.response?.data?.detail) || e.message); }
+    finally { setBusy(false); }
+  };
+  const saveAnnouncement = async () => {
+    setBusy(true);
+    try { await api.post("/admin/announcement", { text: announcement }); toast.success("Announcement updated"); }
+    catch (e) { toast.error(formatApiError(e.response?.data?.detail) || e.message); }
+    finally { setBusy(false); }
+  };
+
+  const f = (k) => ({ value: form[k] || "", onChange: (e) => setForm(prev => ({ ...prev, [k]: e.target.value })) });
+
+  return (
+    <div className="space-y-5 mt-5">
+      <Card className="glass-strong border-white/10 text-white">
+        <CardHeader><CardTitle>Payment & UPI Settings</CardTitle></CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid sm:grid-cols-2 gap-4">
+            <div>
+              <Label className="text-xs text-slate-400">UPI ID</Label>
+              <Input {...f("admin_upi_id")} placeholder="yourname@upi" className="bg-black/40 border-white/10 text-white mt-1" />
+            </div>
+            <div>
+              <Label className="text-xs text-slate-400">UPI Display Name</Label>
+              <Input {...f("admin_upi_name")} placeholder="Ludo Cash Play" className="bg-black/40 border-white/10 text-white mt-1" />
+            </div>
+            <div>
+              <Label className="text-xs text-slate-400">WhatsApp Number (with country code)</Label>
+              <Input {...f("whatsapp_number")} placeholder="919090000000" className="bg-black/40 border-white/10 text-white mt-1" />
+            </div>
+            <div>
+              <Label className="text-xs text-slate-400">Support Email</Label>
+              <Input {...f("support_email")} type="email" placeholder="support@ludocashplay.in" className="bg-black/40 border-white/10 text-white mt-1" />
+            </div>
+          </div>
+          <div>
+            <Label className="text-xs text-slate-400">QR Code Image URL</Label>
+            <Input {...f("admin_qr_image")} placeholder="https://…/qr.png" className="bg-black/40 border-white/10 text-white mt-1" />
+            {form.admin_qr_image && (
+              <div className="mt-3 flex justify-center">
+                <img src={form.admin_qr_image} alt="QR preview" className="w-40 h-40 object-contain rounded-xl border border-white/10 bg-white" />
+              </div>
+            )}
+            <p className="text-xs text-slate-500 mt-1">Upload your QR to Cloudinary/ImgBB and paste the URL. Users see this when depositing.</p>
+          </div>
+          <Button disabled={busy} onClick={savePayment} className="rounded-full bg-gradient-to-r from-purple-600 to-blue-600 text-white">Save Payment Settings</Button>
+        </CardContent>
+      </Card>
+
+      <Card className="glass-strong border-white/10 text-white">
+        <CardHeader><CardTitle>Commission Rate</CardTitle></CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-end gap-4">
+            <div className="flex-1">
+              <Label className="text-xs text-slate-400">Platform Commission %</Label>
+              <Input type="number" min={0} max={50} step={0.5} value={commission} onChange={e => setCommission(Number(e.target.value))}
+                className="bg-black/40 border-white/10 text-white mt-1 w-40" />
+              <p className="text-xs text-slate-500 mt-1">Prize = Stake × 2 × (1 − commission/100). Current: {commission}%</p>
+            </div>
+            <Button disabled={busy} onClick={saveCommission} className="rounded-full bg-amber-600 text-white">Save</Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="glass-strong border-white/10 text-white">
+        <CardHeader><CardTitle>Scrolling Announcement</CardTitle></CardHeader>
+        <CardContent className="space-y-4">
+          <div>
+            <Label className="text-xs text-slate-400">Announcement text (shown on home page ticker)</Label>
+            <Textarea value={announcement} onChange={e => setAnnouncement(e.target.value)}
+              placeholder="🎉 New tournament this weekend! | Withdrawal time: 10 min"
+              className="bg-black/40 border-white/10 text-white mt-1 resize-none" rows={2} />
+            <p className="text-xs text-slate-500 mt-1">Leave blank to hide the bar.</p>
+          </div>
+          <Button disabled={busy} onClick={saveAnnouncement} className="rounded-full bg-emerald-600 text-white">Save Announcement</Button>
+        </CardContent>
+      </Card>
+    </div>
   );
 }

@@ -183,7 +183,7 @@ export default function Wallet() {
                         <div className="flex flex-col sm:flex-row gap-4 items-center">
                           <div className="rounded-xl overflow-hidden border border-white/10 bg-white p-1">
                             <img
-                              src={qrUrl}
+                              src={paymentInfo.admin_qr_image || qrUrl}
                               alt="UPI QR Code"
                               width={160}
                               height={160}

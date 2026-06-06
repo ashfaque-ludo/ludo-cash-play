@@ -58,7 +58,7 @@ export default function MatchLobby() {
     if (!Number.isInteger(amt) || amt % 10 !== 0) return toast.error("Amount must be a whole number and multiple of ₹10");
     if (amt < 10) return toast.error("Minimum custom stake is ₹10");
     if (amt > 50000) return toast.error("Maximum custom stake is ₹50,000");
-    setCreating({ custom: true, stake: amt, label: `Custom ₹${amt}`, prize: Math.round(amt * 2 * 0.9) });
+    setCreating({ custom: true, stake: amt, label: `Custom ₹${amt}`, prize: Math.round(amt * 2 * 0.95) });
     setCustomOpen(false);
   };
 
@@ -174,7 +174,7 @@ export default function MatchLobby() {
                 </CardHeader>
                 <CardContent>
                   <div className="text-3xl font-black text-teal-300">₹?</div>
-                  <div className="text-xs text-slate-400 mt-1">Prize <span className="text-emerald-400 font-semibold">stake × 1.8</span></div>
+                  <div className="text-xs text-slate-400 mt-1">Prize <span className="text-emerald-400 font-semibold">stake × 1.9</span></div>
                   <div className="mt-3 text-xs text-slate-500">₹10–₹50,000 · multiple of ₹10</div>
                   <Dialog open={customOpen} onOpenChange={setCustomOpen}>
                     <DialogTrigger asChild>
@@ -201,8 +201,8 @@ export default function MatchLobby() {
                         {customAmt && Number(customAmt) >= 10 && (
                           <div className="rounded-xl bg-teal-500/10 border border-teal-500/20 p-3 text-sm space-y-1">
                             <div className="flex justify-between"><span className="text-slate-400">Entry</span><span className="font-semibold">{fmtINR(Number(customAmt))}</span></div>
-                            <div className="flex justify-between"><span className="text-slate-400">Prize on win</span><span className="text-emerald-400 font-semibold">{fmtINR(Math.round(Number(customAmt) * 2 * 0.9))}</span></div>
-                            <div className="flex justify-between"><span className="text-slate-400">Commission</span><span>10%</span></div>
+                            <div className="flex justify-between"><span className="text-slate-400">Prize on win</span><span className="text-emerald-400 font-semibold">{fmtINR(Math.round(Number(customAmt) * 2 * 0.95))}</span></div>
+                            <div className="flex justify-between"><span className="text-slate-400">Commission</span><span>5%</span></div>
                           </div>
                         )}
                       </div>
@@ -275,7 +275,7 @@ export default function MatchLobby() {
             <div className="space-y-3 text-sm">
               <div className="flex justify-between"><span className="text-slate-400">Entry</span><span className="font-semibold">{fmtINR(creating?.stake || 0)}</span></div>
               <div className="flex justify-between"><span className="text-slate-400">Prize on win</span><span className="font-semibold text-emerald-400">{fmtINR(creating?.prize || 0)}</span></div>
-              <div className="flex justify-between"><span className="text-slate-400">Platform commission</span><span>10%</span></div>
+              <div className="flex justify-between"><span className="text-slate-400">Platform commission</span><span>5%</span></div>
               <div className="flex justify-between"><span className="text-slate-400">Your balance</span><span className="font-semibold">{fmtINR(total)}</span></div>
             </div>
             <DialogFooter>
@@ -293,7 +293,7 @@ export default function MatchLobby() {
             <div className="space-y-3 text-sm">
               <div className="flex justify-between"><span className="text-slate-400">Entry</span><span className="font-semibold">{fmtINR(creating?.stake || 0)}</span></div>
               <div className="flex justify-between"><span className="text-slate-400">Prize on win</span><span className="font-semibold text-emerald-400">{fmtINR(creating?.prize || 0)}</span></div>
-              <div className="flex justify-between"><span className="text-slate-400">Platform commission</span><span>10%</span></div>
+              <div className="flex justify-between"><span className="text-slate-400">Platform commission</span><span>5%</span></div>
               <div className="flex justify-between"><span className="text-slate-400">Your balance</span><span className="font-semibold">{fmtINR(total)}</span></div>
               <Badge className="bg-teal-600/80 text-white border-0">Custom Battle</Badge>
             </div>

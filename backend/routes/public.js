@@ -33,12 +33,19 @@ router.get('/banners', async (req, res) => {
 });
 
 router.get('/payment-info', async (req, res) => {
+  res.set('Cache-Control', 'no-store');
   try {
-    const admin_upi_id = await Config.get('admin_upi_id', 'ludocashplay@upi');
-    const admin_upi_name = await Config.get('admin_upi_name', 'Ludo Cash Play');
-    res.json({ admin_upi_id, admin_upi_name });
+    const [admin_upi_id, admin_upi_name, admin_qr_image, whatsapp_number, support_email, announcement] = await Promise.all([
+      Config.get('admin_upi_id', 'ludocashplay@upi'),
+      Config.get('admin_upi_name', 'Ludo Cash Play'),
+      Config.get('admin_qr_image', ''),
+      Config.get('whatsapp_number', '919090000000'),
+      Config.get('support_email', 'support@ludocashplay.in'),
+      Config.get('announcement', ''),
+    ]);
+    res.json({ admin_upi_id, admin_upi_name, admin_qr_image, whatsapp_number, support_email, announcement });
   } catch {
-    res.json({ admin_upi_id: 'ludocashplay@upi', admin_upi_name: 'Ludo Cash Play' });
+    res.json({ admin_upi_id: 'ludocashplay@upi', admin_upi_name: 'Ludo Cash Play', admin_qr_image: '', whatsapp_number: '919090000000', support_email: 'support@ludocashplay.in', announcement: '' });
   }
 });
 
