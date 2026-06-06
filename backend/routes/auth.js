@@ -45,7 +45,8 @@ function findUserByPhone(phone) {
 
 router.get("/me", auth, (req,res) => res.json(req.user.toPublic()));
 
-// POST /api/auth/send-otp
+// POST /api/auth/send-otp — DEPRECATED: use Firebase client-side phone auth instead.
+// Kept for backwards compatibility. Use POST /verify-firebase-otp for new flows.
 router.post("/send-otp", otpLimiter, async (req, res) => {
   try {
     const { phone } = req.body;
@@ -55,7 +56,6 @@ router.post("/send-otp", otpLimiter, async (req, res) => {
 
     const otp = await Otp.createOtp(normalized);
 
-    // Send via SMS if configured (MSG91/Twilio), otherwise log
     if (process.env.MSG91_AUTH_KEY && process.env.MSG91_TEMPLATE_ID) {
       try {
         await fetch("https://api.msg91.com/api/v5/otp", {
@@ -64,12 +64,10 @@ router.post("/send-otp", otpLimiter, async (req, res) => {
           body: JSON.stringify({ template_id: process.env.MSG91_TEMPLATE_ID, mobile: `91${normalized}`, otp }),
         });
       } catch (smsErr) { console.error("SMS send failed:", smsErr.message); }
-    } else {
-      console.log(`[OTP] ${normalized}: ${otp}`);
     }
 
     const resp = { ok: true, message: "OTP sent to your phone." };
-    if (!process.env.MSG91_AUTH_KEY) resp.dev_otp = otp;
+    if (process.env.NODE_ENV !== "production") resp.dev_otp = otp;
     res.json(resp);
   } catch (e) { console.error(e); res.status(500).json({ detail: "Server error." }); }
 });
