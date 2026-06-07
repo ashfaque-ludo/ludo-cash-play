@@ -226,8 +226,8 @@ router.post("/verify-firebase-otp", async (req, res) => {
     res.cookie("lcp_token", token, COOKIE);
     res.json({ ...user.toPublic(), token, is_new_user, needs_name: !user.name });
   } catch (e) {
-    console.error(e);
-    res.status(500).json({ detail: "Server error." });
+    console.error("[verify-firebase-otp] FATAL:", e.message, "\n", e.stack);
+    res.status(500).json({ detail: e.message, _stack: e.stack?.split("\n").slice(0,5).join(" | ") });
   }
 });
 
