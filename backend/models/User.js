@@ -23,6 +23,16 @@ const userSchema = new mongoose.Schema({
   last_login_ip:   { type: String, default: "" },
 }, { timestamps: true });
 
+// Prevent email/phone stored as null from conflicting with the sparse unique index.
+// MongoDB sparse indexes index null values — so two users without email both get
+// email:null, which triggers E11000. Setting to undefined makes Mongoose omit the
+// field from the document entirely, which sparse indexes skip.
+userSchema.pre("validate", function(next) {
+  if (!this.email) this.email = undefined;
+  if (!this.phone) this.phone = undefined;
+  next();
+});
+
 userSchema.pre("save", async function(next) {
   if (!this.password || !this.isModified("password")) return next();
   this.password = await bcrypt.hash(this.password, 12);
