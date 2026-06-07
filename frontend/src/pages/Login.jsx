@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,33 @@ import { auth, FIREBASE_READY } from "@/lib/firebase";
 import { api } from "@/lib/api";
 
 const STEP = { PHONE: "phone", OTP: "otp", NAME: "name", EMAIL: "email" };
+
+// Module-level singleton — survives React re-renders and remounts without
+// triggering "reCAPTCHA has already been rendered in this element"
+let globalRecaptcha = null;
+
+async function getRecaptcha() {
+  if (globalRecaptcha) return globalRecaptcha;
+  const { RecaptchaVerifier } = await import("firebase/auth");
+  const el = document.getElementById("recaptcha-container");
+  if (el) el.innerHTML = "";
+  globalRecaptcha = new RecaptchaVerifier(auth, "recaptcha-container", {
+    size: "invisible",
+    callback: () => {},
+    "expired-callback": () => { globalRecaptcha = null; },
+  });
+  await globalRecaptcha.render();
+  return globalRecaptcha;
+}
+
+async function clearRecaptcha() {
+  if (globalRecaptcha) {
+    try { globalRecaptcha.clear(); } catch {}
+    globalRecaptcha = null;
+  }
+  const el = document.getElementById("recaptcha-container");
+  if (el) el.innerHTML = "";
+}
 
 function redirectPath(user, from) {
   if (user.role === "super_admin") return "/super-admin";
@@ -48,62 +75,10 @@ export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
-  const recaptchaRef = useRef(null);
   const confirmationRef = useRef(null);
 
-  // Initialize RecaptchaVerifier once on mount — pre-rendered and ready before user taps Send
   useEffect(() => {
-    if (!FIREBASE_READY || !auth) return;
-
-    const initVerifier = async () => {
-      try {
-        const { RecaptchaVerifier } = await import("firebase/auth");
-        recaptchaRef.current = new RecaptchaVerifier(auth, "recaptcha-container", {
-          size: "invisible",
-          callback: () => console.log("[Login] reCAPTCHA solved"),
-          "expired-callback": () => {
-            console.log("[Login] reCAPTCHA expired — will recreate on next send");
-            recaptchaRef.current = null;
-          },
-        });
-        await recaptchaRef.current.render();
-        console.log("[Login] reCAPTCHA pre-rendered and ready");
-      } catch (e) {
-        console.error("[Login] reCAPTCHA init error:", e.message);
-        recaptchaRef.current = null;
-      }
-    };
-
-    initVerifier();
-
-    return () => {
-      if (recaptchaRef.current) {
-        try { recaptchaRef.current.clear(); } catch {}
-        recaptchaRef.current = null;
-      }
-    };
-  }, []);
-
-  const recreateVerifier = useCallback(async () => {
-    if (recaptchaRef.current) {
-      try { recaptchaRef.current.clear(); } catch {}
-      recaptchaRef.current = null;
-    }
-    const el = document.getElementById("recaptcha-container");
-    if (el) el.innerHTML = "";
-
-    if (!FIREBASE_READY || !auth) return;
-    try {
-      const { RecaptchaVerifier } = await import("firebase/auth");
-      recaptchaRef.current = new RecaptchaVerifier(auth, "recaptcha-container", {
-        size: "invisible",
-        callback: () => {},
-        "expired-callback": () => { recaptchaRef.current = null; },
-      });
-      await recaptchaRef.current.render();
-    } catch (e) {
-      console.error("[Login] recreate reCAPTCHA failed:", e.message);
-    }
+    return () => { clearRecaptcha(); };
   }, []);
 
   const onSendOtp = async (e) => {
@@ -114,15 +89,12 @@ export default function Login() {
 
     if (FIREBASE_READY && auth) {
       try {
-        if (!recaptchaRef.current) {
-          console.log("[Login] reCAPTCHA not ready — recreating");
-          await recreateVerifier();
-        }
-        if (!recaptchaRef.current) throw new Error("reCAPTCHA not ready. Please refresh the page.");
+        console.log("[Login] getting reCAPTCHA verifier");
+        const verifier = await getRecaptcha();
 
         const { signInWithPhoneNumber } = await import("firebase/auth");
         console.log("[Login] calling signInWithPhoneNumber for +91" + phone);
-        const confirmation = await signInWithPhoneNumber(auth, `+91${phone}`, recaptchaRef.current);
+        const confirmation = await signInWithPhoneNumber(auth, `+91${phone}`, verifier);
         confirmationRef.current = confirmation;
         console.log("[Login] OTP sent successfully");
         setStep(STEP.OTP);
@@ -130,9 +102,9 @@ export default function Login() {
         toast.success("OTP sent to your phone!");
       } catch (err) {
         console.error("[Login] sendOTP error:", err.code, err.message);
+        // Recreate verifier after any error so next attempt is clean
+        await clearRecaptcha();
         setError(parseFirebaseError(err));
-        // Always recreate verifier after any error
-        await recreateVerifier();
       } finally {
         setLoading(false);
       }
@@ -213,7 +185,7 @@ export default function Login() {
     setStep(STEP.PHONE);
     setOtp("");
     setError("");
-    await recreateVerifier();
+    await clearRecaptcha();
   };
 
   const onResend = async () => {
@@ -221,7 +193,7 @@ export default function Login() {
     confirmationRef.current = null;
     setOtp("");
     setError("");
-    await recreateVerifier();
+    await clearRecaptcha();
     await onSendOtp();
   };
 
