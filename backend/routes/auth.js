@@ -188,8 +188,13 @@ router.post("/verify-firebase-otp", async (req, res) => {
     try {
       decoded = await verifyIdToken(idToken);
     } catch (e) {
-      console.error("[Firebase] Token verify failed:", e.message);
-      return res.status(401).json({ detail: "Invalid or expired Firebase token. Please try again." });
+      console.error("[Firebase] Token verify failed — code:", e.code, "| msg:", e.message);
+      // Include error code in response so we can diagnose without checking Render logs
+      return res.status(401).json({
+        detail: "Invalid or expired Firebase token. Please try again.",
+        _debug_code: e.code || "unknown",
+        _debug_msg: e.message,
+      });
     }
 
     const firebasePhone = decoded.phone_number;

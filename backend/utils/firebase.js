@@ -25,7 +25,17 @@ function init() {
 
 async function verifyIdToken(idToken) {
   if (!init()) throw new Error("Firebase not configured on server. Set FIREBASE_SERVICE_ACCOUNT env var.");
-  return admin.auth().verifyIdToken(idToken);
+  try {
+    return await admin.auth().verifyIdToken(idToken);
+  } catch (e) {
+    // Log full error so Render logs show the real cause
+    console.error("[Firebase] verifyIdToken failed — code:", e.code, "| message:", e.message);
+    // Attach code so callers can surface it for debugging
+    const err = new Error(e.message);
+    err.code = e.code;
+    err.firebaseError = true;
+    throw err;
+  }
 }
 
 module.exports = { verifyIdToken };
