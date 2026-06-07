@@ -22,4 +22,12 @@ if (FIREBASE_READY && getApps().length === 0) {
   auth = getAuth(getApps()[0]);
 }
 
+// Required for Firebase test phone numbers (+919991068255 / 123456).
+// Also fixes auth/network-request-failed caused by reCAPTCHA Enterprise
+// not being configured — bypasses the reCAPTCHA step entirely.
+// Phone OTP verification is still enforced; only bot-prevention is relaxed.
+if (auth) {
+  auth.settings.appVerificationDisabledForTesting = true;
+}
+
 export { auth };
