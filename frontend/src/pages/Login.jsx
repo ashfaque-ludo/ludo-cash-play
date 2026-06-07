@@ -50,6 +50,8 @@ export default function Login() {
   // Firebase refs
   const recaptchaRef = useRef(null);
   const confirmationRef = useRef(null);
+  // Tracks which OTP flow was used so verifyOTP never silently crosses paths
+  const firebaseFlowRef = useRef(false);
 
   const clearRecaptcha = useCallback(() => {
     if (recaptchaRef.current) {
@@ -65,6 +67,8 @@ export default function Login() {
     if (phone.length !== 10) return setError("Enter a valid 10-digit phone number.");
     setLoading(true); setError("");
 
+    console.log("[Login] sendOTP — FIREBASE_READY:", FIREBASE_READY, "phone:", `+91${phone}`);
+
     if (FIREBASE_READY) {
       // Firebase SMS path
       try {
@@ -76,19 +80,26 @@ export default function Login() {
           "expired-callback": () => setError("reCAPTCHA expired. Please try again."),
         });
         recaptchaRef.current = verifier;
+        console.log("[Login] Calling signInWithPhoneNumber...");
         const confirmation = await signInWithPhoneNumber(auth, `+91${phone}`, verifier);
         confirmationRef.current = confirmation;
+        firebaseFlowRef.current = true;
+        console.log("[Login] signInWithPhoneNumber OK — confirmationRef set:", !!confirmationRef.current);
         setStep(STEP.OTP);
         setResendCount(c => c + 1);
         toast.success("OTP sent via Firebase SMS!");
       } catch (err) {
+        firebaseFlowRef.current = false;
         clearRecaptcha();
+        console.error("[Login] Firebase sendOTP error:", err.code, err.message);
         setError(parseFirebaseError(err));
       } finally {
         setLoading(false);
       }
     } else {
       // Fallback: dev OTP via our backend (no SMS provider)
+      console.log("[Login] Using backend OTP fallback (Firebase env vars not configured)");
+      firebaseFlowRef.current = false;
       const r = await sendOtp(phone);
       setLoading(false);
       if (r.ok) {
@@ -105,24 +116,41 @@ export default function Login() {
     if (otp.length !== 6) return setError("Enter the 6-digit OTP.");
     setLoading(true); setError("");
 
-    if (FIREBASE_READY && confirmationRef.current) {
-      // Firebase verification path
+    console.log("[Login] verifyOTP — firebaseFlow:", firebaseFlowRef.current, "confirmationRef:", !!confirmationRef.current, "otp length:", otp.length);
+
+    if (firebaseFlowRef.current) {
+      // Firebase verification path — only entered if sendOTP used Firebase
+      if (!confirmationRef.current) {
+        console.error("[Login] confirmationRef is null — OTP session was lost");
+        setError("OTP session expired. Please go back and request a new OTP.");
+        setLoading(false);
+        return;
+      }
       try {
+        console.log("[Login] Calling confirmationRef.confirm() with OTP:", otp);
         const result = await confirmationRef.current.confirm(otp);
+        console.log("[Login] confirm() OK — Firebase user UID:", result.user?.uid);
         const idToken = await result.user.getIdToken();
+        console.log("[Login] getIdToken() OK — calling /verify-firebase-otp");
         const r = await verifyFirebaseOtp(idToken);
+        console.log("[Login] verifyFirebaseOtp response:", r);
         if (r.ok) {
           if (r.needs_name) { setStep(STEP.NAME); setLoading(false); return; }
           toast.success("Welcome to Ludo Cash Play!");
           nav(redirectPath(r.user, from), { replace: true });
-        } else setError(r.error);
+        } else {
+          console.error("[Login] verifyFirebaseOtp backend error:", r.error);
+          setError(r.error);
+        }
       } catch (err) {
+        console.error("[Login] Firebase confirm() error:", err.code, err.message, err);
         setError(parseFirebaseError(err));
       } finally {
         setLoading(false);
       }
     } else {
-      // Fallback: dev OTP path
+      // Backend OTP path — only entered if sendOTP used backend fallback
+      console.log("[Login] Using backend verifyOtp path");
       const r = await verifyOtp(phone, otp);
       setLoading(false);
       if (r.ok) {
@@ -155,6 +183,7 @@ export default function Login() {
   const resetToPhone = () => {
     clearRecaptcha();
     confirmationRef.current = null;
+    firebaseFlowRef.current = false;
     setStep(STEP.PHONE); setOtp(""); setError(""); setDevOtp("");
   };
 
@@ -162,6 +191,7 @@ export default function Login() {
     if (resendCount >= 3) return;
     clearRecaptcha();
     confirmationRef.current = null;
+    firebaseFlowRef.current = false;
     setOtp(""); setError("");
     await onSendOtp();
   };
