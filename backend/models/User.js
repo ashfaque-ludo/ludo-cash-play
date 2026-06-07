@@ -27,9 +27,11 @@ const userSchema = new mongoose.Schema({
 // MongoDB sparse indexes index null values — so two users without email both get
 // email:null, which triggers E11000. Setting to undefined makes Mongoose omit the
 // field from the document entirely, which sparse indexes skip.
+// Prevent email:null from being indexed by the sparse unique index.
+// MongoDB sparse indexes DO index null — only missing fields are skipped.
+// Setting to undefined makes Mongoose omit the field from the document.
 userSchema.pre("validate", function(next) {
   if (!this.email) this.email = undefined;
-  if (!this.phone) this.phone = undefined;
   next();
 });
 
