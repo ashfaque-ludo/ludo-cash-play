@@ -129,10 +129,11 @@ export default function Login() {
       try {
         console.log("[Login] Calling confirmationRef.confirm() with OTP:", otp);
         const result = await confirmationRef.current.confirm(otp);
-        console.log("[Login] confirm() OK — Firebase user UID:", result.user?.uid);
+        console.log("[Login] confirm() OK — Firebase user UID:", result.user?.uid, "phone:", result.user?.phoneNumber);
         const idToken = await result.user.getIdToken();
-        console.log("[Login] getIdToken() OK — calling /verify-firebase-otp");
-        const r = await verifyFirebaseOtp(idToken);
+        const firebasePhone = result.user.phoneNumber; // e.g. +919991068255
+        console.log("[Login] getIdToken() OK — calling /verify-firebase-otp with phone fallback:", firebasePhone);
+        const r = await verifyFirebaseOtp(idToken, firebasePhone);
         console.log("[Login] verifyFirebaseOtp response:", r);
         if (r.ok) {
           if (r.needs_name) { setStep(STEP.NAME); setLoading(false); return; }

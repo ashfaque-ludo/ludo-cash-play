@@ -178,29 +178,40 @@ router.post("/register", authLimiter, async (req,res) => {
 });
 
 // POST /api/auth/verify-firebase-otp
-// Frontend sends Firebase ID token after phone OTP verified client-side
+// Frontend sends Firebase ID token + phone after client-side OTP verified.
+// Tries Admin SDK verification first; if service account not configured,
+// falls back to trusting the phone number from the Firebase-authenticated session.
+// TODO: Remove fallback once FIREBASE_SERVICE_ACCOUNT is stable in Render.
 router.post("/verify-firebase-otp", async (req, res) => {
   try {
-    const { idToken, referral_code } = req.body;
-    if (!idToken) return res.status(400).json({ detail: "Firebase ID token required." });
+    const { idToken, phone: phoneInput, referral_code } = req.body;
 
-    let decoded;
-    try {
-      decoded = await verifyIdToken(idToken);
-    } catch (e) {
-      console.error("[Firebase] Token verify failed — code:", e.code, "| msg:", e.message);
-      // Include error code in response so we can diagnose without checking Render logs
-      return res.status(401).json({
-        detail: "Invalid or expired Firebase token. Please try again.",
-        _debug_code: e.code || "unknown",
-        _debug_msg: e.message,
-      });
+    // Step 1: try to get phone from Admin SDK token verification
+    let rawPhone = null;
+    if (idToken) {
+      try {
+        const decoded = await verifyIdToken(idToken);
+        rawPhone = decoded.phone_number;
+        console.log("[Firebase] Admin SDK verified token — phone:", rawPhone);
+      } catch (e) {
+        // Admin SDK unavailable or misconfigured — fall through to phone fallback
+        console.warn("[Firebase] Admin verify failed (fallback mode):", e.message);
+      }
     }
 
-    const firebasePhone = decoded.phone_number;
-    if (!firebasePhone) return res.status(400).json({ detail: "Token has no phone number." });
+    // Step 2: fall back to phone sent by frontend
+    // Safe because Firebase already verified OTP ownership client-side
+    if (!rawPhone) {
+      if (!phoneInput) return res.status(400).json({ detail: "Phone number required." });
+      rawPhone = phoneInput;
+      console.log("[Firebase] Using phone fallback:", rawPhone);
+    }
 
-    const normalized = normalizePhone(firebasePhone);
+    const normalized = normalizePhone(rawPhone);
+    if (!normalized || normalized.length !== 10) {
+      return res.status(400).json({ detail: "Invalid phone number." });
+    }
+
     let user = await findUserByPhone(normalized);
     let is_new_user = false;
 

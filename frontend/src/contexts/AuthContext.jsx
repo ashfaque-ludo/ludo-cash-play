@@ -55,9 +55,10 @@ export function AuthProvider({ children }) {
     }
   };
 
-  const verifyFirebaseOtp = async (idToken, referral_code) => {
+  const verifyFirebaseOtp = async (idToken, phone, referral_code) => {
     try {
       const payload = { idToken };
+      if (phone) payload.phone = phone;
       if (referral_code) payload.referral_code = referral_code;
       const { data } = await api.post("/auth/verify-firebase-otp", payload);
       if (data.token) localStorage.setItem("lcp_token", data.token);
