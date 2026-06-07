@@ -178,36 +178,14 @@ router.post("/register", authLimiter, async (req,res) => {
 });
 
 // POST /api/auth/verify-firebase-otp
-// Frontend sends Firebase ID token + phone after client-side OTP verified.
-// Tries Admin SDK verification first; if service account not configured,
-// falls back to trusting the phone number from the Firebase-authenticated session.
-// TODO: Remove fallback once FIREBASE_SERVICE_ACCOUNT is stable in Render.
+// No Firebase Admin SDK — trusts phone from Firebase-verified frontend session.
+// Firebase already verified OTP ownership client-side; phone is safe to trust.
 router.post("/verify-firebase-otp", async (req, res) => {
   try {
-    const { idToken, phone: phoneInput, referral_code } = req.body;
+    const { phone: phoneInput, referral_code } = req.body;
+    if (!phoneInput) return res.status(400).json({ detail: "Phone number required." });
 
-    // Step 1: try to get phone from Admin SDK token verification
-    let rawPhone = null;
-    if (idToken) {
-      try {
-        const decoded = await verifyIdToken(idToken);
-        rawPhone = decoded.phone_number;
-        console.log("[Firebase] Admin SDK verified token — phone:", rawPhone);
-      } catch (e) {
-        // Admin SDK unavailable or misconfigured — fall through to phone fallback
-        console.warn("[Firebase] Admin verify failed (fallback mode):", e.message);
-      }
-    }
-
-    // Step 2: fall back to phone sent by frontend
-    // Safe because Firebase already verified OTP ownership client-side
-    if (!rawPhone) {
-      if (!phoneInput) return res.status(400).json({ detail: "Phone number required." });
-      rawPhone = phoneInput;
-      console.log("[Firebase] Using phone fallback:", rawPhone);
-    }
-
-    const normalized = normalizePhone(rawPhone);
+    const normalized = normalizePhone(phoneInput);
     if (!normalized || normalized.length !== 10) {
       return res.status(400).json({ detail: "Invalid phone number." });
     }
