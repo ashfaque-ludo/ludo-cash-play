@@ -178,19 +178,19 @@ router.post("/register", authLimiter, async (req,res) => {
 });
 
 // POST /api/auth/verify-firebase-otp
-// No Firebase Admin SDK — trusts phone from Firebase-verified frontend session.
-// Firebase already verified OTP ownership client-side; phone is safe to trust.
+// Trusts phone number from Firebase-verified frontend session (no Admin SDK needed).
 router.post("/verify-firebase-otp", async (req, res) => {
   try {
     const { phone: phoneInput, referral_code } = req.body;
     if (!phoneInput) return res.status(400).json({ detail: "Phone number required." });
 
-    const normalized = normalizePhone(phoneInput);
-    if (!normalized || normalized.length !== 10) {
-      return res.status(400).json({ detail: "Invalid phone number." });
+    // Strip non-digits then remove leading 91 country code
+    const digits = String(phoneInput).replace(/\D/g, "").replace(/^91/, "");
+    if (!/^[6-9]\d{9}$/.test(digits)) {
+      return res.status(400).json({ detail: "Invalid Indian phone number." });
     }
 
-    let user = await findUserByPhone(normalized);
+    let user = await findUserByPhone(digits);
     let is_new_user = false;
 
     if (!user) {
@@ -199,8 +199,8 @@ router.post("/verify-firebase-otp", async (req, res) => {
       do { refCode = uuidv4().slice(0, 8).toUpperCase(); } while (await User.findOne({ referral_code: refCode }));
 
       user = new User({
-        name: "",
-        phone: normalized,
+        name: `User${digits.slice(-4)}`,
+        phone: digits,
         referral_code: refCode,
         wallet: { deposit: 0, winning: 0, bonus: 0 },
       });
@@ -226,8 +226,8 @@ router.post("/verify-firebase-otp", async (req, res) => {
     res.cookie("lcp_token", token, COOKIE);
     res.json({ ...user.toPublic(), token, is_new_user, needs_name: !user.name });
   } catch (e) {
-    console.error("[verify-firebase-otp] error:", e.message);
-    res.status(500).json({ detail: "Server error." });
+    console.error("[verify-firebase-otp] ERROR:", e.message, "| code:", e.code);
+    res.status(500).json({ detail: e.message, code: e.code || "unknown" });
   }
 });
 

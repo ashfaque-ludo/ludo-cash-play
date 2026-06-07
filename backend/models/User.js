@@ -8,9 +8,11 @@ const walletSchema = new mongoose.Schema(
 
 const userSchema = new mongoose.Schema({
   name:            { type: String, trim: true, default: "" },
-  email:           { type: String, unique: true, sparse: true, lowercase: true, trim: true },
+  // No unique/sparse here — partial unique indexes are created in config/db.js
+  // to avoid E11000 on email:null / phone:null for OTP-only users.
+  email:           { type: String, lowercase: true, trim: true },
   password:        { type: String, select: false },
-  phone:           { type: String, unique: true, sparse: true, default: null },
+  phone:           { type: String },
   role:            { type: String, enum: ["user","support_agent","staff_manager","admin","super_admin"], default: "user" },
   is_master_owner: { type: Boolean, default: false },
   banned:          { type: Boolean, default: false },
@@ -23,19 +25,11 @@ const userSchema = new mongoose.Schema({
   last_login_ip:   { type: String, default: "" },
 }, { timestamps: true });
 
-// Prevent email/phone stored as null from conflicting with the sparse unique index.
-// MongoDB sparse indexes index null values — so two users without email both get
-// email:null, which triggers E11000. Setting to undefined makes Mongoose omit the
-// field from the document entirely, which sparse indexes skip.
-// Prevent email:null from being indexed by the sparse unique index.
-// MongoDB sparse indexes DO index null — only missing fields are skipped.
-// Setting to undefined makes Mongoose omit the field from the document.
-userSchema.pre("validate", function(next) {
-  if (!this.email) this.email = undefined;
-  next();
-});
-
 userSchema.pre("save", async function(next) {
+  // Strip falsy email/phone so they're absent from the document (not null),
+  // which makes the partial unique indexes skip them correctly.
+  if (!this.email) this.set("email", undefined);
+  if (!this.phone) this.set("phone", undefined);
   if (!this.password || !this.isModified("password")) return next();
   this.password = await bcrypt.hash(this.password, 12);
   next();
