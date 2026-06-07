@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Dice5, Phone, Mail, ArrowRight, RefreshCw, Shield } from "lucide-react";
 import { toast } from "sonner";
 import { auth, FIREBASE_READY } from "@/lib/firebase";
+import { api } from "@/lib/api";
 
 const STEP = { PHONE: "phone", OTP: "otp", NAME: "name", EMAIL: "email" };
 
@@ -24,13 +25,14 @@ function parseFirebaseError(err) {
   if (code === "auth/too-many-requests") return "Too many attempts. Please wait and try again.";
   if (code === "auth/invalid-phone-number") return "Invalid phone number format.";
   if (code === "auth/quota-exceeded") return "SMS quota exceeded. Please try again later.";
-  if (code === "auth/captcha-check-failed") return "reCAPTCHA check failed. Please refresh and try again.";
+  if (code === "auth/captcha-check-failed") return "reCAPTCHA failed. Please refresh and try again.";
   if (code === "auth/missing-phone-number") return "Phone number is required.";
+  if (code === "auth/network-request-failed") return "Network error. Check your connection and try again.";
   return err?.message || "Something went wrong. Please try again.";
 }
 
 export default function Login() {
-  const { login, sendOtp, verifyOtp, verifyFirebaseOtp, setName } = useAuth();
+  const { login, setName, setUser } = useAuth();
   const nav = useNavigate();
   const loc = useLocation();
   const from = loc.state?.from;
@@ -38,8 +40,7 @@ export default function Login() {
   const [step, setStep] = useState(STEP.PHONE);
   const [phone, setPhone] = useState("");
   const [otp, setOtp] = useState("");
-  const [name, setNameVal] = useState("");
-  const [devOtp, setDevOtp] = useState("");
+  const [nameVal, setNameVal] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [resendCount, setResendCount] = useState(0);
@@ -47,126 +48,151 @@ export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
-  // Firebase refs
   const recaptchaRef = useRef(null);
   const confirmationRef = useRef(null);
-  // Tracks which OTP flow was used so verifyOTP never silently crosses paths
-  const firebaseFlowRef = useRef(false);
 
-  const clearRecaptcha = useCallback(() => {
+  // Initialize RecaptchaVerifier once on mount — pre-rendered and ready before user taps Send
+  useEffect(() => {
+    if (!FIREBASE_READY || !auth) return;
+
+    const initVerifier = async () => {
+      try {
+        const { RecaptchaVerifier } = await import("firebase/auth");
+        recaptchaRef.current = new RecaptchaVerifier(auth, "recaptcha-container", {
+          size: "invisible",
+          callback: () => console.log("[Login] reCAPTCHA solved"),
+          "expired-callback": () => {
+            console.log("[Login] reCAPTCHA expired — will recreate on next send");
+            recaptchaRef.current = null;
+          },
+        });
+        await recaptchaRef.current.render();
+        console.log("[Login] reCAPTCHA pre-rendered and ready");
+      } catch (e) {
+        console.error("[Login] reCAPTCHA init error:", e.message);
+        recaptchaRef.current = null;
+      }
+    };
+
+    initVerifier();
+
+    return () => {
+      if (recaptchaRef.current) {
+        try { recaptchaRef.current.clear(); } catch {}
+        recaptchaRef.current = null;
+      }
+    };
+  }, []);
+
+  const recreateVerifier = useCallback(async () => {
     if (recaptchaRef.current) {
       try { recaptchaRef.current.clear(); } catch {}
       recaptchaRef.current = null;
     }
     const el = document.getElementById("recaptcha-container");
     if (el) el.innerHTML = "";
+
+    if (!FIREBASE_READY || !auth) return;
+    try {
+      const { RecaptchaVerifier } = await import("firebase/auth");
+      recaptchaRef.current = new RecaptchaVerifier(auth, "recaptcha-container", {
+        size: "invisible",
+        callback: () => {},
+        "expired-callback": () => { recaptchaRef.current = null; },
+      });
+      await recaptchaRef.current.render();
+    } catch (e) {
+      console.error("[Login] recreate reCAPTCHA failed:", e.message);
+    }
   }, []);
 
   const onSendOtp = async (e) => {
     e?.preventDefault();
     if (phone.length !== 10) return setError("Enter a valid 10-digit phone number.");
-    setLoading(true); setError("");
+    setLoading(true);
+    setError("");
 
-    console.log("[Login] sendOTP — FIREBASE_READY:", FIREBASE_READY, "phone:", `+91${phone}`);
-
-    if (FIREBASE_READY) {
-      // Firebase SMS path
+    if (FIREBASE_READY && auth) {
       try {
-        const { RecaptchaVerifier, signInWithPhoneNumber } = await import("firebase/auth");
-        clearRecaptcha();
-        const verifier = new RecaptchaVerifier(auth, "recaptcha-container", {
-          size: "invisible",
-          callback: () => {},
-          "expired-callback": () => setError("reCAPTCHA expired. Please try again."),
-        });
-        recaptchaRef.current = verifier;
-        console.log("[Login] Calling signInWithPhoneNumber...");
-        const confirmation = await signInWithPhoneNumber(auth, `+91${phone}`, verifier);
+        if (!recaptchaRef.current) {
+          console.log("[Login] reCAPTCHA not ready — recreating");
+          await recreateVerifier();
+        }
+        if (!recaptchaRef.current) throw new Error("reCAPTCHA not ready. Please refresh the page.");
+
+        const { signInWithPhoneNumber } = await import("firebase/auth");
+        console.log("[Login] calling signInWithPhoneNumber for +91" + phone);
+        const confirmation = await signInWithPhoneNumber(auth, `+91${phone}`, recaptchaRef.current);
         confirmationRef.current = confirmation;
-        firebaseFlowRef.current = true;
-        console.log("[Login] signInWithPhoneNumber OK — confirmationRef set:", !!confirmationRef.current);
+        console.log("[Login] OTP sent successfully");
         setStep(STEP.OTP);
         setResendCount(c => c + 1);
-        toast.success("OTP sent via Firebase SMS!");
+        toast.success("OTP sent to your phone!");
       } catch (err) {
-        firebaseFlowRef.current = false;
-        clearRecaptcha();
-        console.error("[Login] Firebase sendOTP error:", err.code, err.message);
+        console.error("[Login] sendOTP error:", err.code, err.message);
         setError(parseFirebaseError(err));
+        // Always recreate verifier after any error
+        await recreateVerifier();
       } finally {
         setLoading(false);
       }
     } else {
-      // Fallback: dev OTP via our backend (no SMS provider)
-      console.log("[Login] Using backend OTP fallback (Firebase env vars not configured)");
-      firebaseFlowRef.current = false;
-      const r = await sendOtp(phone);
+      setError("Firebase not configured.");
       setLoading(false);
-      if (r.ok) {
-        setStep(STEP.OTP);
-        setResendCount(c => c + 1);
-        if (r.dev_otp) { setDevOtp(r.dev_otp); toast.info(`Dev OTP: ${r.dev_otp}`); }
-        else toast.success("OTP sent! Check your phone.");
-      } else setError(r.error);
     }
   };
 
   const onVerifyOtp = async (e) => {
     e?.preventDefault();
     if (otp.length !== 6) return setError("Enter the 6-digit OTP.");
-    setLoading(true); setError("");
+    setLoading(true);
+    setError("");
 
-    console.log("[Login] verifyOTP — firebaseFlow:", firebaseFlowRef.current, "confirmationRef:", !!confirmationRef.current, "otp length:", otp.length);
-
-    if (firebaseFlowRef.current) {
-      // Firebase verification path — only entered if sendOTP used Firebase
+    try {
       if (!confirmationRef.current) {
-        console.error("[Login] confirmationRef is null — OTP session was lost");
-        setError("OTP session expired. Please go back and request a new OTP.");
+        setError("OTP session expired. Please request a new OTP.");
         setLoading(false);
         return;
       }
-      try {
-        console.log("[Login] Calling confirmationRef.confirm() with OTP:", otp);
-        const result = await confirmationRef.current.confirm(otp);
-        console.log("[Login] confirm() OK — Firebase user UID:", result.user?.uid, "phone:", result.user?.phoneNumber);
-        const idToken = await result.user.getIdToken();
-        const firebasePhone = result.user.phoneNumber; // e.g. +919991068255
-        console.log("[Login] getIdToken() OK — calling /verify-firebase-otp with phone fallback:", firebasePhone);
-        const r = await verifyFirebaseOtp(idToken, firebasePhone);
-        console.log("[Login] verifyFirebaseOtp response:", r);
-        if (r.ok) {
-          if (r.needs_name) { setStep(STEP.NAME); setLoading(false); return; }
-          toast.success("Welcome to Ludo Cash Play!");
-          nav(redirectPath(r.user, from), { replace: true });
-        } else {
-          console.error("[Login] verifyFirebaseOtp backend error:", r.error);
-          setError(r.error);
-        }
-      } catch (err) {
-        console.error("[Login] Firebase confirm() error:", err.code, err.message, err);
-        setError(parseFirebaseError(err));
-      } finally {
+
+      console.log("[Login] confirming OTP...");
+      const result = await confirmationRef.current.confirm(otp);
+      console.log("[Login] OTP confirmed — uid:", result.user?.uid, "phone:", result.user?.phoneNumber);
+
+      const idToken = await result.user.getIdToken();
+      const firebasePhone = result.user.phoneNumber;
+
+      const { data } = await api.post("/auth/verify-firebase-otp", {
+        idToken,
+        phone: firebasePhone,
+      });
+
+      if (data.token) localStorage.setItem("lcp_token", data.token);
+      setUser(data);
+
+      if (data.needs_name) {
+        setStep(STEP.NAME);
         setLoading(false);
+        return;
       }
-    } else {
-      // Backend OTP path — only entered if sendOTP used backend fallback
-      console.log("[Login] Using backend verifyOtp path");
-      const r = await verifyOtp(phone, otp);
+
+      toast.success("Welcome to Ludo Cash Play!");
+      nav(redirectPath(data, from), { replace: true });
+    } catch (err) {
+      console.error("[Login] verifyOTP error:", err.code || err.response?.status, err.message);
+      const detail = err.response?.data?.detail;
+      setError(detail || parseFirebaseError(err));
+    } finally {
       setLoading(false);
-      if (r.ok) {
-        if (r.needs_name) { setStep(STEP.NAME); return; }
-        toast.success("Welcome to Ludo Cash Play!");
-        nav(redirectPath(r.user, from), { replace: true });
-      } else setError(r.error);
     }
   };
 
   const onSetName = async (e) => {
     e?.preventDefault();
-    if (!name.trim() || name.trim().length < 2) return setError("Enter your full name (min 2 chars).");
-    setLoading(true); setError("");
-    const r = await setName(name.trim());
+    if (!nameVal.trim() || nameVal.trim().length < 2) return setError("Enter your full name (min 2 chars).");
+    setLoading(true);
+    setError("");
+    const r = await setName(nameVal.trim());
     setLoading(false);
     if (r.ok) { toast.success("Welcome! Account created."); nav(from || "/", { replace: true }); }
     else setError(r.error);
@@ -174,26 +200,28 @@ export default function Login() {
 
   const onEmailLogin = async (e) => {
     e.preventDefault();
-    setLoading(true); setError("");
+    setLoading(true);
+    setError("");
     const r = await login(email.trim(), password);
     setLoading(false);
     if (r.ok) { toast.success("Welcome back!"); nav(redirectPath(r.user, from), { replace: true }); }
     else setError(r.error);
   };
 
-  const resetToPhone = () => {
-    clearRecaptcha();
+  const resetToPhone = async () => {
     confirmationRef.current = null;
-    firebaseFlowRef.current = false;
-    setStep(STEP.PHONE); setOtp(""); setError(""); setDevOtp("");
+    setStep(STEP.PHONE);
+    setOtp("");
+    setError("");
+    await recreateVerifier();
   };
 
   const onResend = async () => {
     if (resendCount >= 3) return;
-    clearRecaptcha();
     confirmationRef.current = null;
-    firebaseFlowRef.current = false;
-    setOtp(""); setError("");
+    setOtp("");
+    setError("");
+    await recreateVerifier();
     await onSendOtp();
   };
 
@@ -216,15 +244,15 @@ export default function Login() {
               <div>
                 <Label className="text-[10px] uppercase tracking-widest text-slate-400">Email</Label>
                 <Input type="email" value={email} onChange={e => setEmail(e.target.value)} required
-                  className="bg-black/40 border-white/10 text-white mt-1 rounded-xl h-11" data-testid="login-email" />
+                  className="bg-black/40 border-white/10 text-white mt-1 rounded-xl h-11" />
               </div>
               <div>
                 <Label className="text-[10px] uppercase tracking-widest text-slate-400">Password</Label>
                 <Input type="password" value={password} onChange={e => setPassword(e.target.value)} required
-                  className="bg-black/40 border-white/10 text-white mt-1 rounded-xl h-11" data-testid="login-password" />
+                  className="bg-black/40 border-white/10 text-white mt-1 rounded-xl h-11" />
               </div>
               {error && <div className="text-red-400 text-sm bg-red-500/10 border border-red-500/20 rounded-xl px-3 py-2">{error}</div>}
-              <Button type="submit" disabled={loading} className="w-full rounded-xl btn-neon text-white font-black h-12" data-testid="login-submit">
+              <Button type="submit" disabled={loading} className="w-full rounded-xl btn-neon text-white font-black h-12">
                 {loading ? "Signing in…" : "Sign In"}
               </Button>
             </form>
@@ -242,7 +270,7 @@ export default function Login() {
 
   return (
     <div className="min-h-screen pt-20 pb-12 bg-[#0A0A0E] grid place-items-center px-4 relative overflow-hidden">
-      {/* invisible reCAPTCHA mount point — must always be in DOM */}
+      {/* reCAPTCHA mount point — always in DOM, never conditionally rendered */}
       <div id="recaptcha-container" />
 
       <div className="absolute inset-0 grid-bg opacity-25 pointer-events-none" />
@@ -270,7 +298,7 @@ export default function Login() {
 
         <CardContent>
           {step === STEP.PHONE && (
-            <form onSubmit={onSendOtp} className="space-y-4" data-testid="login-form">
+            <form onSubmit={onSendOtp} className="space-y-4">
               <div>
                 <Label className="text-[10px] uppercase tracking-widest text-slate-400">Phone number</Label>
                 <div className="flex gap-2 mt-1">
@@ -284,7 +312,6 @@ export default function Login() {
                     placeholder="10-digit number"
                     maxLength={10}
                     className="bg-black/40 border-white/10 text-white rounded-xl h-11 tracking-widest text-lg"
-                    data-testid="login-phone"
                     autoFocus
                   />
                 </div>
@@ -297,7 +324,7 @@ export default function Login() {
               )}
               {error && <div className="text-red-400 text-sm bg-red-500/10 border border-red-500/20 rounded-xl px-3 py-2">{error}</div>}
               <Button type="submit" disabled={loading || phone.length !== 10}
-                className="w-full rounded-xl btn-neon text-white font-black h-12" data-testid="login-send-otp">
+                className="w-full rounded-xl btn-neon text-white font-black h-12">
                 {loading ? "Sending…" : <><Phone className="w-4 h-4 mr-2" /> Send OTP</>}
               </Button>
               <div className="text-center">
@@ -310,12 +337,7 @@ export default function Login() {
           )}
 
           {step === STEP.OTP && (
-            <form onSubmit={onVerifyOtp} className="space-y-4" data-testid="otp-form">
-              {devOtp && (
-                <div className="rounded-xl bg-amber-500/10 border border-amber-500/20 px-3 py-2 text-center text-amber-300 text-sm font-mono tracking-widest">
-                  Dev OTP: {devOtp}
-                </div>
-              )}
+            <form onSubmit={onVerifyOtp} className="space-y-4">
               <div>
                 <Label className="text-[10px] uppercase tracking-widest text-slate-400">6-digit OTP</Label>
                 <Input
@@ -326,13 +348,12 @@ export default function Login() {
                   placeholder="------"
                   maxLength={6}
                   className="bg-black/40 border-white/10 text-white mt-1 rounded-xl h-12 text-center text-2xl tracking-[0.5em] font-mono"
-                  data-testid="otp-input"
                   autoFocus
                 />
               </div>
               {error && <div className="text-red-400 text-sm bg-red-500/10 border border-red-500/20 rounded-xl px-3 py-2">{error}</div>}
               <Button type="submit" disabled={loading || otp.length !== 6}
-                className="w-full rounded-xl btn-neon text-white font-black h-12" data-testid="otp-submit">
+                className="w-full rounded-xl btn-neon text-white font-black h-12">
                 {loading ? "Verifying…" : <><ArrowRight className="w-4 h-4 mr-2" /> Verify & Login</>}
               </Button>
               <div className="flex items-center justify-between text-sm text-slate-400">
@@ -348,24 +369,23 @@ export default function Login() {
           )}
 
           {step === STEP.NAME && (
-            <form onSubmit={onSetName} className="space-y-4" data-testid="name-form">
+            <form onSubmit={onSetName} className="space-y-4">
               <div>
                 <Label className="text-[10px] uppercase tracking-widest text-slate-400">Your name</Label>
                 <Input
                   type="text"
-                  value={name}
+                  value={nameVal}
                   onChange={e => { setNameVal(e.target.value); setError(""); }}
                   placeholder="e.g. Rahul Sharma"
                   maxLength={40}
                   className="bg-black/40 border-white/10 text-white mt-1 rounded-xl h-11"
-                  data-testid="name-input"
                   autoFocus
                 />
                 <p className="text-xs text-slate-500 mt-1">This name is visible to other players</p>
               </div>
               {error && <div className="text-red-400 text-sm bg-red-500/10 border border-red-500/20 rounded-xl px-3 py-2">{error}</div>}
-              <Button type="submit" disabled={loading || name.trim().length < 2}
-                className="w-full rounded-xl btn-neon text-white font-black h-12" data-testid="name-submit">
+              <Button type="submit" disabled={loading || nameVal.trim().length < 2}
+                className="w-full rounded-xl btn-neon text-white font-black h-12">
                 {loading ? "Saving…" : "Start Playing →"}
               </Button>
             </form>
@@ -374,7 +394,7 @@ export default function Login() {
           {step !== STEP.NAME && (
             <div className="mt-5 text-center text-sm text-slate-400">
               New here? OTP signup works automatically.{" "}
-              <Link to="/register" className="text-purple-300 hover:text-white font-semibold" data-testid="login-register-link">
+              <Link to="/register" className="text-purple-300 hover:text-white font-semibold">
                 Register with email
               </Link>
             </div>
