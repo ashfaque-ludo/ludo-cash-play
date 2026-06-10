@@ -292,8 +292,15 @@ export default function Login() {
                   </div>
                   <Input
                     type="tel"
+                    inputMode="numeric"
                     value={phone}
                     onChange={(e) => { setPhone(e.target.value.replace(/\D/g, "").slice(0, 10)); setError(""); }}
+                    onPaste={(e) => {
+                      e.preventDefault();
+                      const pasted = e.clipboardData.getData("text").replace(/\D/g, "");
+                      setPhone(pasted.slice(0, 10));
+                      setError("");
+                    }}
                     placeholder="10-digit number"
                     maxLength={10}
                     className="bg-black/40 border-white/10 text-white rounded-xl h-11 tracking-widest text-lg"

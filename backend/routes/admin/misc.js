@@ -7,6 +7,28 @@ const StakeTable=require("../../models/StakeTable");
 const Config=require("../../models/Config");
 const {logActivity}=require("../../middleware/activityLogger");
 const SupportTicket=require("../../models/SupportTicket");
+const multer=require("multer");
+const path=require("path");
+const fs=require("fs");
+
+const qrDir=path.join(__dirname,"../../uploads/qr_codes");
+if(!fs.existsSync(qrDir)) fs.mkdirSync(qrDir,{recursive:true});
+
+const qrUpload=multer({
+  storage:multer.diskStorage({
+    destination:(req,file,cb)=>cb(null,qrDir),
+    filename:(req,file,cb)=>{
+      const ext=path.extname(file.originalname).toLowerCase();
+      cb(null,`qr_${Date.now()}${ext}`);
+    },
+  }),
+  limits:{fileSize:2*1024*1024},
+  fileFilter:(req,file,cb)=>{
+    const ok=[".jpg",".jpeg",".png",".webp"];
+    if(ok.includes(path.extname(file.originalname).toLowerCase())) cb(null,true);
+    else cb(new Error("Only JPG/PNG/WEBP allowed"));
+  },
+});
 
 router.get("/promos", async (req,res)=>{ res.json({promos:await Promo.find().sort({createdAt:-1})}); });
 router.post("/promos", async (req,res)=>{
@@ -79,14 +101,15 @@ router.post("/referral-settings", async (req,res)=>{
 
 // Payment settings (UPI, QR, WhatsApp, email)
 router.get("/payment-settings", async (req,res)=>{
-  const [admin_upi_id, admin_upi_name, admin_qr_image, whatsapp_number, support_email] = await Promise.all([
+  const [admin_upi_id, admin_upi_name, admin_qr_image, whatsapp_number, support_email, admin_qr_updated_at] = await Promise.all([
     Config.get("admin_upi_id", "ludocashplay@upi"),
     Config.get("admin_upi_name", "Ludo Cash Play"),
     Config.get("admin_qr_image", ""),
     Config.get("whatsapp_number", "919090000000"),
     Config.get("support_email", "support@ludocashplay.in"),
+    Config.get("admin_qr_updated_at", null),
   ]);
-  res.json({ admin_upi_id, admin_upi_name, admin_qr_image, whatsapp_number, support_email });
+  res.json({ admin_upi_id, admin_upi_name, admin_qr_image, whatsapp_number, support_email, admin_qr_updated_at });
 });
 router.post("/payment-settings", async (req,res)=>{
   const { admin_upi_id, admin_upi_name, admin_qr_image, whatsapp_number, support_email } = req.body;
@@ -97,6 +120,26 @@ router.post("/payment-settings", async (req,res)=>{
   if (support_email !== undefined) await Config.set("support_email", support_email.trim().toLowerCase());
   await logActivity(req,"payment_settings_updated","",{ admin_upi_id, admin_upi_name });
   res.json({ ok:true });
+});
+
+// QR image file upload
+router.post("/payment-settings/upload-qr", qrUpload.single("qr_image"), async (req,res)=>{
+  try {
+    if(!req.file) return res.status(400).json({detail:"No file uploaded."});
+    // Delete old locally-stored QR if present
+    const oldUrl=await Config.get("admin_qr_image","");
+    if(oldUrl && oldUrl.includes("/uploads/qr_codes/")){
+      const oldFile=path.join(qrDir,path.basename(oldUrl.split("/uploads/qr_codes/")[1]||""));
+      if(fs.existsSync(oldFile)) fs.unlinkSync(oldFile);
+    }
+    const backendUrl=process.env.BACKEND_URL||`${req.protocol}://${req.get("host")}`;
+    const fileUrl=`${backendUrl}/uploads/qr_codes/${req.file.filename}`;
+    const ts=new Date().toISOString();
+    await Config.set("admin_qr_image",fileUrl);
+    await Config.set("admin_qr_updated_at",ts);
+    await logActivity(req,"payment_qr_uploaded",req.file.filename,{});
+    res.json({ok:true,url:fileUrl,updated_at:ts});
+  }catch(err){ res.status(500).json({detail:err.message||"Upload failed."}); }
 });
 
 // Commission settings

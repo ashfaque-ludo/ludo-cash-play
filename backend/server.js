@@ -4,6 +4,7 @@ const express=require("express");
 const cors=require("cors");
 const helmet=require("helmet");
 const morgan=require("morgan");
+const compression=require("compression");
 const cookieParser=require("cookie-parser");
 const path=require("path");
 const connectDB=require("./config/db");
@@ -12,6 +13,7 @@ const {requireRole,attachCan}=require("./middleware/adminAuth");
 const {general,adminLimiter}=require("./middleware/rateLimiter");
 
 const app=express();
+app.use(compression());
 app.use(helmet({crossOriginResourcePolicy:{policy:"cross-origin"}}));
 app.set("trust proxy",1);
 

@@ -1482,6 +1482,9 @@ function PaymentSettingsTab() {
   const [commission, setCommission] = useState(5);
   const [announcement, setAnnouncement] = useState("");
   const [busy, setBusy] = useState(false);
+  const [qrUpdatedAt, setQrUpdatedAt] = useState(null);
+  const [qrUploading, setQrUploading] = useState(false);
+  const [qrPreview, setQrPreview] = useState(null);
 
   const load = useCallback(async () => {
     try {
@@ -1491,6 +1494,7 @@ function PaymentSettingsTab() {
         api.get("/admin/announcement"),
       ]);
       setForm(p.data);
+      setQrUpdatedAt(p.data.admin_qr_updated_at || null);
       setCommission(c.data.commission_pct);
       setAnnouncement(a.data.announcement || "");
     } catch {}
@@ -1516,7 +1520,32 @@ function PaymentSettingsTab() {
     finally { setBusy(false); }
   };
 
+  const handleQrFileChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    // Show local preview immediately
+    const reader = new FileReader();
+    reader.onloadend = () => setQrPreview(reader.result);
+    reader.readAsDataURL(file);
+    // Upload to server
+    setQrUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("qr_image", file);
+      const { data } = await api.post("/admin/payment-settings/upload-qr", fd, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      setForm(prev => ({ ...prev, admin_qr_image: data.url }));
+      setQrUpdatedAt(data.updated_at);
+      toast.success("QR code uploaded and applied!");
+    } catch (e) {
+      toast.error(formatApiError(e.response?.data?.detail) || "QR upload failed");
+      setQrPreview(null);
+    } finally { setQrUploading(false); }
+  };
+
   const f = (k) => ({ value: form[k] || "", onChange: (e) => setForm(prev => ({ ...prev, [k]: e.target.value })) });
+  const displayQr = qrPreview || form.admin_qr_image;
 
   return (
     <div className="space-y-5 mt-5">
@@ -1529,7 +1558,7 @@ function PaymentSettingsTab() {
               <Input {...f("admin_upi_id")} placeholder="yourname@upi" className="bg-black/40 border-white/10 text-white mt-1" />
             </div>
             <div>
-              <Label className="text-xs text-slate-400">UPI Display Name</Label>
+              <Label className="text-xs text-slate-400">Merchant Name</Label>
               <Input {...f("admin_upi_name")} placeholder="Ludo Cash Play" className="bg-black/40 border-white/10 text-white mt-1" />
             </div>
             <div>
@@ -1541,16 +1570,40 @@ function PaymentSettingsTab() {
               <Input {...f("support_email")} type="email" placeholder="support@ludocashplay.in" className="bg-black/40 border-white/10 text-white mt-1" />
             </div>
           </div>
-          <div>
-            <Label className="text-xs text-slate-400">QR Code Image URL</Label>
-            <Input {...f("admin_qr_image")} placeholder="https://…/qr.png" className="bg-black/40 border-white/10 text-white mt-1" />
-            {form.admin_qr_image && (
-              <div className="mt-3 flex justify-center">
-                <img src={form.admin_qr_image} alt="QR preview" className="w-40 h-40 object-contain rounded-xl border border-white/10 bg-white" />
+
+          {/* QR Code upload section */}
+          <div className="rounded-xl bg-black/30 border border-white/10 p-4 space-y-3">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <Label className="text-sm text-slate-300 font-semibold">QR Code Image</Label>
+              {qrUpdatedAt && (
+                <span className="text-xs text-slate-500">Last updated: {new Date(qrUpdatedAt).toLocaleString("en-IN")}</span>
+              )}
+            </div>
+            <div className="flex flex-col sm:flex-row gap-4 items-start">
+              <div className="rounded-xl overflow-hidden border border-white/10 bg-white p-1 shrink-0">
+                {displayQr ? (
+                  <img src={displayQr} alt="QR preview" className="w-32 h-32 object-contain block" />
+                ) : (
+                  <div className="w-32 h-32 flex items-center justify-center text-slate-400 text-xs text-center">No QR uploaded</div>
+                )}
               </div>
-            )}
-            <p className="text-xs text-slate-500 mt-1">Upload your QR to Cloudinary/ImgBB and paste the URL. Users see this when depositing.</p>
+              <div className="flex-1 space-y-3">
+                <div>
+                  <Label className="text-xs text-slate-400 block mb-1">Upload new QR image (JPG/PNG/WEBP, max 2MB)</Label>
+                  <label className={`inline-flex items-center gap-2 cursor-pointer px-4 py-2 rounded-full text-sm font-semibold border transition-all ${qrUploading ? "bg-white/5 border-white/10 text-slate-400 cursor-wait" : "bg-purple-600 border-purple-600 text-white hover:bg-purple-500"}`}>
+                    {qrUploading ? "Uploading…" : "Choose QR file"}
+                    <input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleQrFileChange} disabled={qrUploading} />
+                  </label>
+                  <p className="text-xs text-slate-500 mt-1.5">Old QR is auto-deleted when you upload a new one.</p>
+                </div>
+                <div>
+                  <Label className="text-xs text-slate-400">Or paste QR image URL manually</Label>
+                  <Input {...f("admin_qr_image")} placeholder="https://…/qr.png" className="bg-black/40 border-white/10 text-white mt-1 text-sm" />
+                </div>
+              </div>
+            </div>
           </div>
+
           <Button disabled={busy} onClick={savePayment} className="rounded-full bg-gradient-to-r from-purple-600 to-blue-600 text-white">Save Payment Settings</Button>
         </CardContent>
       </Card>

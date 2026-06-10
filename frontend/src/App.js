@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, Suspense, lazy } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "sonner";
 import { AuthProvider } from "@/contexts/AuthContext";
@@ -10,30 +10,41 @@ import Sidebar from "@/components/Sidebar";
 import Footer from "@/components/Footer";
 import WhatsAppButton from "@/components/WhatsAppButton";
 
+// Critical path: loaded eagerly
 import Home from "@/pages/Home";
 import Login from "@/pages/Login";
-import Register from "@/pages/Register";
-import Dashboard from "@/pages/Dashboard";
-import MatchLobby from "@/pages/MatchLobby";
-import MatchRoom from "@/pages/MatchRoom";
-import Wallet from "@/pages/Wallet";
-import Leaderboard from "@/pages/Leaderboard";
-import Referral from "@/pages/Referral";
-import Legal from "@/pages/Legal";
-import Admin from "@/pages/Admin";
-import AdminRecharges from "@/pages/AdminRecharges";
-import ScreenshotUpload from "@/pages/ScreenshotUpload";
-import CreateRoom from "@/pages/CreateRoom";
-import RoomGen from "@/pages/RoomGen";
-import AdminScreenshots from "@/pages/AdminScreenshots";
-import Withdraw from "@/pages/Withdraw";
-import History from "@/pages/History";
-import Profile from "@/pages/Profile";
-import KYC from "@/pages/KYC";
-import OpenBattles from "@/pages/OpenBattles";
-import RunningBattles from "@/pages/RunningBattles";
-import Support from "@/pages/Support";
-import Account from "@/pages/Account";
+
+// Lazy-loaded routes
+const Register = lazy(() => import("@/pages/Register"));
+const Dashboard = lazy(() => import("@/pages/Dashboard"));
+const MatchLobby = lazy(() => import("@/pages/MatchLobby"));
+const MatchRoom = lazy(() => import("@/pages/MatchRoom"));
+const Wallet = lazy(() => import("@/pages/Wallet"));
+const Leaderboard = lazy(() => import("@/pages/Leaderboard"));
+const Referral = lazy(() => import("@/pages/Referral"));
+const Legal = lazy(() => import("@/pages/Legal"));
+const Admin = lazy(() => import("@/pages/Admin"));
+const AdminRecharges = lazy(() => import("@/pages/AdminRecharges"));
+const ScreenshotUpload = lazy(() => import("@/pages/ScreenshotUpload"));
+const CreateRoom = lazy(() => import("@/pages/CreateRoom"));
+const RoomGen = lazy(() => import("@/pages/RoomGen"));
+const AdminScreenshots = lazy(() => import("@/pages/AdminScreenshots"));
+const Withdraw = lazy(() => import("@/pages/Withdraw"));
+const History = lazy(() => import("@/pages/History"));
+const Profile = lazy(() => import("@/pages/Profile"));
+const KYC = lazy(() => import("@/pages/KYC"));
+const OpenBattles = lazy(() => import("@/pages/OpenBattles"));
+const RunningBattles = lazy(() => import("@/pages/RunningBattles"));
+const Support = lazy(() => import("@/pages/Support"));
+const Account = lazy(() => import("@/pages/Account"));
+
+function PageLoader() {
+  return (
+    <div className="min-h-screen bg-[#0A0A0E] flex items-center justify-center">
+      <div className="w-10 h-10 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
+    </div>
+  );
+}
 
 function AppLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -42,6 +53,7 @@ function AppLayout() {
     <>
       <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <Header onMenuOpen={() => setSidebarOpen(true)} />
+      <Suspense fallback={<PageLoader />}>
       <Routes>
         {/* Public */}
         <Route path="/" element={<Home />} />
@@ -78,6 +90,7 @@ function AppLayout() {
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      </Suspense>
       <BottomNav />
       <Footer />
       <WhatsAppButton />

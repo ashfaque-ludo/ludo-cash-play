@@ -83,6 +83,18 @@ async function repairIndexes() {
       console.log(`[DB] phone index: ${e.message}`);
     }
 
+    // Performance indexes for frequently queried collections
+    const transactions = mongoose.connection.collection("transactions");
+    const matches = mongoose.connection.collection("matches");
+    const screenshots = mongoose.connection.collection("screenshots");
+
+    await transactions.createIndex({ user: 1, createdAt: -1 }, { name: "tx_user_date", background: true }).catch(() => {});
+    await transactions.createIndex({ status: 1, createdAt: -1 }, { name: "tx_status_date", background: true }).catch(() => {});
+    await matches.createIndex({ status: 1, createdAt: -1 }, { name: "match_status_date", background: true }).catch(() => {});
+    await matches.createIndex({ player_ids: 1 }, { name: "match_players", background: true }).catch(() => {});
+    await matches.createIndex({ winner: 1, status: 1 }, { name: "match_winner_status", background: true }).catch(() => {});
+    await screenshots.createIndex({ user: 1, status: 1 }, { name: "ss_user_status", background: true }).catch(() => {});
+
     console.log("[DB] Index setup complete");
   } catch (err) {
     console.error("[DB] Index setup error:", err.message);

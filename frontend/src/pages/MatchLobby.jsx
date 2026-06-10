@@ -186,23 +186,26 @@ export default function MatchLobby() {
                       <DialogHeader><DialogTitle>Custom battle amount</DialogTitle></DialogHeader>
                       <div className="space-y-4">
                         <div>
-                          <Label className="text-slate-300">Stake amount (₹)</Label>
-                          <Input
-                            type="number"
-                            value={customAmt}
-                            onChange={(e) => setCustomAmt(e.target.value)}
-                            placeholder="e.g. 70, 150, 777"
-                            min={10} max={50000} step={10}
-                            className="bg-black/40 border-white/10 text-white mt-1"
-                            data-testid="custom-stake-input"
-                          />
-                          <p className="text-xs text-slate-500 mt-1">Min ₹10 · Max ₹50,000 · Must be multiple of ₹10</p>
+                          <Label className="text-slate-300 text-sm font-medium block mb-2">Custom Amount</Label>
+                          <div className="relative">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300 text-lg font-bold pointer-events-none select-none">₹</span>
+                            <Input
+                              type="text"
+                              inputMode="numeric"
+                              pattern="[0-9]*"
+                              value={customAmt}
+                              onChange={(e) => setCustomAmt(e.target.value.replace(/\D/g, ""))}
+                              placeholder="Enter amount (min ₹10)"
+                              className="w-full pl-8 bg-black/40 border-white/10 text-white text-xl rounded-lg h-12"
+                              data-testid="custom-stake-input"
+                            />
+                          </div>
+                          <p className="text-xs text-slate-500 mt-1.5">Min ₹10 · Max ₹50,000 · Must be multiple of ₹10</p>
                         </div>
                         {customAmt && Number(customAmt) >= 10 && (
                           <div className="rounded-xl bg-teal-500/10 border border-teal-500/20 p-3 text-sm space-y-1">
                             <div className="flex justify-between"><span className="text-slate-400">Entry</span><span className="font-semibold">{fmtINR(Number(customAmt))}</span></div>
-                            <div className="flex justify-between"><span className="text-slate-400">Prize on win</span><span className="text-emerald-400 font-semibold">{fmtINR(Math.round(Number(customAmt) * 2 * 0.95))}</span></div>
-                            <div className="flex justify-between"><span className="text-slate-400">Commission</span><span>5%</span></div>
+                            <div className="flex justify-between"><span className="text-slate-400">Prize: {fmtINR(Math.round(Number(customAmt) * 2 * 0.95))}</span><span className="text-emerald-400 font-semibold">(5% commission)</span></div>
                           </div>
                         )}
                       </div>

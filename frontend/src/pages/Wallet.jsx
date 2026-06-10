@@ -25,6 +25,7 @@ export default function Wallet() {
   const [tab, setTab] = useState(loc.state?.tab || "deposit");
   const [screenshot, setScreenshot] = useState("");
   const [paymentInfo, setPaymentInfo] = useState(null);
+  const [paymentLoading, setPaymentLoading] = useState(true);
   const [copied, setCopied] = useState(false);
 
   const loadTx = async () => {
@@ -32,11 +33,15 @@ export default function Wallet() {
   };
 
   const loadPaymentInfo = async () => {
+    setPaymentLoading(true);
     try {
-      const r = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/public/payment-info`);
+      const r = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/public/payment-info`, {
+        cache: "no-store",
+        headers: { "Cache-Control": "no-cache" },
+      });
       const data = await r.json();
       setPaymentInfo(data);
-    } catch {}
+    } catch {} finally { setPaymentLoading(false); }
   };
 
   useEffect(() => { loadTx(); loadPaymentInfo(); }, []);
@@ -145,8 +150,58 @@ export default function Wallet() {
               </TabsList>
               <TabsContent value="deposit">
                 <Card className="glass-strong border-white/10 text-white mt-4">
-                  <CardHeader><CardTitle className="flex items-center gap-2"><Plus className="w-4 h-4 text-emerald-400" /> Add money</CardTitle></CardHeader>
+                  <CardHeader><CardTitle className="flex items-center gap-2"><Plus className="w-4 h-4 text-emerald-400" /> Add Money</CardTitle></CardHeader>
                   <CardContent className="space-y-4">
+
+                    {/* QR Code — always visible at top */}
+                    <div className="rounded-2xl bg-emerald-500/5 border border-emerald-500/20 p-4" data-testid="qr-section">
+                      <div className="flex items-center gap-2 text-emerald-400 font-semibold text-sm mb-3">
+                        <QrCode className="w-4 h-4" /> Scan & Pay
+                      </div>
+                      {paymentLoading ? (
+                        <div className="flex items-center justify-center py-8">
+                          <div className="w-8 h-8 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin" />
+                        </div>
+                      ) : paymentInfo ? (
+                        <div className="flex flex-col sm:flex-row gap-4 items-center">
+                          <div className="rounded-xl overflow-hidden border-2 border-emerald-500/30 bg-white p-2 shrink-0">
+                            <img
+                              src={paymentInfo.admin_qr_image || qrUrl || ""}
+                              alt="UPI QR Code"
+                              width={200}
+                              height={200}
+                              className="block w-[200px] h-[200px] object-contain"
+                              data-testid="upi-qr-img"
+                            />
+                          </div>
+                          <div className="flex-1 space-y-3 text-sm w-full">
+                            <div>
+                              <div className="text-slate-400 text-xs uppercase tracking-widest mb-1">Pay to UPI ID</div>
+                              <div className="flex items-center gap-2">
+                                <code className="bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-white font-mono text-sm flex-1 break-all" data-testid="upi-id">
+                                  {paymentInfo.admin_upi_id}
+                                </code>
+                                <Button variant="outline" size="icon" onClick={copyUpi} className="border-white/20 bg-white/5 text-white shrink-0" data-testid="copy-upi">
+                                  {copied ? <CheckCircle className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
+                                </Button>
+                              </div>
+                            </div>
+                            {paymentInfo.admin_upi_name && (
+                              <div className="text-xs text-slate-400">Merchant: <span className="text-white font-medium">{paymentInfo.admin_upi_name}</span></div>
+                            )}
+                            <div className="text-slate-400 text-xs space-y-1">
+                              <div>1. Scan QR or copy UPI ID above</div>
+                              <div>2. Pay your chosen amount</div>
+                              <div>3. Take a screenshot of payment confirmation</div>
+                              <div>4. Upload screenshot below &amp; submit</div>
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="text-slate-500 text-sm text-center py-4">Payment info unavailable. Please try again.</div>
+                      )}
+                    </div>
+
                     {/* Quick amount buttons */}
                     <div>
                       <Label className="text-slate-300 text-xs mb-2 block">Quick select</Label>
@@ -159,7 +214,7 @@ export default function Wallet() {
 
                     {/* Custom amount input */}
                     <div>
-                      <Label className="text-slate-300">Enter any amount (₹50 – ₹1,00,000)</Label>
+                      <Label className="text-slate-300">Enter amount (₹50 – ₹1,00,000)</Label>
                       <Input
                         type="number"
                         value={amount}
@@ -173,46 +228,6 @@ export default function Wallet() {
                         <p className="text-red-400 text-xs mt-1">{validateDepositAmount(amount)}</p>
                       )}
                     </div>
-
-                    {/* UPI QR Code — shown when valid amount entered */}
-                    {showQR && paymentInfo && (
-                      <div className="rounded-2xl bg-emerald-500/5 border border-emerald-500/20 p-4 space-y-3" data-testid="qr-section">
-                        <div className="flex items-center gap-2 text-emerald-400 font-semibold text-sm">
-                          <QrCode className="w-4 h-4" /> Scan & Pay ₹{parsedAmt}
-                        </div>
-                        <div className="flex flex-col sm:flex-row gap-4 items-center">
-                          <div className="rounded-xl overflow-hidden border border-white/10 bg-white p-1">
-                            <img
-                              src={paymentInfo.admin_qr_image || qrUrl}
-                              alt="UPI QR Code"
-                              width={160}
-                              height={160}
-                              className="block"
-                              data-testid="upi-qr-img"
-                            />
-                          </div>
-                          <div className="flex-1 space-y-3 text-sm">
-                            <div>
-                              <div className="text-slate-400 text-xs uppercase tracking-widest mb-1">Pay to UPI ID</div>
-                              <div className="flex items-center gap-2">
-                                <code className="bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-white font-mono text-sm flex-1" data-testid="upi-id">
-                                  {paymentInfo.admin_upi_id}
-                                </code>
-                                <Button variant="outline" size="icon" onClick={copyUpi} className="border-white/20 bg-white/5 text-white shrink-0" data-testid="copy-upi">
-                                  {copied ? <CheckCircle className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
-                                </Button>
-                              </div>
-                            </div>
-                            <div className="text-slate-400 text-xs space-y-1">
-                              <div>1. Scan QR or copy UPI ID</div>
-                              <div>2. Pay exactly <span className="text-white font-semibold">{fmtINR(parsedAmt)}</span></div>
-                              <div>3. Take a screenshot of payment</div>
-                              <div>4. Upload screenshot below &amp; submit</div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    )}
 
                     <div>
                       <Label className="text-slate-300">Your UPI ID (optional, for reference)</Label>
