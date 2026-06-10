@@ -3,12 +3,12 @@ const router = require("express").Router();
 const jwt = require("jsonwebtoken");
 const rateLimit = require("express-rate-limit");
 const User = require("../models/User");
-const Otp = require("../models/Otp");
 const Referral = require("../models/Referral");
 const auth = require("../middleware/auth");
 const { authLimiter } = require("../middleware/rateLimiter");
 const { v4: uuidv4 } = require("uuid");
-const { verifyIdToken } = require("../utils/firebase");
+const { sendOTP } = require("../utils/msg91Service");
+const { generateOTP, canSend, saveOTP, verifyOTP } = require("../utils/otpStore");
 
 const COOKIE = {
   httpOnly: true,
@@ -45,29 +45,28 @@ function findUserByPhone(phone) {
 
 router.get("/me", auth, (req,res) => res.json(req.user.toPublic()));
 
-// POST /api/auth/send-otp — DEPRECATED: use Firebase client-side phone auth instead.
-// Kept for backwards compatibility. Use POST /verify-firebase-otp for new flows.
+// POST /api/auth/send-otp
 router.post("/send-otp", otpLimiter, async (req, res) => {
   try {
-    const { phone } = req.body;
-    if (!phone) return res.status(400).json({ detail: "Phone number required." });
-    const normalized = normalizePhone(phone);
-    if (!normalized || normalized.length !== 10) return res.status(400).json({ detail: "Enter a valid 10-digit Indian phone number." });
+    const phone = normalizePhone(req.body.phone);
+    if (!phone || !/^[6-9]\d{9}$/.test(phone)) {
+      return res.status(400).json({ detail: "Enter a valid 10-digit Indian phone number." });
+    }
 
-    const otp = await Otp.createOtp(normalized);
+    if (!canSend(phone)) {
+      return res.status(429).json({ detail: "Wait 1 minute before resending OTP." });
+    }
 
-    if (process.env.MSG91_AUTH_KEY && process.env.MSG91_TEMPLATE_ID) {
-      try {
-        await fetch("https://api.msg91.com/api/v5/otp", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", authkey: process.env.MSG91_AUTH_KEY },
-          body: JSON.stringify({ template_id: process.env.MSG91_TEMPLATE_ID, mobile: `91${normalized}`, otp }),
-        });
-      } catch (smsErr) { console.error("SMS send failed:", smsErr.message); }
+    const otp = generateOTP();
+    saveOTP(phone, otp);
+    const result = await sendOTP(phone, otp);
+
+    if (!result.ok) {
+      return res.status(500).json({ detail: "Failed to send OTP. Try again." });
     }
 
     const resp = { ok: true, message: "OTP sent to your phone." };
-    if (process.env.NODE_ENV !== "production") resp.dev_otp = otp;
+    if (result.dev) resp.dev_otp = otp;
     res.json(resp);
   } catch (e) { console.error(e); res.status(500).json({ detail: "Server error." }); }
 });
@@ -75,24 +74,29 @@ router.post("/send-otp", otpLimiter, async (req, res) => {
 // POST /api/auth/verify-otp
 router.post("/verify-otp", otpLimiter, async (req, res) => {
   try {
-    const { phone, otp, name, referral_code } = req.body;
-    if (!phone || !otp) return res.status(400).json({ detail: "Phone and OTP required." });
-    const normalized = normalizePhone(phone);
+    const { otp, name, referral_code } = req.body;
+    const normalized = normalizePhone(req.body.phone);
 
-    const valid = await Otp.verifyOtp(normalized, otp);
-    if (!valid) return res.status(401).json({ detail: "Invalid or expired OTP." });
+    if (!normalized || !/^[6-9]\d{9}$/.test(normalized)) {
+      return res.status(400).json({ detail: "Invalid phone number." });
+    }
+    if (!otp || otp.length !== 6) {
+      return res.status(400).json({ detail: "6-digit OTP required." });
+    }
+
+    const check = verifyOTP(normalized, otp);
+    if (!check.ok) return res.status(401).json({ detail: check.reason });
 
     let user = await findUserByPhone(normalized);
     let is_new_user = false;
 
     if (!user) {
-      // New user — create account
       is_new_user = true;
       let refCode;
       do { refCode = uuidv4().slice(0, 8).toUpperCase(); } while (await User.findOne({ referral_code: refCode }));
 
       user = new User({
-        name: name ? name.trim() : "",
+        name: name ? name.trim() : `User${normalized.slice(-4)}`,
         phone: normalized,
         referral_code: refCode,
         wallet: { deposit: 0, winning: 0, bonus: 0 },
