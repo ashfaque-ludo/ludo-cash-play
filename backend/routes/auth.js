@@ -155,12 +155,22 @@ router.post("/login", authLimiter, async (req,res) => {
 
 router.post("/register", authLimiter, async (req,res) => {
   try {
-    const { name, email, password, phone, referral_code } = req.body;
-    if (!name||!email||!password) return res.status(400).json({ detail:"Name, email and password required." });
-    if (password.length<6) return res.status(400).json({ detail:"Password min 6 chars." });
-    if (await User.findOne({ email:email.toLowerCase().trim() })) return res.status(409).json({ detail:"Email already registered." });
+    const { name, phone, password, email, referral_code } = req.body;
+    if (!name || !phone || !password) return res.status(400).json({ detail:"Name, phone and password required." });
+    if (password.length < 4) return res.status(400).json({ detail:"Password must be at least 4 characters." });
+    const normalized = normalizePhone(phone);
+    if (!normalized || !/^[6-9]\d{9}$/.test(normalized)) return res.status(400).json({ detail:"Enter a valid 10-digit Indian phone number." });
+    if (await findUserByPhone(normalized)) return res.status(409).json({ detail:"Phone already registered. Please login." });
+    if (email && await User.findOne({ email:email.toLowerCase().trim() })) return res.status(409).json({ detail:"Email already registered." });
     let refCode; do { refCode=uuidv4().slice(0,8).toUpperCase(); } while (await User.findOne({ referral_code:refCode }));
-    const user = new User({ name:name.trim(), email:email.toLowerCase().trim(), password, phone:phone||null, referral_code:refCode, wallet:{ deposit:0, winning:0, bonus:0 } });
+    const user = new User({
+      name: name.trim(),
+      phone: normalized,
+      email: email ? email.toLowerCase().trim() : undefined,
+      password,
+      referral_code: refCode,
+      wallet: { deposit:0, winning:0, bonus:0 },
+    });
     if (referral_code) {
       const referrer = await User.findOne({ referral_code:referral_code.toUpperCase() });
       if (referrer && referrer._id.toString()!==user._id.toString()) {
