@@ -1,9 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { api, fmtINR } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Copy, Check, Share2, Users, Gift, MessageCircle } from "lucide-react";
 import { toast } from "sonner";
 
@@ -21,7 +18,7 @@ export default function Referral() {
   const link = data?.referral_link || `${window.location.origin}/register?ref=${data?.code || ""}`;
 
   const copy = async (text) => {
-    try { await navigator.clipboard.writeText(text); } catch { }
+    try { await navigator.clipboard.writeText(text); } catch {}
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
     toast.success("Copied!");
@@ -45,123 +42,137 @@ export default function Referral() {
   };
 
   return (
-    <div className="min-h-screen pt-24 pb-16 bg-[#0A0A0E] text-white">
-      <div className="max-w-4xl mx-auto px-6">
+    <div className="min-h-screen pt-20 pb-20 bg-gradient-to-b from-amber-50 to-white">
+      <div className="max-w-lg mx-auto px-3 space-y-3">
 
         {/* Hero */}
-        <div className="text-center mb-10">
-          <div className="text-xs uppercase tracking-[0.25em] text-purple-400 font-bold mb-1">Invite &amp; Earn</div>
-          <h1 className="text-4xl sm:text-5xl font-extrabold mt-2">
-            <span className="grad-text">Refer friends</span>, earn rewards
-          </h1>
-          <p className="text-slate-400 mt-3 max-w-xl mx-auto text-sm leading-relaxed">
-            Your friend gets a <span className="text-emerald-400 font-semibold">₹50 welcome bonus</span> when they sign up with your code.
-            You earn <span className="text-amber-400 font-semibold">₹25 instantly</span> + up to <span className="text-amber-400 font-semibold">₹100</span> when they make their first deposit.
+        <div className="pt-2">
+          <p className="text-xs text-gray-500 uppercase tracking-widest font-semibold">Invite & Earn</p>
+          <h1 className="text-2xl font-black text-gray-900">Refer Friends</h1>
+          <p className="text-sm text-gray-500 mt-1">
+            Your friend gets <strong className="text-green-600">₹50</strong> welcome bonus.
+            You earn <strong className="text-orange-600">₹25</strong> instantly!
           </p>
         </div>
 
-        {/* Stats */}
-        <div className="grid sm:grid-cols-3 gap-4 mb-6">
+        {/* Stats row */}
+        <div className="grid grid-cols-3 gap-2">
           {[
-            { label: "Your code",       value: data?.code || "—",                       color: "grad-text",        testId: "referral-code" },
-            { label: "Friends joined",  value: data?.referred_count ?? 0,               color: "text-white",       testId: "referral-count" },
-            { label: "Total earnings",  value: fmtINR(data?.total_earnings ?? 0),       color: "text-emerald-400", testId: "referral-earnings" },
+            { label: "Your Code", value: data?.code || "—", color: "text-red-700 bg-red-50 border-red-200", testId: "referral-code" },
+            { label: "Friends", value: data?.referred_count ?? 0, color: "text-blue-700 bg-blue-50 border-blue-200", testId: "referral-count" },
+            { label: "Earned", value: fmtINR(data?.total_earnings ?? 0), color: "text-green-700 bg-green-50 border-green-200", testId: "referral-earnings" },
           ].map(s => (
-            <Card key={s.label} className="glass-strong border-white/10 text-white">
-              <CardContent className="py-5">
-                <div className="text-xs uppercase tracking-widest text-slate-400 mb-1">{s.label}</div>
-                <div className={`text-2xl font-black mt-1 ${s.color}`} data-testid={s.testId}>{s.value}</div>
-              </CardContent>
-            </Card>
+            <div key={s.label} className={`rounded-2xl border p-3 text-center ${s.color}`}>
+              <div className="text-[10px] uppercase font-bold opacity-70 mb-1">{s.label}</div>
+              <div className="font-black text-lg" data-testid={s.testId}>{s.value}</div>
+            </div>
           ))}
         </div>
 
-        {/* Referral link + share buttons */}
-        <Card className="mb-6 glass-strong border-white/10 text-white">
-          <CardContent className="py-5 space-y-4">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="font-mono text-sm text-slate-300 truncate flex-1 min-w-0" data-testid="referral-link">{link}</div>
-              <Button onClick={() => copy(link)} variant="outline" className="rounded-full border-white/20 bg-white/5 text-white shrink-0" data-testid="copy-referral">
-                {copied ? <Check className="w-4 h-4 mr-1 text-emerald-400" /> : <Copy className="w-4 h-4 mr-1" />}
-                {copied ? "Copied!" : "Copy link"}
-              </Button>
-            </div>
+        {/* Referral link card */}
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4 space-y-3">
+          <div className="text-sm font-bold text-gray-900">Your Referral Link</div>
 
-            <div className="flex gap-3 flex-wrap">
-              <Button onClick={shareWhatsApp}
-                className="rounded-full bg-[#25D366] hover:bg-[#20bc5a] text-white font-bold flex-1 sm:flex-none"
-                data-testid="whatsapp-share">
-                <MessageCircle className="w-4 h-4 mr-2" /> Share on WhatsApp
-              </Button>
-              <Button onClick={shareNative} variant="outline"
-                className="rounded-full border-white/20 bg-white/5 text-white flex-1 sm:flex-none"
-                data-testid="share-referral">
-                <Share2 className="w-4 h-4 mr-2" /> Share
-              </Button>
-              <Button onClick={() => copy(data?.code || "")} variant="outline"
-                className="rounded-full border-purple-500/30 bg-purple-500/10 text-purple-300 flex-1 sm:flex-none"
-                data-testid="copy-code">
-                <Copy className="w-4 h-4 mr-2" /> Copy code only
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+          <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2">
+            <span className="font-mono text-xs text-gray-600 truncate flex-1" data-testid="referral-link">{link}</span>
+            <button
+              onClick={() => copy(link)}
+              className="shrink-0 p-1.5 rounded-lg bg-gray-100 border border-gray-200 hover:bg-gray-200 transition-all"
+              data-testid="copy-referral"
+            >
+              {copied ? <Check className="w-3.5 h-3.5 text-green-600" /> : <Copy className="w-3.5 h-3.5 text-gray-500" />}
+            </button>
+          </div>
+
+          <div className="flex gap-2 flex-wrap">
+            <button
+              onClick={shareWhatsApp}
+              className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-[#25D366] text-white font-bold text-sm shadow hover:opacity-90 transition-all"
+              data-testid="whatsapp-share"
+            >
+              <MessageCircle className="w-4 h-4" /> WhatsApp
+            </button>
+            <button
+              onClick={shareNative}
+              className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-gradient-to-r from-red-700 to-black text-white font-bold text-sm shadow hover:opacity-90 transition-all"
+              data-testid="share-referral"
+            >
+              <Share2 className="w-4 h-4" /> Share
+            </button>
+            <button
+              onClick={() => copy(data?.code || "")}
+              className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-gray-100 border border-gray-200 text-gray-700 font-bold text-sm hover:bg-gray-200 transition-all"
+              data-testid="copy-code"
+            >
+              <Copy className="w-4 h-4" /> Copy Code
+            </button>
+          </div>
+        </div>
 
         {/* How it works */}
-        <Card className="mb-6 glass-strong border-white/10 text-white">
-          <CardHeader><CardTitle className="flex items-center gap-2 text-lg"><Gift className="w-4 h-4 text-amber-400" /> How it works</CardTitle></CardHeader>
-          <CardContent>
-            <div className="grid sm:grid-cols-3 gap-4 text-sm">
-              {[
-                { step: "1", title: "Share your code", desc: "Send your referral link to friends via WhatsApp or any platform." },
-                { step: "2", title: "Friend signs up", desc: "They register with your code. You both get a bonus instantly." },
-                { step: "3", title: "Earn on deposit", desc: "You get 10% of their first deposit (max ₹100) as a bonus." },
-              ].map(s => (
-                <div key={s.step} className="rounded-xl bg-white/5 border border-white/10 p-4">
-                  <div className="w-7 h-7 rounded-full bg-purple-600 grid place-items-center text-xs font-bold mb-2">{s.step}</div>
-                  <div className="font-semibold mb-1">{s.title}</div>
-                  <div className="text-slate-400 text-xs">{s.desc}</div>
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <Gift className="w-4 h-4 text-orange-500" />
+            <span className="font-bold text-gray-900 text-sm">How it works</span>
+          </div>
+          <div className="space-y-3">
+            {[
+              { step: "1", title: "Share your code", desc: "Send your referral link via WhatsApp or any platform." },
+              { step: "2", title: "Friend signs up", desc: "They register with your code. Both get a bonus instantly." },
+              { step: "3", title: "Earn rewards", desc: "You get ₹25 on signup + 10% of first deposit (max ₹100)." },
+            ].map(s => (
+              <div key={s.step} className="flex items-start gap-3">
+                <div className="w-7 h-7 rounded-full bg-gradient-to-br from-red-700 to-black flex items-center justify-center text-white text-xs font-bold shrink-0">
+                  {s.step}
+                </div>
+                <div>
+                  <div className="font-semibold text-gray-900 text-sm">{s.title}</div>
+                  <div className="text-xs text-gray-500">{s.desc}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Referred users */}
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+            <div className="flex items-center gap-2">
+              <Users className="w-4 h-4 text-gray-500" />
+              <span className="font-bold text-gray-900 text-sm">Friends Referred</span>
+            </div>
+            {data?.referred_count > 0 && (
+              <span className="text-xs font-semibold bg-red-100 text-red-700 px-2 py-0.5 rounded-full">
+                {data.referred_count} total
+              </span>
+            )}
+          </div>
+
+          {!data ? (
+            <div className="text-gray-400 text-sm text-center py-8">Loading…</div>
+          ) : data.referrals?.length ? (
+            <div className="divide-y divide-gray-100">
+              {data.referrals.map(r => (
+                <div key={r.id} className="flex items-center justify-between px-4 py-3" data-testid={`referral-row-${r.id}`}>
+                  <div>
+                    <div className="font-semibold text-gray-900 text-sm">{r.name}</div>
+                    <div className="text-xs text-gray-400">{r.email} · {new Date(r.created_at).toLocaleDateString("en-IN")}</div>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <div className="font-bold text-green-600 text-sm">{fmtINR(r.commission)}</div>
+                    <span className={`text-[10px] uppercase font-bold px-1.5 py-0.5 rounded-full ${r.status === "credited" ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"}`}>
+                      {r.status}
+                    </span>
+                  </div>
                 </div>
               ))}
             </div>
-          </CardContent>
-        </Card>
-
-        {/* Referred users list */}
-        <Card className="glass-strong border-white/10 text-white">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <Users className="w-4 h-4 text-purple-400" /> Friends you've referred
-              {data?.referred_count > 0 && (
-                <Badge variant="outline" className="ml-auto border-purple-500/30 text-purple-300">{data.referred_count} total</Badge>
-              )}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {!data ? (
-              <div className="text-slate-400 text-sm py-4">Loading…</div>
-            ) : data.referrals?.length ? (
-              <div className="divide-y divide-white/5">
-                {data.referrals.map(r => (
-                  <div key={r.id} className="py-3 flex items-center justify-between gap-3" data-testid={`referral-row-${r.id}`}>
-                    <div>
-                      <div className="font-medium text-sm">{r.name}</div>
-                      <div className="text-xs text-slate-400">{r.email} · {new Date(r.created_at).toLocaleDateString("en-IN")}</div>
-                    </div>
-                    <div className="text-right shrink-0">
-                      <div className="text-emerald-400 font-bold text-sm">{fmtINR(r.commission)}</div>
-                      <Badge variant="outline" className={`text-[10px] ${r.status === "credited" ? "border-emerald-500/30 text-emerald-400" : "border-amber-500/30 text-amber-400"}`}>
-                        {r.status}
-                      </Badge>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-slate-400 text-sm py-6 text-center">No referrals yet. Share your link to start earning!</div>
-            )}
-          </CardContent>
-        </Card>
+          ) : (
+            <div className="text-gray-400 text-sm text-center py-8">
+              No referrals yet. Share your link to start earning!
+            </div>
+          )}
+        </div>
 
       </div>
     </div>

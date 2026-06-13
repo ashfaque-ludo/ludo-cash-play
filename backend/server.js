@@ -10,7 +10,7 @@ const path=require("path");
 const connectDB=require("./config/db");
 const auth=require("./middleware/auth");
 const {requireRole,attachCan}=require("./middleware/adminAuth");
-const {general,adminLimiter}=require("./middleware/rateLimiter");
+const {general,adminLimiter,authLimiter,otpLimiter}=require("./middleware/rateLimiter");
 
 const app=express();
 app.use(compression());
@@ -44,7 +44,13 @@ app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 app.get("/health",(_, res)=>res.json({status:"ok",ts:Date.now()}));
 app.get("/api/health",(_, res)=>res.json({status:"ok",ts:Date.now()}));
-app.get("/test-route",(_, res)=>res.json({message:"Backend is fresh!", v:"7"}));
+app.get("/test-route",(_, res)=>res.json({message:"Backend is fresh!", v:"8"}));
+
+// Apply strict rate limits to auth endpoints before the router
+app.post("/api/auth/login", authLimiter);
+app.post("/api/auth/register", authLimiter);
+app.post("/api/auth/send-otp", otpLimiter);
+app.post("/api/auth/verify-firebase-otp", otpLimiter);
 
 app.use("/api/auth",require("./routes/auth"));
 app.use("/api/public",require("./routes/public"));
@@ -69,6 +75,10 @@ app.use("/api/admin/kyc",adm,require("./routes/admin/kyc"));
 app.use("/api/admin/support",adm,require("./routes/admin/support"));
 app.use("/api/admin/banners",adm,require("./routes/admin/banners"));
 app.use("/api/admin",adm,require("./routes/admin/misc"));
+
+// Owner-only routes (super_admin + is_master_owner)
+const ownerOnly=require("./middleware/ownerOnly");
+app.use("/api/owner",[auth,ownerOnly],require("./routes/owner"));
 
 app.use((req,res)=>res.status(404).json({detail:`Not found: ${req.method} ${req.path}`}));
 app.use((err,req,res,next)=>res.status(500).json({detail:err.message||"Server error."}));

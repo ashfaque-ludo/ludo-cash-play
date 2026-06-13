@@ -45,11 +45,11 @@ const TROPHY = "https://static.prod-images.emergentagent.com/jobs/77b22318-d6be-
 function AnnouncementBar({ text }) {
   if (!text) return null;
   return (
-    <div className="bg-gradient-to-r from-purple-900/60 to-blue-900/60 border-b border-purple-500/20 overflow-hidden" data-testid="announcement-bar">
+    <div className="bg-gradient-to-r from-red-700 to-black border-b border-red-800 overflow-hidden" data-testid="announcement-bar">
       <div className="ticker-track py-2 whitespace-nowrap">
         {[text, text].map((t, i) => (
-          <span key={i} className="text-sm text-purple-200/90 px-8 inline-flex items-center gap-2">
-            <Sparkles className="w-3 h-3 text-purple-400" />
+          <span key={i} className="text-sm text-white/90 px-8 inline-flex items-center gap-2">
+            <Sparkles className="w-3 h-3 text-yellow-300" />
             {t}
           </span>
         ))}
@@ -127,41 +127,41 @@ function BattleHub({ user }) {
   const runningMatches = matches.filter(m => user && m.player_ids?.includes(user.id) && ["in_progress","awaiting_review"].includes(m.status));
 
   return (
-    <div className="min-h-screen pt-14 pb-20 bg-[#0A0A0E] text-white">
+    <div className="min-h-screen pt-14 pb-20 bg-gradient-to-b from-amber-50 to-white">
       {/* Wallet strip */}
-      <div className="px-4 py-3 flex items-center justify-between border-b border-white/10 bg-white/3">
+      <div className="px-4 py-3 flex items-center justify-between border-b border-gray-200 bg-white shadow-sm">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-600 to-blue-600 grid place-items-center text-white font-bold text-xs">
+          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-red-700 to-black grid place-items-center text-white font-bold text-xs">
             {(user.name || "U").slice(0,1).toUpperCase()}
           </div>
           <div>
-            <div className="text-xs text-slate-400">Welcome back</div>
-            <div className="text-sm font-bold text-white">{user.name || "Player"}</div>
+            <div className="text-xs text-gray-400">Welcome back</div>
+            <div className="text-sm font-bold text-gray-900">{user.name || "Player"}</div>
           </div>
         </div>
-        <Link to="/wallet" className="flex items-center gap-2 px-3 py-2 rounded-xl glass border border-white/10">
-          <span className="text-sm font-bold text-emerald-400">{fmtINR(total)}</span>
-          <span className="text-xs text-slate-500">+Add</span>
+        <Link to="/wallet" className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white border border-gray-200 shadow-sm hover:bg-amber-50 transition-colors">
+          <span className="text-sm font-bold text-green-600">{fmtINR(total)}</span>
+          <span className="text-xs text-gray-400">+Add</span>
         </Link>
       </div>
 
       {/* Quick action strip */}
       <div className="px-4 pt-4 grid grid-cols-3 gap-2">
         {[
-          { label: "Open Battles", value: openMatches.length, icon: Swords, key: "open", color: "from-purple-600 to-blue-600" },
-          { label: "Create Battle", value: "+", icon: Play, key: "create", color: "from-emerald-600 to-teal-600" },
-          { label: "Running", value: runningMatches.length, icon: Dice5, key: "running", color: "from-amber-600 to-orange-600" },
+          { label: "Open Battles", value: openMatches.length, icon: Swords, key: "open", active: "bg-gradient-to-br from-red-700 to-black" },
+          { label: "Create Battle", value: "+", icon: Play, key: "create", active: "bg-gradient-to-br from-red-700 to-black" },
+          { label: "Running", value: runningMatches.length, icon: Dice5, key: "running", active: "bg-gradient-to-br from-amber-600 to-orange-600" },
         ].map(item => (
           <button key={item.key} onClick={() => setSection(item.key)}
             className={`rounded-2xl p-3 flex flex-col items-center gap-1 border transition-all ${
               section === item.key
-                ? `bg-gradient-to-br ${item.color} border-transparent shadow-lg scale-105`
-                : "glass border-white/10 hover:border-white/20"
+                ? `${item.active} border-transparent shadow-lg text-white`
+                : "bg-white border-gray-200 text-gray-700 hover:border-gray-300"
             }`}
           >
-            <item.icon className="w-5 h-5 text-white" />
-            <span className="text-xs font-bold text-white">{item.label}</span>
-            <span className="text-xs text-white/70">{item.value}</span>
+            <item.icon className="w-5 h-5" />
+            <span className="text-xs font-bold">{item.label}</span>
+            <span className="text-xs opacity-80">{item.value}</span>
           </button>
         ))}
       </div>
@@ -170,30 +170,30 @@ function BattleHub({ user }) {
       {section === "open" && (
         <div className="px-4 pt-5">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="font-bold text-white">Open Battles <Badge variant="outline" className="ml-1 border-white/10 text-xs">{openMatches.length}</Badge></h2>
-            <button onClick={load} className="text-slate-400 hover:text-white"><RefreshCw className="w-4 h-4" /></button>
+            <h2 className="font-bold text-gray-900">Open Battles <Badge variant="outline" className="ml-1 border-gray-200 text-gray-500 text-xs">{openMatches.length}</Badge></h2>
+            <button onClick={load} className="text-gray-400 hover:text-red-700 transition-colors"><RefreshCw className="w-4 h-4" /></button>
           </div>
           {openMatches.length === 0 ? (
-            <div className="glass rounded-2xl p-8 text-center text-slate-400">
-              <Swords className="w-6 h-6 mx-auto text-purple-400 mb-2" />
+            <div className="bg-white rounded-2xl border border-gray-200 p-8 text-center text-gray-400 shadow-sm">
+              <Swords className="w-6 h-6 mx-auto text-red-300 mb-2" />
               No open battles right now. Create one!
             </div>
           ) : (
             <div className="space-y-2">
               {openMatches.map(m => (
-                <div key={m.id} className={`rounded-2xl border p-4 flex items-center justify-between gap-3 ${
-                  m.tier === "vip" ? "border-amber-500/30 bg-amber-500/5" : m.tier === "custom" ? "border-teal-500/30 bg-teal-500/5" : "glass border-white/10"
+                <div key={m.id} className={`rounded-2xl border p-4 flex items-center justify-between gap-3 bg-white shadow-sm ${
+                  m.tier === "vip" ? "border-amber-300" : m.tier === "custom" ? "border-teal-300" : "border-gray-200"
                 }`}>
                   <div className="flex items-center gap-3">
-                    {m.tier === "vip" ? <Crown className="w-5 h-5 text-amber-300" /> : m.tier === "custom" ? <PenLine className="w-5 h-5 text-teal-300" /> : <Dice5 className="w-5 h-5 text-purple-300" />}
+                    {m.tier === "vip" ? <Crown className="w-5 h-5 text-amber-500" /> : m.tier === "custom" ? <PenLine className="w-5 h-5 text-teal-600" /> : <Dice5 className="w-5 h-5 text-red-700" />}
                     <div>
-                      <div className="text-sm font-semibold text-white">{m.label}</div>
-                      <div className="text-xs text-slate-400">Entry: {fmtINR(m.stake)} · Win: <span className="text-emerald-400 font-bold">{fmtINR(m.prize)}</span></div>
-                      <div className="text-xs text-slate-500">by {m.creator_name}</div>
+                      <div className="text-sm font-semibold text-gray-900">{m.label}</div>
+                      <div className="text-xs text-gray-400">Entry: {fmtINR(m.stake)} · Win: <span className="text-green-600 font-bold">{fmtINR(m.prize)}</span></div>
+                      <div className="text-xs text-gray-400">by {m.creator_name}</div>
                     </div>
                   </div>
                   <Button size="sm" disabled={busy} onClick={() => joinMatch(m.id)}
-                    className="rounded-full bg-gradient-to-r from-purple-600 to-blue-600 text-white text-xs px-3">
+                    className="rounded-full bg-gradient-to-r from-red-700 to-black text-white text-xs px-3">
                     Join
                   </Button>
                 </div>
@@ -206,37 +206,37 @@ function BattleHub({ user }) {
       {/* Create Battle */}
       {section === "create" && (
         <div className="px-4 pt-5">
-          <h2 className="font-bold text-white mb-3">Choose Stake</h2>
+          <h2 className="font-bold text-gray-900 mb-3">Choose Stake</h2>
           <div className="grid grid-cols-2 gap-3">
             {tables.map(t => {
               const isVip = t.tier === "vip";
               const isPremium = t.tier === "premium";
               return (
                 <button key={t.stake} onClick={() => setCreating(t)}
-                  className={`rounded-2xl p-4 text-left transition-all ${isVip
-                    ? "bg-gradient-to-br from-amber-500/10 to-amber-900/20 border border-amber-500/30"
-                    : isPremium ? "bg-gradient-to-br from-purple-900/30 to-blue-900/20 border border-purple-500/30"
-                    : "glass border-white/10"}`}
+                  className={`rounded-2xl p-4 text-left transition-all bg-white shadow-sm border ${isVip
+                    ? "border-amber-300 hover:bg-amber-50"
+                    : isPremium ? "border-red-200 hover:bg-red-50"
+                    : "border-gray-200 hover:bg-gray-50"}`}
                 >
                   <div className="flex items-center justify-between mb-2">
-                    {isVip ? <Crown className="w-4 h-4 text-amber-300" /> : <Dice5 className="w-4 h-4 text-purple-300" />}
-                    <span className="text-[10px] uppercase tracking-widest text-slate-400">{t.tier}</span>
+                    {isVip ? <Crown className="w-4 h-4 text-amber-500" /> : <Dice5 className="w-4 h-4 text-red-700" />}
+                    <span className="text-[10px] uppercase tracking-widest text-gray-400">{t.tier}</span>
                   </div>
-                  <div className={`text-xl font-black ${isVip ? "grad-text-gold" : "text-white"}`}>{fmtINR(t.stake)}</div>
-                  <div className="text-xs text-slate-400 mt-1">Win <span className={`font-bold ${isVip ? "text-amber-300" : "text-emerald-400"}`}>{fmtINR(t.prize)}</span></div>
+                  <div className={`text-xl font-black ${isVip ? "text-amber-600" : "text-gray-900"}`}>{fmtINR(t.stake)}</div>
+                  <div className="text-xs text-gray-400 mt-1">Win <span className={`font-bold ${isVip ? "text-amber-600" : "text-green-600"}`}>{fmtINR(t.prize)}</span></div>
                 </button>
               );
             })}
 
             {/* Custom */}
             <button onClick={() => setCustomOpen(true)}
-              className="rounded-2xl p-4 text-left border-2 border-dashed border-teal-500/40 bg-teal-900/10">
+              className="rounded-2xl p-4 text-left border-2 border-dashed border-red-200 bg-white hover:bg-red-50 transition-colors shadow-sm">
               <div className="flex items-center justify-between mb-2">
-                <PenLine className="w-4 h-4 text-teal-300" />
-                <span className="text-[10px] uppercase tracking-widest text-slate-400">custom</span>
+                <PenLine className="w-4 h-4 text-red-700" />
+                <span className="text-[10px] uppercase tracking-widest text-gray-400">custom</span>
               </div>
-              <div className="text-xl font-black text-teal-300">₹?</div>
-              <div className="text-xs text-slate-400 mt-1">Any amount · 5% fee</div>
+              <div className="text-xl font-black text-red-700">₹?</div>
+              <div className="text-xs text-gray-400 mt-1">Any amount · 5% fee</div>
             </button>
           </div>
         </div>
@@ -246,26 +246,26 @@ function BattleHub({ user }) {
       {section === "running" && (
         <div className="px-4 pt-5">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="font-bold text-white">Running Battles <Badge variant="outline" className="ml-1 border-white/10 text-xs">{runningMatches.length}</Badge></h2>
-            <button onClick={load} className="text-slate-400 hover:text-white"><RefreshCw className="w-4 h-4" /></button>
+            <h2 className="font-bold text-gray-900">Running Battles <Badge variant="outline" className="ml-1 border-gray-200 text-gray-500 text-xs">{runningMatches.length}</Badge></h2>
+            <button onClick={load} className="text-gray-400 hover:text-red-700 transition-colors"><RefreshCw className="w-4 h-4" /></button>
           </div>
           {runningMatches.length === 0 ? (
-            <div className="glass rounded-2xl p-8 text-center text-slate-400">
+            <div className="bg-white rounded-2xl border border-gray-200 p-8 text-center text-gray-400 shadow-sm">
               <Dice5 className="w-6 h-6 mx-auto text-amber-400 mb-2" />
               No running matches. Create or join a battle!
             </div>
           ) : (
             <div className="space-y-2">
               {runningMatches.map(m => (
-                <Link key={m.id} to={`/match/${m.id}`} className="block rounded-2xl glass border border-white/10 p-4 hover:border-purple-500/40 transition-colors">
+                <Link key={m.id} to={`/match/${m.id}`} className="block rounded-2xl bg-white border border-gray-200 shadow-sm p-4 hover:border-red-300 hover:bg-amber-50 transition-colors">
                   <div className="flex items-center justify-between">
                     <div>
-                      <div className="font-semibold text-white text-sm">{m.label}</div>
-                      <div className="text-xs text-slate-400 mt-0.5">Entry: {fmtINR(m.stake)} · Prize: <span className="text-emerald-400">{fmtINR(m.prize)}</span></div>
+                      <div className="font-semibold text-gray-900 text-sm">{m.label}</div>
+                      <div className="text-xs text-gray-400 mt-0.5">Entry: {fmtINR(m.stake)} · Prize: <span className="text-green-600">{fmtINR(m.prize)}</span></div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Badge className="text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/30">{m.status.replace("_"," ")}</Badge>
-                      <ChevronRight className="w-4 h-4 text-slate-500" />
+                      <Badge className="text-[10px] bg-amber-100 text-amber-700 border border-amber-200">{m.status.replace("_"," ")}</Badge>
+                      <ChevronRight className="w-4 h-4 text-gray-400" />
                     </div>
                   </div>
                 </Link>
@@ -277,17 +277,17 @@ function BattleHub({ user }) {
 
       {/* Create Match confirm */}
       <Dialog open={!!creating && !creating?.custom} onOpenChange={(o) => !o && setCreating(null)}>
-        <DialogContent className="bg-[#0F0F14] border-white/10 text-white">
-          <DialogHeader><DialogTitle>Create {creating?.label} battle</DialogTitle></DialogHeader>
+        <DialogContent className="bg-white border-gray-200 text-gray-900">
+          <DialogHeader><DialogTitle className="text-gray-900">Create {creating?.label} battle</DialogTitle></DialogHeader>
           <div className="space-y-3 text-sm">
-            <div className="flex justify-between"><span className="text-slate-400">Entry</span><span className="font-bold">{fmtINR(creating?.stake || 0)}</span></div>
-            <div className="flex justify-between"><span className="text-slate-400">Prize on win</span><span className="text-emerald-400 font-bold">{fmtINR(creating?.prize || 0)}</span></div>
-            <div className="flex justify-between"><span className="text-slate-400">Commission</span><span>5%</span></div>
-            <div className="flex justify-between"><span className="text-slate-400">Your balance</span><span className="font-bold">{fmtINR(total)}</span></div>
+            <div className="flex justify-between"><span className="text-gray-400">Entry</span><span className="font-bold">{fmtINR(creating?.stake || 0)}</span></div>
+            <div className="flex justify-between"><span className="text-gray-400">Prize on win</span><span className="text-green-600 font-bold">{fmtINR(creating?.prize || 0)}</span></div>
+            <div className="flex justify-between"><span className="text-gray-400">Commission</span><span>5%</span></div>
+            <div className="flex justify-between"><span className="text-gray-400">Your balance</span><span className="font-bold">{fmtINR(total)}</span></div>
           </div>
           <DialogFooter>
             <Button disabled={busy} onClick={() => createMatch(creating.stake, false)}
-              className="rounded-full bg-gradient-to-r from-purple-600 to-blue-600 text-white">
+              className="rounded-full bg-gradient-to-r from-red-700 to-black text-white">
               {busy ? "Creating…" : "Create & Open Room"}
             </Button>
           </DialogFooter>
@@ -296,44 +296,44 @@ function BattleHub({ user }) {
 
       {/* Custom amount input */}
       <Dialog open={customOpen} onOpenChange={setCustomOpen}>
-        <DialogContent className="bg-[#0F0F14] border-white/10 text-white">
-          <DialogHeader><DialogTitle>Custom battle amount</DialogTitle></DialogHeader>
+        <DialogContent className="bg-white border-gray-200 text-gray-900">
+          <DialogHeader><DialogTitle className="text-gray-900">Custom battle amount</DialogTitle></DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label className="text-slate-300">Stake amount (₹)</Label>
+              <Label className="text-gray-700">Stake amount (₹)</Label>
               <Input type="number" value={customAmt} onChange={e => setCustomAmt(e.target.value)}
                 placeholder="e.g. 70, 150, 777" min={10} max={50000} step={10}
-                className="bg-black/40 border-white/10 text-white mt-1" />
-              <p className="text-xs text-slate-500 mt-1">Min ₹10 · Max ₹50,000 · Multiple of ₹10</p>
+                className="bg-gray-50 border-gray-300 text-gray-900 mt-1" />
+              <p className="text-xs text-gray-400 mt-1">Min ₹10 · Max ₹50,000 · Multiple of ₹10</p>
             </div>
             {customAmt && Number(customAmt) >= 10 && (
-              <div className="rounded-xl bg-teal-500/10 border border-teal-500/20 p-3 text-sm space-y-1">
-                <div className="flex justify-between"><span className="text-slate-400">Entry</span><span>{fmtINR(Number(customAmt))}</span></div>
-                <div className="flex justify-between"><span className="text-slate-400">Prize on win</span><span className="text-emerald-400">{fmtINR(Math.round(Number(customAmt) * 2 * 0.95))}</span></div>
-                <div className="flex justify-between"><span className="text-slate-400">Commission</span><span>5%</span></div>
+              <div className="rounded-xl bg-green-50 border border-green-200 p-3 text-sm space-y-1">
+                <div className="flex justify-between"><span className="text-gray-400">Entry</span><span>{fmtINR(Number(customAmt))}</span></div>
+                <div className="flex justify-between"><span className="text-gray-400">Prize on win</span><span className="text-green-600">{fmtINR(Math.round(Number(customAmt) * 2 * 0.95))}</span></div>
+                <div className="flex justify-between"><span className="text-gray-400">Commission</span><span>5%</span></div>
               </div>
             )}
           </div>
           <DialogFooter>
-            <Button onClick={handleCustomCreate} className="rounded-full bg-gradient-to-r from-teal-600 to-cyan-600 text-white">Continue</Button>
+            <Button onClick={handleCustomCreate} className="rounded-full bg-gradient-to-r from-red-700 to-black text-white">Continue</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* Custom confirm */}
       <Dialog open={!!creating?.custom} onOpenChange={(o) => !o && setCreating(null)}>
-        <DialogContent className="bg-[#0F0F14] border-white/10 text-white">
-          <DialogHeader><DialogTitle>Create custom battle</DialogTitle></DialogHeader>
+        <DialogContent className="bg-white border-gray-200 text-gray-900">
+          <DialogHeader><DialogTitle className="text-gray-900">Create custom battle</DialogTitle></DialogHeader>
           <div className="space-y-3 text-sm">
-            <div className="flex justify-between"><span className="text-slate-400">Entry</span><span className="font-bold">{fmtINR(creating?.stake || 0)}</span></div>
-            <div className="flex justify-between"><span className="text-slate-400">Prize on win</span><span className="text-emerald-400 font-bold">{fmtINR(creating?.prize || 0)}</span></div>
-            <div className="flex justify-between"><span className="text-slate-400">Commission</span><span>5%</span></div>
-            <div className="flex justify-between"><span className="text-slate-400">Your balance</span><span className="font-bold">{fmtINR(total)}</span></div>
-            <Badge className="bg-teal-600/80 text-white border-0">Custom Battle</Badge>
+            <div className="flex justify-between"><span className="text-gray-400">Entry</span><span className="font-bold">{fmtINR(creating?.stake || 0)}</span></div>
+            <div className="flex justify-between"><span className="text-gray-400">Prize on win</span><span className="text-green-600 font-bold">{fmtINR(creating?.prize || 0)}</span></div>
+            <div className="flex justify-between"><span className="text-gray-400">Commission</span><span>5%</span></div>
+            <div className="flex justify-between"><span className="text-gray-400">Your balance</span><span className="font-bold">{fmtINR(total)}</span></div>
+            <Badge className="bg-red-100 text-red-700 border border-red-200">Custom Battle</Badge>
           </div>
           <DialogFooter>
             <Button disabled={busy} onClick={() => createMatch(creating.stake, true)}
-              className="rounded-full bg-gradient-to-r from-teal-600 to-cyan-600 text-white">
+              className="rounded-full bg-gradient-to-r from-red-700 to-black text-white">
               {busy ? "Creating…" : "Create & Open Room"}
             </Button>
           </DialogFooter>

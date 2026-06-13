@@ -28,18 +28,18 @@ export default function Admin() {
   const can = (min) => ({ user:0, support_agent:1, staff_manager:2, admin:3, super_admin:4 }[role] >= { user:0, support_agent:1, staff_manager:2, admin:3, super_admin:4 }[min]);
 
   return (
-    <div className="min-h-screen pt-24 pb-16 bg-[#0A0A0E] text-white">
+    <div className="min-h-screen pt-24 pb-16 bg-gradient-to-b from-amber-50 to-white">
       <div className="max-w-7xl mx-auto px-6 lg:px-12">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <div className="text-xs uppercase tracking-[0.25em] text-amber-400 font-bold flex items-center gap-2"><ShieldCheck className="w-3.5 h-3.5" /> {user.is_master_owner ? "MASTER OWNER" : role.replace("_"," ").toUpperCase()}</div>
-            <h1 className="text-3xl sm:text-4xl font-extrabold mt-1"><span className="grad-text-gold">Owner</span> Panel</h1>
+            <div className="text-xs uppercase tracking-[0.25em] text-red-700 font-bold flex items-center gap-2"><ShieldCheck className="w-3.5 h-3.5" /> {user.is_master_owner ? "MASTER OWNER" : role.replace("_"," ").toUpperCase()}</div>
+            <h1 className="text-3xl sm:text-4xl font-extrabold mt-1"><span className="text-red-700">Admin</span> Panel</h1>
           </div>
-          <Badge variant="outline" className="border-amber-500/40 text-amber-300">{user.email}</Badge>
+          <Badge variant="outline" className="border-red-200 text-red-700 bg-red-50">{user.email}</Badge>
         </div>
 
         <Tabs defaultValue="analytics" className="mt-6">
-          <TabsList className="bg-white/5 border border-white/10 flex-wrap h-auto">
+          <TabsList className="bg-white border border-gray-200 shadow-sm flex-wrap h-auto p-1 gap-1">
             {can("staff_manager") && <TabsTrigger value="analytics" data-testid="tab-analytics"><BarChart3 className="w-3.5 h-3.5 mr-1" /> Analytics</TabsTrigger>}
             <TabsTrigger value="users" data-testid="tab-users"><Users className="w-3.5 h-3.5 mr-1" /> Users</TabsTrigger>
             {can("staff_manager") && <TabsTrigger value="deposits" data-testid="tab-deposits"><WalletIcon className="w-3.5 h-3.5 mr-1" /> Deposits</TabsTrigger>}
@@ -89,9 +89,9 @@ export default function Admin() {
 function AnalyticsTab() {
   const [a, setA] = useState(null);
   useEffect(()=>{ api.get("/admin/analytics").then(r=>setA(r.data)).catch(()=>{}); }, []);
-  if (!a) return <div className="text-slate-400 mt-6">Loading…</div>;
+  if (!a) return <div className="text-gray-400 mt-6">Loading…</div>;
   const cards = [
-    {l:"Total users", v:a.users, c:"text-purple-300"},
+    {l:"Total users", v:a.users, c:"text-red-700"},
     {l:"Admin staff", v:a.admins, c:"text-amber-300"},
     {l:"Active matches", v:a.active_matches, c:"text-blue-300"},
     {l:"Completed", v:a.completed_matches, c:"text-emerald-400"},
@@ -104,9 +104,9 @@ function AnalyticsTab() {
   return (
     <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-5">
       {cards.map(c => (
-        <Card key={c.l} className="glass-strong border-white/10 text-white">
+        <Card key={c.l} className="bg-white border-gray-200 shadow-sm text-gray-900">
           <CardContent className="py-5">
-            <div className="text-xs uppercase tracking-widest text-slate-400">{c.l}</div>
+            <div className="text-xs uppercase tracking-widest text-gray-400">{c.l}</div>
             <div className={`text-2xl font-extrabold mt-1 ${c.c}`}>{c.v}</div>
           </CardContent>
         </Card>
@@ -129,24 +129,24 @@ function UsersTab({ actor }) {
   useEffect(()=>{ load(); /* eslint-disable-line */ }, []);
 
   return (
-    <Card className="glass-strong border-white/10 text-white mt-5">
+    <Card className="bg-white border-gray-200 shadow-sm text-gray-900 mt-5">
       <CardHeader className="flex flex-row gap-2 items-center">
         <CardTitle>Users</CardTitle>
         <div className="ml-auto flex gap-2">
-          <Input placeholder="search email / name" value={q} onChange={e=>setQ(e.target.value)} className="bg-black/40 border-white/10 text-white w-56" data-testid="user-search" />
-          <Button onClick={load} className="rounded-full bg-purple-600 text-white" data-testid="user-search-btn">Search</Button>
+          <Input placeholder="search email / name" value={q} onChange={e=>setQ(e.target.value)} className="bg-gray-50 border-gray-300 text-gray-900 w-56" data-testid="user-search" />
+          <Button onClick={load} className="rounded-full bg-gradient-to-r from-red-700 to-black text-white" data-testid="user-search-btn">Search</Button>
         </div>
       </CardHeader>
       <CardContent className="overflow-x-auto">
         <Table>
           <TableHeader>
-            <TableRow className="border-white/10">
-              <TableHead className="text-slate-400">Name</TableHead>
-              <TableHead className="text-slate-400">Email</TableHead>
-              <TableHead className="text-slate-400">Role</TableHead>
-              <TableHead className="text-slate-400">Wallet</TableHead>
-              <TableHead className="text-slate-400">Status</TableHead>
-              <TableHead className="text-slate-400">Actions</TableHead>
+            <TableRow className="border-gray-200">
+              <TableHead className="text-gray-400">Name</TableHead>
+              <TableHead className="text-gray-400">Email</TableHead>
+              <TableHead className="text-gray-400">Role</TableHead>
+              <TableHead className="text-gray-400">Wallet</TableHead>
+              <TableHead className="text-gray-400">Status</TableHead>
+              <TableHead className="text-gray-400">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -154,15 +154,15 @@ function UsersTab({ actor }) {
               const w = u.wallet || {deposit:0,winning:0,bonus:0};
               const total = (w.deposit||0)+(w.winning||0)+(w.bonus||0);
               return (
-                <TableRow key={u.id} className="border-white/10" data-testid={`user-row-${u.email}`}>
+                <TableRow key={u.id} className="border-gray-200" data-testid={`user-row-${u.email}`}>
                   <TableCell className="font-medium">{u.name} {u.is_master_owner && <Badge className="ml-1 bg-amber-500 text-black text-[10px]"><Lock className="w-3 h-3 mr-0.5" />MASTER</Badge>}</TableCell>
-                  <TableCell className="text-slate-400">{u.email}</TableCell>
-                  <TableCell><Badge variant="outline" className="border-purple-500/30 text-purple-300">{u.role}</Badge></TableCell>
+                  <TableCell className="text-gray-400">{u.email}</TableCell>
+                  <TableCell><Badge variant="outline" className="border-purple-500/30 text-red-700">{u.role}</Badge></TableCell>
                   <TableCell>{fmtINR(total)}</TableCell>
                   <TableCell>{u.banned ? <Badge variant="destructive">Banned</Badge> : <Badge variant="outline" className="border-emerald-500/30 text-emerald-300">Active</Badge>}</TableCell>
                   <TableCell className="space-x-1">
-                    <Button size="sm" variant="outline" className="rounded-full border-white/20 bg-white/5 text-white" onClick={()=>setEditUser(u)} data-testid={`edit-${u.email}`}>Edit</Button>
-                    <Button size="sm" variant="outline" className="rounded-full border-white/20 bg-white/5 text-white" onClick={()=>setPwUser(u)} data-testid={`pw-${u.email}`}><KeyRound className="w-3 h-3" /></Button>
+                    <Button size="sm" variant="outline" className="rounded-full border-gray-300 bg-gray-100 text-gray-700" onClick={()=>setEditUser(u)} data-testid={`edit-${u.email}`}>Edit</Button>
+                    <Button size="sm" variant="outline" className="rounded-full border-gray-300 bg-gray-100 text-gray-700" onClick={()=>setPwUser(u)} data-testid={`pw-${u.email}`}><KeyRound className="w-3 h-3" /></Button>
                     {actor.role === "super_admin" && (
                       <Button size="sm" variant="outline" className="rounded-full border-amber-500/30 bg-amber-500/10 text-amber-300" onClick={()=>setWalletUser(u)} data-testid={`wallet-${u.email}`}><WalletIcon className="w-3 h-3" /></Button>
                     )}
@@ -195,30 +195,30 @@ function EditUserDialog({ open, user, actor, onClose }) {
   };
   return (
     <Dialog open={open} onOpenChange={(o)=>!o && onClose()}>
-      <DialogContent className="bg-[#0F0F14] border-white/10 text-white">
+      <DialogContent className="bg-white border-gray-200 text-gray-900">
         <DialogHeader><DialogTitle>Edit {user.email}</DialogTitle></DialogHeader>
         {protectedTarget ? (
           <div className="text-amber-300 text-sm flex items-center gap-2"><Lock className="w-4 h-4" /> Master owner is permanently protected and cannot be modified.</div>
         ) : (
           <div className="space-y-3">
             <div>
-              <Label className="text-slate-300">Role</Label>
+              <Label className="text-gray-600">Role</Label>
               <Select value={role} onValueChange={setRole}>
-                <SelectTrigger className="bg-black/40 border-white/10 text-white mt-1" data-testid="edit-role-select"><SelectValue /></SelectTrigger>
-                <SelectContent className="bg-[#0F0F14] border-white/10 text-white">
+                <SelectTrigger className="bg-gray-50 border-gray-300 text-gray-900 mt-1" data-testid="edit-role-select"><SelectValue /></SelectTrigger>
+                <SelectContent className="bg-white border-gray-200 text-gray-900">
                   {ROLES.map(r => (<SelectItem key={r} value={r}>{r}</SelectItem>))}
                 </SelectContent>
               </Select>
             </div>
             <div className="flex items-center justify-between">
-              <Label className="text-slate-300">Banned</Label>
+              <Label className="text-gray-600">Banned</Label>
               <Switch checked={banned} onCheckedChange={setBanned} data-testid="edit-ban-switch" />
             </div>
           </div>
         )}
         {!protectedTarget && (
           <DialogFooter>
-            <Button onClick={submit} className="rounded-full bg-gradient-to-r from-purple-600 to-blue-600 text-white" data-testid="edit-submit">Save</Button>
+            <Button onClick={submit} className="rounded-full bg-gradient-to-r from-red-700 to-black text-white" data-testid="edit-submit">Save</Button>
           </DialogFooter>
         )}
       </DialogContent>
@@ -239,7 +239,7 @@ function WalletDialog({ open, user, onClose }) {
   };
   return (
     <Dialog open={open} onOpenChange={(o)=>!o && onClose()}>
-      <DialogContent className="bg-[#0F0F14] border-white/10 text-white">
+      <DialogContent className="bg-white border-gray-200 text-gray-900">
         <DialogHeader><DialogTitle>Edit wallet · {user.email}</DialogTitle></DialogHeader>
         <div className="grid grid-cols-3 gap-2">
           <Field label="Deposit" value={w.deposit} onChange={v=>setW({...w, deposit:v})} />
@@ -247,8 +247,8 @@ function WalletDialog({ open, user, onClose }) {
           <Field label="Bonus" value={w.bonus} onChange={v=>setW({...w, bonus:v})} />
         </div>
         <div>
-          <Label className="text-slate-300">Reason (required)</Label>
-          <Input value={reason} onChange={e=>setReason(e.target.value)} className="bg-black/40 border-white/10 text-white mt-1" data-testid="wallet-reason" />
+          <Label className="text-gray-600">Reason (required)</Label>
+          <Input value={reason} onChange={e=>setReason(e.target.value)} className="bg-gray-50 border-gray-300 text-gray-900 mt-1" data-testid="wallet-reason" />
         </div>
         <DialogFooter>
           <Button onClick={submit} disabled={reason.length < 3} className="rounded-full bg-amber-500 text-black font-bold" data-testid="wallet-submit">Apply</Button>
@@ -261,8 +261,8 @@ function WalletDialog({ open, user, onClose }) {
 function Field({label, value, onChange}){
   return (
     <div>
-      <Label className="text-slate-300 text-xs">{label}</Label>
-      <Input type="number" value={value} onChange={e=>onChange(e.target.value)} className="bg-black/40 border-white/10 text-white mt-1" />
+      <Label className="text-gray-600 text-xs">{label}</Label>
+      <Input type="number" value={value} onChange={e=>onChange(e.target.value)} className="bg-gray-50 border-gray-300 text-gray-900 mt-1" />
     </div>
   );
 }
@@ -279,10 +279,10 @@ function ResetPwDialog({ open, user, onClose }) {
   };
   return (
     <Dialog open={open} onOpenChange={(o)=>!o && onClose()}>
-      <DialogContent className="bg-[#0F0F14] border-white/10 text-white">
+      <DialogContent className="bg-white border-gray-200 text-gray-900">
         <DialogHeader><DialogTitle>Reset password · {user.email}</DialogTitle></DialogHeader>
-        <Input type="password" value={pw} onChange={e=>setPw(e.target.value)} placeholder="new password" className="bg-black/40 border-white/10 text-white" data-testid="pw-input" />
-        <DialogFooter><Button disabled={pw.length < 6} onClick={submit} className="rounded-full bg-gradient-to-r from-purple-600 to-blue-600 text-white" data-testid="pw-submit">Reset</Button></DialogFooter>
+        <Input type="password" value={pw} onChange={e=>setPw(e.target.value)} placeholder="new password" className="bg-gray-50 border-gray-300 text-gray-900" data-testid="pw-input" />
+        <DialogFooter><Button disabled={pw.length < 6} onClick={submit} className="rounded-full bg-gradient-to-r from-red-700 to-black text-white" data-testid="pw-submit">Reset</Button></DialogFooter>
       </DialogContent>
     </Dialog>
   );
@@ -298,26 +298,26 @@ function DepositsTab(){
     catch (e) { toast.error(formatApiError(e.response?.data?.detail) || e.message); }
   };
   return (
-    <Card className="glass-strong border-white/10 text-white mt-5">
+    <Card className="bg-white border-gray-200 shadow-sm text-gray-900 mt-5">
       <CardHeader className="flex flex-row items-center"><CardTitle>Deposits</CardTitle>
         <Select value={status} onValueChange={setStatus}>
-          <SelectTrigger className="ml-auto bg-black/40 border-white/10 text-white w-40" data-testid="deposit-status-filter"><SelectValue /></SelectTrigger>
-          <SelectContent className="bg-[#0F0F14] border-white/10 text-white">
+          <SelectTrigger className="ml-auto bg-gray-50 border-gray-300 text-gray-900 w-40" data-testid="deposit-status-filter"><SelectValue /></SelectTrigger>
+          <SelectContent className="bg-white border-gray-200 text-gray-900">
             {["pending","approved","rejected"].map(s=> <SelectItem key={s} value={s}>{s}</SelectItem>)}
           </SelectContent>
         </Select>
       </CardHeader>
       <CardContent className="overflow-x-auto">
         <Table>
-          <TableHeader><TableRow className="border-white/10"><TableHead>User</TableHead><TableHead>Amount</TableHead><TableHead>Method</TableHead><TableHead>UPI</TableHead><TableHead>Created</TableHead><TableHead>Actions</TableHead></TableRow></TableHeader>
+          <TableHeader><TableRow className="border-gray-200"><TableHead>User</TableHead><TableHead>Amount</TableHead><TableHead>Method</TableHead><TableHead>UPI</TableHead><TableHead>Created</TableHead><TableHead>Actions</TableHead></TableRow></TableHeader>
           <TableBody>
             {rows.map(d => (
-              <TableRow key={d.id} className="border-white/10" data-testid={`deposit-row-${d.id}`}>
-                <TableCell className="text-slate-300">{d.user_email}</TableCell>
+              <TableRow key={d.id} className="border-gray-200" data-testid={`deposit-row-${d.id}`}>
+                <TableCell className="text-gray-600">{d.user_email}</TableCell>
                 <TableCell className="font-bold text-emerald-400">{fmtINR(d.amount)}</TableCell>
                 <TableCell>{d.method}</TableCell>
-                <TableCell className="text-xs text-slate-400">{d.upi_id || "—"}</TableCell>
-                <TableCell className="text-xs text-slate-400">{new Date(d.created_at).toLocaleString("en-IN")}</TableCell>
+                <TableCell className="text-xs text-gray-400">{d.upi_id || "—"}</TableCell>
+                <TableCell className="text-xs text-gray-400">{new Date(d.created_at).toLocaleString("en-IN")}</TableCell>
                 <TableCell className="space-x-1">
                   {d.status === "pending" && <>
                     <Button size="sm" onClick={()=>act(d.id, "approve")} className="rounded-full bg-emerald-500 text-black font-bold" data-testid={`approve-deposit-${d.id}`}>Approve</Button>
@@ -326,7 +326,7 @@ function DepositsTab(){
                 </TableCell>
               </TableRow>
             ))}
-            {rows.length === 0 && <TableRow><TableCell colSpan={6} className="text-center text-slate-500 py-6">No deposits.</TableCell></TableRow>}
+            {rows.length === 0 && <TableRow><TableCell colSpan={6} className="text-center text-gray-500 py-6">No deposits.</TableCell></TableRow>}
           </TableBody>
         </Table>
       </CardContent>
@@ -358,21 +358,21 @@ function WithdrawalsTab(){
   };
 
   return (
-    <Card className="glass-strong border-white/10 text-white mt-5">
+    <Card className="bg-white border-gray-200 shadow-sm text-gray-900 mt-5">
       <CardHeader className="flex flex-row items-center flex-wrap gap-3">
         <CardTitle>Withdrawals</CardTitle>
         <div className="flex gap-2 ml-auto flex-wrap">
           {["pending","approved","rejected","any"].map(s=>(
             <Button key={s} size="sm" onClick={()=>setStatus(s)} variant="outline"
-              className={`rounded-full capitalize border-white/20 ${status===s ? "bg-purple-600 border-purple-600 text-white" : "bg-white/5 text-slate-300"}`}
+              className={`rounded-full capitalize border-gray-300 ${status===s ? "bg-gradient-to-r from-red-700 to-black border-red-700 text-white" : "bg-gray-100 text-gray-600"}`}
               data-testid={`wd-filter-${s}`}>{s}</Button>
           ))}
-          <Button size="sm" onClick={load} variant="outline" className="rounded-full border-white/20 bg-white/5 text-slate-300">Refresh</Button>
+          <Button size="sm" onClick={load} variant="outline" className="rounded-full border-gray-300 bg-gray-100 text-gray-600">Refresh</Button>
         </div>
       </CardHeader>
       <CardContent className="overflow-x-auto">
         <Table>
-          <TableHeader><TableRow className="border-white/10">
+          <TableHeader><TableRow className="border-gray-200">
             <TableHead>User</TableHead>
             <TableHead>Amount</TableHead>
             <TableHead>UPI ID</TableHead>
@@ -383,14 +383,14 @@ function WithdrawalsTab(){
           <TableBody>
             {rows.map(d => (
               <React.Fragment key={d.id}>
-                <TableRow className="border-white/10" data-testid={`withdraw-row-${d.id}`}>
+                <TableRow className="border-gray-200" data-testid={`withdraw-row-${d.id}`}>
                   <TableCell>
                     <div className="font-medium">{d.user?.name || d.user_email}</div>
-                    <div className="text-xs text-slate-400">{d.user?.email || d.user_email}</div>
+                    <div className="text-xs text-gray-400">{d.user?.email || d.user_email}</div>
                   </TableCell>
-                  <TableCell className="font-bold text-purple-300">{fmtINR(d.amount)}</TableCell>
-                  <TableCell className="text-slate-300 font-mono text-sm">{d.upi_id}</TableCell>
-                  <TableCell className="text-xs text-slate-400">{new Date(d.created_at).toLocaleString("en-IN")}</TableCell>
+                  <TableCell className="font-bold text-red-700">{fmtINR(d.amount)}</TableCell>
+                  <TableCell className="text-gray-600 font-mono text-sm">{d.upi_id}</TableCell>
+                  <TableCell className="text-xs text-gray-400">{new Date(d.created_at).toLocaleString("en-IN")}</TableCell>
                   <TableCell>
                     <Badge variant="outline" className={`uppercase text-xs font-bold px-2 py-0.5 ${d.status==="approved" ? "border-emerald-500/40 text-emerald-300" : d.status==="rejected" ? "border-red-500/40 text-red-300" : "border-amber-500/40 text-amber-300"}`}>
                       {d.status}
@@ -405,20 +405,20 @@ function WithdrawalsTab(){
                   </TableCell>
                 </TableRow>
                 {rejectState.id === d.id && (
-                  <TableRow className="border-white/5 bg-red-500/5">
+                  <TableRow className="border-gray-100 bg-red-500/5">
                     <TableCell colSpan={6} className="py-3">
                       <div className="flex gap-2 flex-wrap items-center">
                         <Input value={rejectState.reason} onChange={e=>setRejectState(p=>({...p,reason:e.target.value}))}
-                          placeholder="Rejection reason (required)" className="flex-1 bg-black/40 border-red-500/30 text-white min-w-[220px]" data-testid="wd-reject-reason" />
+                          placeholder="Rejection reason (required)" className="flex-1 bg-gray-50 border-red-400 text-gray-900 min-w-[220px]" data-testid="wd-reject-reason" />
                         <Button onClick={reject} className="rounded-full bg-red-500 text-white font-bold" data-testid="wd-reject-confirm">Confirm Reject</Button>
-                        <Button onClick={()=>setRejectState({id:null,reason:""})} variant="outline" className="rounded-full border-white/20 bg-white/5 text-slate-300">Cancel</Button>
+                        <Button onClick={()=>setRejectState({id:null,reason:""})} variant="outline" className="rounded-full border-gray-300 bg-gray-100 text-gray-600">Cancel</Button>
                       </div>
                     </TableCell>
                   </TableRow>
                 )}
               </React.Fragment>
             ))}
-            {rows.length === 0 && <TableRow><TableCell colSpan={6} className="text-center text-slate-500 py-6">No {status} withdrawals.</TableCell></TableRow>}
+            {rows.length === 0 && <TableRow><TableCell colSpan={6} className="text-center text-gray-500 py-6">No {status} withdrawals.</TableCell></TableRow>}
           </TableBody>
         </Table>
       </CardContent>
@@ -437,26 +437,26 @@ function MatchesTab({ actor }){
     catch (e) { toast.error(formatApiError(e.response?.data?.detail) || e.message); }
   };
   return (
-    <Card className="glass-strong border-white/10 text-white mt-5">
+    <Card className="bg-white border-gray-200 shadow-sm text-gray-900 mt-5">
       <CardHeader className="flex flex-row items-center"><CardTitle>Matches</CardTitle>
         <Select value={status} onValueChange={setStatus}>
-          <SelectTrigger className="ml-auto bg-black/40 border-white/10 text-white w-44" data-testid="match-status-filter"><SelectValue /></SelectTrigger>
-          <SelectContent className="bg-[#0F0F14] border-white/10 text-white">
+          <SelectTrigger className="ml-auto bg-gray-50 border-gray-300 text-gray-900 w-44" data-testid="match-status-filter"><SelectValue /></SelectTrigger>
+          <SelectContent className="bg-white border-gray-200 text-gray-900">
             {["", "waiting","in_progress","awaiting_review","disputed","ended","cancelled"].map(s=> <SelectItem key={s||"any"} value={s||"any"}>{s || "any"}</SelectItem>)}
           </SelectContent>
         </Select>
       </CardHeader>
       <CardContent className="overflow-x-auto">
         <Table>
-          <TableHeader><TableRow className="border-white/10"><TableHead>Table</TableHead><TableHead>Stake</TableHead><TableHead>Players</TableHead><TableHead>Status</TableHead><TableHead>Created</TableHead><TableHead>Actions</TableHead></TableRow></TableHeader>
+          <TableHeader><TableRow className="border-gray-200"><TableHead>Table</TableHead><TableHead>Stake</TableHead><TableHead>Players</TableHead><TableHead>Status</TableHead><TableHead>Created</TableHead><TableHead>Actions</TableHead></TableRow></TableHeader>
           <TableBody>
             {rows.map(m => (
-              <TableRow key={m.id} className="border-white/10" data-testid={`match-row-${m.id}`}>
+              <TableRow key={m.id} className="border-gray-200" data-testid={`match-row-${m.id}`}>
                 <TableCell>{m.label}</TableCell>
                 <TableCell className="font-bold">{fmtINR(m.stake)}</TableCell>
-                <TableCell className="text-slate-300 text-xs">{(m.players || []).map(p=>p.name).join(" vs ")}</TableCell>
-                <TableCell><Badge variant="outline" className="border-purple-500/30 text-purple-300">{m.status}</Badge></TableCell>
-                <TableCell className="text-xs text-slate-400">{new Date(m.created_at).toLocaleString("en-IN")}</TableCell>
+                <TableCell className="text-gray-600 text-xs">{(m.players || []).map(p=>p.name).join(" vs ")}</TableCell>
+                <TableCell><Badge variant="outline" className="border-purple-500/30 text-red-700">{m.status}</Badge></TableCell>
+                <TableCell className="text-xs text-gray-400">{new Date(m.created_at).toLocaleString("en-IN")}</TableCell>
                 <TableCell className="space-x-1">
                   {canDecide && !["ended","cancelled"].includes(m.status) && (m.players || []).map(p => (
                     <Button key={p.id} size="sm" onClick={()=>decide(m, p.id, false)} variant="outline" className="rounded-full border-emerald-500/30 text-emerald-300" data-testid={`decide-${m.id}-${p.id}`}>{p.name} won</Button>
@@ -467,7 +467,7 @@ function MatchesTab({ actor }){
                 </TableCell>
               </TableRow>
             ))}
-            {rows.length === 0 && <TableRow><TableCell colSpan={6} className="text-center text-slate-500 py-6">No matches.</TableCell></TableRow>}
+            {rows.length === 0 && <TableRow><TableCell colSpan={6} className="text-center text-gray-500 py-6">No matches.</TableCell></TableRow>}
           </TableBody>
         </Table>
       </CardContent>
@@ -488,21 +488,21 @@ function PromosTab(){
   };
   const del = async (c) => { try { await api.delete(`/admin/promos/${c}`); toast.success("Deleted"); load(); } catch (e) { toast.error(formatApiError(e.response?.data?.detail) || e.message); } };
   return (
-    <Card className="glass-strong border-white/10 text-white mt-5">
+    <Card className="bg-white border-gray-200 shadow-sm text-gray-900 mt-5">
       <CardHeader><CardTitle>Promo codes</CardTitle></CardHeader>
       <CardContent>
         <div className="grid sm:grid-cols-4 gap-2">
-          <Input value={code} onChange={e=>setCode(e.target.value.toUpperCase())} className="bg-black/40 border-white/10 text-white" placeholder="CODE" data-testid="promo-code-input" />
-          <Input type="number" value={amount} onChange={e=>setAmount(e.target.value)} className="bg-black/40 border-white/10 text-white" placeholder="Amount" data-testid="promo-amount-input" />
-          <Input type="number" value={maxR} onChange={e=>setMaxR(e.target.value)} className="bg-black/40 border-white/10 text-white" placeholder="Max redemptions" data-testid="promo-max-input" />
-          <Button onClick={create} className="rounded-full bg-gradient-to-r from-purple-600 to-blue-600 text-white" data-testid="promo-create-btn">Create</Button>
+          <Input value={code} onChange={e=>setCode(e.target.value.toUpperCase())} className="bg-gray-50 border-gray-300 text-gray-900" placeholder="CODE" data-testid="promo-code-input" />
+          <Input type="number" value={amount} onChange={e=>setAmount(e.target.value)} className="bg-gray-50 border-gray-300 text-gray-900" placeholder="Amount" data-testid="promo-amount-input" />
+          <Input type="number" value={maxR} onChange={e=>setMaxR(e.target.value)} className="bg-gray-50 border-gray-300 text-gray-900" placeholder="Max redemptions" data-testid="promo-max-input" />
+          <Button onClick={create} className="rounded-full bg-gradient-to-r from-red-700 to-black text-white" data-testid="promo-create-btn">Create</Button>
         </div>
-        <div className="mt-5 divide-y divide-white/5">
+        <div className="mt-5 divide-y divide-gray-100">
           {rows.map(p => (
             <div key={p.code} className="py-3 flex items-center justify-between" data-testid={`promo-row-${p.code}`}>
               <div>
                 <div className="font-semibold">{p.code} <Badge variant="outline" className="ml-2 border-emerald-500/30 text-emerald-300">{fmtINR(p.amount)}</Badge></div>
-                <div className="text-xs text-slate-400">{(p.redeemed_by||[]).length}/{p.max_redemptions} redeemed</div>
+                <div className="text-xs text-gray-400">{(p.redeemed_by||[]).length}/{p.max_redemptions} redeemed</div>
               </div>
               <Button onClick={()=>del(p.code)} size="sm" variant="outline" className="rounded-full border-red-500/30 text-red-300" data-testid={`promo-delete-${p.code}`}>Delete</Button>
             </div>
@@ -525,31 +525,31 @@ function BroadcastsTab(){
     catch (e) { toast.error(formatApiError(e.response?.data?.detail) || e.message); }
   };
   return (
-    <Card className="glass-strong border-white/10 text-white mt-5">
+    <Card className="bg-white border-gray-200 shadow-sm text-gray-900 mt-5">
       <CardHeader><CardTitle>Broadcasts</CardTitle></CardHeader>
       <CardContent className="space-y-3">
-        <Input value={title} onChange={e=>setTitle(e.target.value)} placeholder="Title" className="bg-black/40 border-white/10 text-white" data-testid="bc-title" />
-        <Textarea value={msg} onChange={e=>setMsg(e.target.value)} placeholder="Message" className="bg-black/40 border-white/10 text-white min-h-[80px]" data-testid="bc-msg" />
+        <Input value={title} onChange={e=>setTitle(e.target.value)} placeholder="Title" className="bg-gray-50 border-gray-300 text-gray-900" data-testid="bc-title" />
+        <Textarea value={msg} onChange={e=>setMsg(e.target.value)} placeholder="Message" className="bg-gray-50 border-gray-300 text-gray-900 min-h-[80px]" data-testid="bc-msg" />
         <div className="flex items-center gap-2">
           <Select value={aud} onValueChange={setAud}>
-            <SelectTrigger className="w-44 bg-black/40 border-white/10 text-white" data-testid="bc-aud"><SelectValue /></SelectTrigger>
-            <SelectContent className="bg-[#0F0F14] border-white/10 text-white">
+            <SelectTrigger className="w-44 bg-gray-50 border-gray-300 text-gray-900" data-testid="bc-aud"><SelectValue /></SelectTrigger>
+            <SelectContent className="bg-white border-gray-200 text-gray-900">
               <SelectItem value="all">all</SelectItem>
               <SelectItem value="vip">vip</SelectItem>
               <SelectItem value="admins">admins</SelectItem>
             </SelectContent>
           </Select>
-          <Button onClick={send} disabled={!title || !msg} className="rounded-full bg-gradient-to-r from-purple-600 to-blue-600 text-white" data-testid="bc-send">Send</Button>
+          <Button onClick={send} disabled={!title || !msg} className="rounded-full bg-gradient-to-r from-red-700 to-black text-white" data-testid="bc-send">Send</Button>
         </div>
-        <div className="mt-5 divide-y divide-white/5">
+        <div className="mt-5 divide-y divide-gray-100">
           {rows.map(b=>(
             <div key={b.id} className="py-3">
-              <div className="font-semibold">{b.title} <Badge variant="outline" className="ml-2 border-purple-500/30 text-purple-300">{b.audience}</Badge></div>
-              <div className="text-sm text-slate-300 mt-1">{b.message}</div>
-              <div className="text-xs text-slate-500 mt-1">{new Date(b.created_at).toLocaleString("en-IN")}</div>
+              <div className="font-semibold">{b.title} <Badge variant="outline" className="ml-2 border-purple-500/30 text-red-700">{b.audience}</Badge></div>
+              <div className="text-sm text-gray-600 mt-1">{b.message}</div>
+              <div className="text-xs text-gray-500 mt-1">{new Date(b.created_at).toLocaleString("en-IN")}</div>
             </div>
           ))}
-          {rows.length === 0 && <div className="text-slate-400 text-sm py-4">No broadcasts.</div>}
+          {rows.length === 0 && <div className="text-gray-400 text-sm py-4">No broadcasts.</div>}
         </div>
       </CardContent>
     </Card>
@@ -560,20 +560,20 @@ function LogsTab(){
   const [rows, setRows] = useState([]);
   useEffect(()=>{ api.get("/admin/activity-logs").then(r=>setRows(r.data.logs)).catch(()=>{}); }, []);
   return (
-    <Card className="glass-strong border-white/10 text-white mt-5">
+    <Card className="bg-white border-gray-200 shadow-sm text-gray-900 mt-5">
       <CardHeader><CardTitle>Activity & security logs</CardTitle></CardHeader>
-      <CardContent className="max-h-[600px] overflow-y-auto divide-y divide-white/5" data-testid="logs-list">
+      <CardContent className="max-h-[600px] overflow-y-auto divide-y divide-gray-100" data-testid="logs-list">
         {rows.map(l=>(
           <div key={l.id} className="py-2 text-sm">
             <div className="flex items-center justify-between">
               <span className="font-semibold">{l.action}</span>
-              <span className="text-xs text-slate-400">{new Date(l.created_at).toLocaleString("en-IN")}</span>
+              <span className="text-xs text-gray-400">{new Date(l.created_at).toLocaleString("en-IN")}</span>
             </div>
-            <div className="text-xs text-slate-400">{l.actor_email} ({l.actor_role}) → target: {l.target || "—"}</div>
-            {l.meta && Object.keys(l.meta).length > 0 && <div className="text-xs text-slate-500 mt-0.5 font-mono">{JSON.stringify(l.meta)}</div>}
+            <div className="text-xs text-gray-400">{l.actor_email} ({l.actor_role}) → target: {l.target || "—"}</div>
+            {l.meta && Object.keys(l.meta).length > 0 && <div className="text-xs text-gray-500 mt-0.5 font-mono">{JSON.stringify(l.meta)}</div>}
           </div>
         ))}
-        {rows.length === 0 && <div className="text-slate-400 text-sm py-4">No activity yet.</div>}
+        {rows.length === 0 && <div className="text-gray-400 text-sm py-4">No activity yet.</div>}
       </CardContent>
     </Card>
   );
@@ -587,21 +587,21 @@ function SettingsTab(){
     catch (e) { toast.error(formatApiError(e.response?.data?.detail) || e.message); }
   };
   return (
-    <Card className="glass-strong border-white/10 text-white mt-5">
+    <Card className="bg-white border-gray-200 shadow-sm text-gray-900 mt-5">
       <CardHeader><CardTitle>Master settings</CardTitle></CardHeader>
       <CardContent className="space-y-4">
-        <div className="flex items-center justify-between glass border-white/10 p-4 rounded-2xl">
+        <div className="flex items-center justify-between bg-gray-50 border-gray-200 p-4 rounded-2xl">
           <div>
             <div className="font-semibold">Maintenance mode</div>
-            <div className="text-xs text-slate-400">Disable site for non-admin users</div>
+            <div className="text-xs text-gray-400">Disable site for non-admin users</div>
           </div>
           <Switch checked={maint.enabled} onCheckedChange={(v)=>setMaint({...maint, enabled:v})} data-testid="maintenance-switch" />
         </div>
         <div>
-          <Label className="text-slate-300">Public message</Label>
-          <Input value={maint.message} onChange={e=>setMaint({...maint, message:e.target.value})} className="bg-black/40 border-white/10 text-white mt-1" data-testid="maintenance-message" />
+          <Label className="text-gray-600">Public message</Label>
+          <Input value={maint.message} onChange={e=>setMaint({...maint, message:e.target.value})} className="bg-gray-50 border-gray-300 text-gray-900 mt-1" data-testid="maintenance-message" />
         </div>
-        <Button onClick={save} className="rounded-full bg-gradient-to-r from-purple-600 to-blue-600 text-white" data-testid="maintenance-save">Save</Button>
+        <Button onClick={save} className="rounded-full bg-gradient-to-r from-red-700 to-black text-white" data-testid="maintenance-save">Save</Button>
       </CardContent>
     </Card>
   );
@@ -636,34 +636,34 @@ function TablesTab(){
     catch (e) { toast.error(formatApiError(e.response?.data?.detail) || e.message); }
   };
   return (
-    <Card className="glass-strong border-white/10 text-white mt-5">
+    <Card className="bg-white border-gray-200 shadow-sm text-gray-900 mt-5">
       <CardHeader className="flex flex-row items-center"><CardTitle>Match tables</CardTitle>
         <Button onClick={seedDefaults} className="ml-auto rounded-full bg-amber-500 text-black font-bold" data-testid="seed-defaults-btn">Seed 8 defaults</Button>
       </CardHeader>
       <CardContent>
         <div className="grid sm:grid-cols-5 gap-2 mb-4">
-          <Input type="number" placeholder="Stake (₹)" value={form.stake} onChange={e=>setForm({...form, stake:e.target.value})} className="bg-black/40 border-white/10 text-white" data-testid="table-stake" />
-          <Input placeholder="Label" value={form.label} onChange={e=>setForm({...form, label:e.target.value})} className="bg-black/40 border-white/10 text-white" data-testid="table-label" />
+          <Input type="number" placeholder="Stake (₹)" value={form.stake} onChange={e=>setForm({...form, stake:e.target.value})} className="bg-gray-50 border-gray-300 text-gray-900" data-testid="table-stake" />
+          <Input placeholder="Label" value={form.label} onChange={e=>setForm({...form, label:e.target.value})} className="bg-gray-50 border-gray-300 text-gray-900" data-testid="table-label" />
           <Select value={form.tier} onValueChange={v=>setForm({...form, tier:v})}>
-            <SelectTrigger className="bg-black/40 border-white/10 text-white" data-testid="table-tier"><SelectValue /></SelectTrigger>
-            <SelectContent className="bg-[#0F0F14] border-white/10 text-white">
+            <SelectTrigger className="bg-gray-50 border-gray-300 text-gray-900" data-testid="table-tier"><SelectValue /></SelectTrigger>
+            <SelectContent className="bg-white border-gray-200 text-gray-900">
               {["standard","premium","vip"].map(t=> <SelectItem key={t} value={t}>{t}</SelectItem>)}
             </SelectContent>
           </Select>
-          <div className="flex items-center gap-2 px-3 glass border-white/10 rounded-md">
-            <Label className="text-slate-300 text-xs">Active</Label>
+          <div className="flex items-center gap-2 px-3 bg-gray-50 border-gray-200 rounded-md">
+            <Label className="text-gray-600 text-xs">Active</Label>
             <Switch checked={form.active} onCheckedChange={v=>setForm({...form, active:v})} />
           </div>
-          <Button onClick={create} disabled={!form.stake || !form.label} className="rounded-full bg-gradient-to-r from-purple-600 to-blue-600 text-white" data-testid="table-create">Create</Button>
+          <Button onClick={create} disabled={!form.stake || !form.label} className="rounded-full bg-gradient-to-r from-red-700 to-black text-white" data-testid="table-create">Create</Button>
         </div>
         <Table>
-          <TableHeader><TableRow className="border-white/10"><TableHead>Stake</TableHead><TableHead>Label</TableHead><TableHead>Tier</TableHead><TableHead>Active</TableHead><TableHead>Actions</TableHead></TableRow></TableHeader>
+          <TableHeader><TableRow className="border-gray-200"><TableHead>Stake</TableHead><TableHead>Label</TableHead><TableHead>Tier</TableHead><TableHead>Active</TableHead><TableHead>Actions</TableHead></TableRow></TableHeader>
           <TableBody>
             {rows.map(t => (
-              <TableRow key={t.stake} className="border-white/10" data-testid={`table-row-${t.stake}`}>
+              <TableRow key={t.stake} className="border-gray-200" data-testid={`table-row-${t.stake}`}>
                 <TableCell className="font-bold">{fmtINR(t.stake)}</TableCell>
                 <TableCell>{t.label}</TableCell>
-                <TableCell><Badge variant="outline" className={`border-white/10 ${t.tier === "vip" ? "text-amber-300" : "text-purple-300"}`}>{t.tier}</Badge></TableCell>
+                <TableCell><Badge variant="outline" className={`border-gray-200 ${t.tier === "vip" ? "text-amber-300" : "text-red-700"}`}>{t.tier}</Badge></TableCell>
                 <TableCell>
                   <Switch checked={!!t.active} onCheckedChange={v=>update(t, { active: v })} data-testid={`table-toggle-${t.stake}`} />
                 </TableCell>
@@ -674,7 +674,7 @@ function TablesTab(){
                 </TableCell>
               </TableRow>
             ))}
-            {rows.length === 0 && <TableRow><TableCell colSpan={5} className="text-center text-slate-500 py-6">No custom tables. Seed defaults or create one above.</TableCell></TableRow>}
+            {rows.length === 0 && <TableRow><TableCell colSpan={5} className="text-center text-gray-500 py-6">No custom tables. Seed defaults or create one above.</TableCell></TableRow>}
           </TableBody>
         </Table>
       </CardContent>
@@ -705,28 +705,28 @@ function StaffTab(){
     catch (e) { toast.error(formatApiError(e.response?.data?.detail) || e.message); }
   };
   return (
-    <Card className="glass-strong border-white/10 text-white mt-5">
+    <Card className="bg-white border-gray-200 shadow-sm text-gray-900 mt-5">
       <CardHeader><CardTitle>Staff & roles</CardTitle></CardHeader>
       <CardContent>
         <div className="grid sm:grid-cols-5 gap-2 mb-4">
-          <Input placeholder="Name" value={form.name} onChange={e=>setForm({...form, name:e.target.value})} className="bg-black/40 border-white/10 text-white" data-testid="staff-name" />
-          <Input placeholder="Email" type="email" value={form.email} onChange={e=>setForm({...form, email:e.target.value})} className="bg-black/40 border-white/10 text-white" data-testid="staff-email" />
-          <Input placeholder="Password" type="password" value={form.password} onChange={e=>setForm({...form, password:e.target.value})} className="bg-black/40 border-white/10 text-white" data-testid="staff-password" />
+          <Input placeholder="Name" value={form.name} onChange={e=>setForm({...form, name:e.target.value})} className="bg-gray-50 border-gray-300 text-gray-900" data-testid="staff-name" />
+          <Input placeholder="Email" type="email" value={form.email} onChange={e=>setForm({...form, email:e.target.value})} className="bg-gray-50 border-gray-300 text-gray-900" data-testid="staff-email" />
+          <Input placeholder="Password" type="password" value={form.password} onChange={e=>setForm({...form, password:e.target.value})} className="bg-gray-50 border-gray-300 text-gray-900" data-testid="staff-password" />
           <Select value={form.role} onValueChange={v=>setForm({...form, role:v})}>
-            <SelectTrigger className="bg-black/40 border-white/10 text-white" data-testid="staff-role"><SelectValue /></SelectTrigger>
-            <SelectContent className="bg-[#0F0F14] border-white/10 text-white">
+            <SelectTrigger className="bg-gray-50 border-gray-300 text-gray-900" data-testid="staff-role"><SelectValue /></SelectTrigger>
+            <SelectContent className="bg-white border-gray-200 text-gray-900">
               {["support_agent","staff_manager","admin"].map(r=> <SelectItem key={r} value={r}>{r}</SelectItem>)}
             </SelectContent>
           </Select>
-          <Button onClick={create} disabled={!form.email || form.password.length < 6 || form.name.length < 2} className="rounded-full bg-gradient-to-r from-purple-600 to-blue-600 text-white" data-testid="staff-create">Create staff</Button>
+          <Button onClick={create} disabled={!form.email || form.password.length < 6 || form.name.length < 2} className="rounded-full bg-gradient-to-r from-red-700 to-black text-white" data-testid="staff-create">Create staff</Button>
         </div>
         <Table>
-          <TableHeader><TableRow className="border-white/10"><TableHead>Name</TableHead><TableHead>Email</TableHead><TableHead>Role</TableHead><TableHead>Actions</TableHead></TableRow></TableHeader>
+          <TableHeader><TableRow className="border-gray-200"><TableHead>Name</TableHead><TableHead>Email</TableHead><TableHead>Role</TableHead><TableHead>Actions</TableHead></TableRow></TableHeader>
           <TableBody>
             {rows.map(u => (
-              <TableRow key={u.id} className="border-white/10" data-testid={`staff-row-${u.email}`}>
+              <TableRow key={u.id} className="border-gray-200" data-testid={`staff-row-${u.email}`}>
                 <TableCell>{u.name} {u.is_master_owner && <Badge className="ml-1 bg-amber-500 text-black text-[10px]"><Lock className="w-3 h-3 mr-0.5" />MASTER</Badge>}</TableCell>
-                <TableCell className="text-slate-400">{u.email}</TableCell>
+                <TableCell className="text-gray-400">{u.email}</TableCell>
                 <TableCell><Badge variant="outline" className="border-amber-500/30 text-amber-300">{u.role}</Badge></TableCell>
                 <TableCell>
                   {!u.is_master_owner && (
@@ -735,7 +735,7 @@ function StaffTab(){
                 </TableCell>
               </TableRow>
             ))}
-            {rows.length === 0 && <TableRow><TableCell colSpan={4} className="text-center text-slate-500 py-6">No staff yet.</TableCell></TableRow>}
+            {rows.length === 0 && <TableRow><TableCell colSpan={4} className="text-center text-gray-500 py-6">No staff yet.</TableCell></TableRow>}
           </TableBody>
         </Table>
       </CardContent>
@@ -783,38 +783,38 @@ function ScreenshotsTab() {
   };
 
   return (
-    <Card className="glass-strong border-white/10 text-white mt-5">
+    <Card className="bg-white border-gray-200 shadow-sm text-gray-900 mt-5">
       <CardHeader className="flex flex-row items-center gap-3 flex-wrap">
         <CardTitle>Screenshot Reviews</CardTitle>
         <div className="flex gap-2 ml-auto flex-wrap">
           {["pending","approved","rejected","any"].map(s => (
             <Button key={s} size="sm" onClick={() => setFilter(s)} variant="outline"
-              className={`rounded-full capitalize border-white/20 ${filter === s ? "bg-purple-600 border-purple-600 text-white" : "bg-white/5 text-slate-300"}`}
+              className={`rounded-full capitalize border-gray-300 ${filter === s ? "bg-gradient-to-r from-red-700 to-black border-red-700 text-white" : "bg-gray-100 text-gray-600"}`}
               data-testid={`ss-filter-${s}`}>
               {s}
             </Button>
           ))}
-          <Button size="sm" onClick={load} variant="outline" className="rounded-full border-white/20 bg-white/5 text-slate-300" data-testid="ss-refresh">Refresh</Button>
+          <Button size="sm" onClick={load} variant="outline" className="rounded-full border-gray-300 bg-gray-100 text-gray-600" data-testid="ss-refresh">Refresh</Button>
         </div>
       </CardHeader>
       <CardContent>
         {loading ? (
-          <div className="text-slate-400 text-center py-10">Loading…</div>
+          <div className="text-gray-400 text-center py-10">Loading…</div>
         ) : screenshots.length === 0 ? (
-          <div className="text-slate-500 text-center py-10 border border-white/5 rounded-xl">No {filter} screenshots found.</div>
+          <div className="text-gray-500 text-center py-10 border border-gray-100 rounded-xl">No {filter} screenshots found.</div>
         ) : (
           <div className="flex flex-col gap-4">
             {screenshots.map(ss => (
-              <div key={ss.id} className="rounded-2xl bg-black/30 border border-white/10 p-5" data-testid={`ss-row-${ss.id}`}>
+              <div key={ss.id} className="rounded-2xl bg-gray-50 border border-gray-200 p-5" data-testid={`ss-row-${ss.id}`}>
                 <div className="flex justify-between items-start flex-wrap gap-3 mb-4">
                   <div>
-                    <div className="font-semibold">{ss.user?.name || "Unknown"} <span className="text-slate-400 text-sm font-normal">{ss.user?.email}</span></div>
-                    {ss.match_id && <div className="text-slate-400 text-xs mt-0.5">Match: {ss.match_id}</div>}
+                    <div className="font-semibold">{ss.user?.name || "Unknown"} <span className="text-gray-400 text-sm font-normal">{ss.user?.email}</span></div>
+                    {ss.match_id && <div className="text-gray-400 text-xs mt-0.5">Match: {ss.match_id}</div>}
                     <div className="flex gap-4 mt-1 text-sm flex-wrap">
                       <span className="text-amber-400">Claimed: ₹{ss.amount || 0}</span>
                       <span className="text-emerald-400">Net (−10%): ₹{ss.net_prize || 0}</span>
                     </div>
-                    <div className="text-slate-500 text-xs mt-1">{new Date(ss.created_at).toLocaleString("en-IN")}</div>
+                    <div className="text-gray-500 text-xs mt-1">{new Date(ss.created_at).toLocaleString("en-IN")}</div>
                   </div>
                   <Badge variant="outline" style={{ borderColor: SS_STATUS_COLORS[ss.status] + "44", color: SS_STATUS_COLORS[ss.status], background: SS_STATUS_COLORS[ss.status] + "22" }} className="uppercase text-xs font-bold px-3 py-1">
                     {ss.status}
@@ -825,7 +825,7 @@ function ScreenshotsTab() {
                   <div className="mb-4">
                     <div className="relative inline-block w-full">
                       <img src={ss.url} alt="Match screenshot" onClick={() => setZoomedUrl(ss.url)}
-                        className="w-full max-h-64 object-contain rounded-xl border border-white/10 bg-black/40 cursor-zoom-in" />
+                        className="w-full max-h-64 object-contain rounded-xl border border-gray-200 bg-gray-100 cursor-zoom-in" />
                       <button onClick={() => setZoomedUrl(ss.url)} className="absolute top-2 right-2 bg-black/60 rounded-full p-1.5 text-white">
                         <ZoomIn className="w-4 h-4" />
                       </button>
@@ -853,9 +853,9 @@ function ScreenshotsTab() {
                 {rejectState.id === ss.id && (
                   <div className="mt-3 flex gap-2 flex-wrap">
                     <Input value={rejectState.reason} onChange={e => setRejectState(p => ({ ...p, reason: e.target.value }))}
-                      placeholder="Rejection reason (required)" className="flex-1 bg-black/40 border-red-500/30 text-white min-w-[200px]" data-testid="ss-reject-reason" />
+                      placeholder="Rejection reason (required)" className="flex-1 bg-gray-50 border-red-400 text-gray-900 min-w-[200px]" data-testid="ss-reject-reason" />
                     <Button onClick={reject} className="rounded-full bg-red-500 text-white font-bold" data-testid="ss-reject-confirm">Confirm</Button>
-                    <Button onClick={() => setRejectState({ id: null, reason: "" })} variant="outline" className="rounded-full border-white/20 bg-white/5 text-slate-300">Cancel</Button>
+                    <Button onClick={() => setRejectState({ id: null, reason: "" })} variant="outline" className="rounded-full border-gray-300 bg-gray-100 text-gray-600">Cancel</Button>
                   </div>
                 )}
               </div>
@@ -897,14 +897,14 @@ function ReferralsTab() {
   return (
     <div className="mt-5 space-y-6">
       {/* Top referrers */}
-      <Card className="glass-strong border-white/10 text-white">
+      <Card className="bg-white border-gray-200 shadow-sm text-gray-900">
         <CardHeader className="flex flex-row items-center">
           <CardTitle>Top Referrers</CardTitle>
-          <Button size="sm" onClick={load} variant="outline" className="ml-auto rounded-full border-white/20 bg-white/5 text-slate-300">Refresh</Button>
+          <Button size="sm" onClick={load} variant="outline" className="ml-auto rounded-full border-gray-300 bg-gray-100 text-gray-600">Refresh</Button>
         </CardHeader>
         <CardContent className="overflow-x-auto">
           <Table>
-            <TableHeader><TableRow className="border-white/10">
+            <TableHeader><TableRow className="border-gray-200">
               <TableHead>#</TableHead>
               <TableHead>Name</TableHead>
               <TableHead>Email</TableHead>
@@ -913,16 +913,16 @@ function ReferralsTab() {
             </TableRow></TableHeader>
             <TableBody>
               {top.map((u, i) => (
-                <TableRow key={u._id} className="border-white/10">
+                <TableRow key={u._id} className="border-gray-200">
                   <TableCell className="text-amber-400 font-bold">{i + 1}</TableCell>
                   <TableCell className="font-medium">{u.name}</TableCell>
-                  <TableCell className="text-slate-400 text-sm">{u.email}</TableCell>
+                  <TableCell className="text-gray-400 text-sm">{u.email}</TableCell>
                   <TableCell>{u.count}</TableCell>
                   <TableCell className="text-emerald-400 font-bold">{fmtINR(u.total_earned)}</TableCell>
                 </TableRow>
               ))}
               {top.length === 0 && !loading && (
-                <TableRow><TableCell colSpan={5} className="text-center text-slate-500 py-6">No referrals yet.</TableCell></TableRow>
+                <TableRow><TableCell colSpan={5} className="text-center text-gray-500 py-6">No referrals yet.</TableCell></TableRow>
               )}
             </TableBody>
           </Table>
@@ -930,16 +930,16 @@ function ReferralsTab() {
       </Card>
 
       {/* All referrals */}
-      <Card className="glass-strong border-white/10 text-white">
+      <Card className="bg-white border-gray-200 shadow-sm text-gray-900">
         <CardHeader>
           <CardTitle>All Referrals</CardTitle>
         </CardHeader>
         <CardContent className="overflow-x-auto">
           {loading ? (
-            <div className="text-slate-400 text-center py-8">Loading…</div>
+            <div className="text-gray-400 text-center py-8">Loading…</div>
           ) : (
             <Table>
-              <TableHeader><TableRow className="border-white/10">
+              <TableHeader><TableRow className="border-gray-200">
                 <TableHead>Referrer</TableHead>
                 <TableHead>Referred</TableHead>
                 <TableHead>Code</TableHead>
@@ -949,27 +949,27 @@ function ReferralsTab() {
               </TableRow></TableHeader>
               <TableBody>
                 {refs.map(r => (
-                  <TableRow key={r.id} className="border-white/10" data-testid={`ref-row-${r.id}`}>
+                  <TableRow key={r.id} className="border-gray-200" data-testid={`ref-row-${r.id}`}>
                     <TableCell>
                       <div className="font-medium text-sm">{r.referrer?.name}</div>
-                      <div className="text-xs text-slate-400">{r.referrer?.email}</div>
+                      <div className="text-xs text-gray-400">{r.referrer?.email}</div>
                     </TableCell>
                     <TableCell>
                       <div className="font-medium text-sm">{r.referred?.name}</div>
-                      <div className="text-xs text-slate-400">{r.referred?.email}</div>
+                      <div className="text-xs text-gray-400">{r.referred?.email}</div>
                     </TableCell>
-                    <TableCell className="font-mono text-sm text-purple-300">{r.referral_code}</TableCell>
+                    <TableCell className="font-mono text-sm text-red-700">{r.referral_code}</TableCell>
                     <TableCell className="text-emerald-400 font-bold">{fmtINR(r.commission_earned)}</TableCell>
                     <TableCell>
                       <Badge variant="outline" className={r.status === "credited" ? "border-emerald-500/30 text-emerald-300" : "border-amber-500/30 text-amber-300"}>
                         {r.status}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-xs text-slate-400">{new Date(r.created_at).toLocaleDateString("en-IN")}</TableCell>
+                    <TableCell className="text-xs text-gray-400">{new Date(r.created_at).toLocaleDateString("en-IN")}</TableCell>
                   </TableRow>
                 ))}
                 {refs.length === 0 && (
-                  <TableRow><TableCell colSpan={6} className="text-center text-slate-500 py-6">No referrals recorded.</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={6} className="text-center text-gray-500 py-6">No referrals recorded.</TableCell></TableRow>
                 )}
               </TableBody>
             </Table>
@@ -1026,25 +1026,25 @@ function KycTab() {
   };
 
   return (
-    <Card className="glass-strong border-white/10 text-white mt-5">
+    <Card className="bg-white border-gray-200 shadow-sm text-gray-900 mt-5">
       <CardHeader className="flex flex-row items-center gap-3 flex-wrap">
         <CardTitle>KYC Verifications</CardTitle>
         <div className="flex gap-2 ml-auto flex-wrap">
           {["pending","approved","rejected","any"].map(s => (
             <Button key={s} size="sm" onClick={() => setFilter(s)} variant="outline"
-              className={`rounded-full capitalize border-white/20 ${filter === s ? "bg-purple-600 border-purple-600 text-white" : "bg-white/5 text-slate-300"}`}
+              className={`rounded-full capitalize border-gray-300 ${filter === s ? "bg-gradient-to-r from-red-700 to-black border-red-700 text-white" : "bg-gray-100 text-gray-600"}`}
               data-testid={`kyc-filter-${s}`}>
               {s}
             </Button>
           ))}
-          <Button size="sm" onClick={load} variant="outline" className="rounded-full border-white/20 bg-white/5 text-slate-300" data-testid="kyc-refresh">Refresh</Button>
+          <Button size="sm" onClick={load} variant="outline" className="rounded-full border-gray-300 bg-gray-100 text-gray-600" data-testid="kyc-refresh">Refresh</Button>
         </div>
       </CardHeader>
       <CardContent>
         {loading ? (
-          <div className="text-slate-400 text-center py-10">Loading…</div>
+          <div className="text-gray-400 text-center py-10">Loading…</div>
         ) : rows.length === 0 ? (
-          <div className="text-slate-500 text-center py-10 border border-white/5 rounded-xl">No {filter} KYC submissions.</div>
+          <div className="text-gray-500 text-center py-10 border border-gray-100 rounded-xl">No {filter} KYC submissions.</div>
         ) : (
           <div className="flex flex-col gap-5">
             {rows.map(k => {
@@ -1053,18 +1053,18 @@ function KycTab() {
               const backendBase = (window.location.hostname === "localhost") ? "http://localhost:5000" : "";
               const docUrl = (path) => path ? `${backendBase}/uploads/kyc/${path.split("/").pop()}` : null;
               return (
-                <div key={k.id} className="rounded-2xl bg-black/30 border border-white/10 p-5" data-testid={`kyc-row-${k.id}`}>
+                <div key={k.id} className="rounded-2xl bg-gray-50 border border-gray-200 p-5" data-testid={`kyc-row-${k.id}`}>
                   <div className="flex justify-between items-start flex-wrap gap-3 mb-4">
                     <div>
                       <div className="font-semibold text-base">{k.user?.name || "Unknown"}
-                        <span className="text-slate-400 text-sm font-normal ml-2">{k.user?.email}</span>
+                        <span className="text-gray-400 text-sm font-normal ml-2">{k.user?.email}</span>
                       </div>
-                      <div className="text-slate-400 text-sm mt-1">
+                      <div className="text-gray-400 text-sm mt-1">
                         Aadhaar: <span className="font-mono text-white">{k.aadhaar_number || "—"}</span>
                         <span className="mx-2 text-slate-600">·</span>
                         PAN: <span className="font-mono text-white">{k.pan_number || "—"}</span>
                       </div>
-                      <div className="text-slate-500 text-xs mt-1">{new Date(k.createdAt).toLocaleString("en-IN")}</div>
+                      <div className="text-gray-500 text-xs mt-1">{new Date(k.createdAt).toLocaleString("en-IN")}</div>
                     </div>
                     <Badge variant="outline" style={{ borderColor: sc.border, color: sc.color, background: sc.bg }} className="uppercase text-xs font-bold px-3 py-1 flex items-center gap-1">
                       <StatusIcon className="w-3 h-3" /> {k.status}
@@ -1078,17 +1078,17 @@ function KycTab() {
                       { label: "PAN Card", url: docUrl(k.pan_card) },
                     ].map(doc => (
                       <div key={doc.label}>
-                        <div className="text-xs text-slate-400 mb-1">{doc.label}</div>
+                        <div className="text-xs text-gray-400 mb-1">{doc.label}</div>
                         {doc.url ? (
                           <div className="relative cursor-zoom-in" onClick={() => setZoomedUrl(doc.url)}>
                             <img src={doc.url} alt={doc.label}
-                              className="w-full h-28 object-contain rounded-xl border border-white/10 bg-black/40" />
+                              className="w-full h-28 object-contain rounded-xl border border-gray-200 bg-gray-50" />
                             <button className="absolute top-1 right-1 bg-black/60 rounded-full p-1 text-white">
                               <ZoomIn className="w-3.5 h-3.5" />
                             </button>
                           </div>
                         ) : (
-                          <div className="w-full h-28 rounded-xl border border-white/10 bg-white/5 flex items-center justify-center text-slate-500 text-xs">Not provided</div>
+                          <div className="w-full h-28 rounded-xl border border-gray-200 bg-gray-100 flex items-center justify-center text-gray-500 text-xs">Not provided</div>
                         )}
                       </div>
                     ))}
@@ -1114,9 +1114,9 @@ function KycTab() {
                   {rejectState.id === k.id && (
                     <div className="mt-3 flex gap-2 flex-wrap">
                       <Input value={rejectState.reason} onChange={e => setRejectState(p => ({ ...p, reason: e.target.value }))}
-                        placeholder="Rejection reason (required)" className="flex-1 bg-black/40 border-red-500/30 text-white min-w-[200px]" data-testid="kyc-reject-reason" />
+                        placeholder="Rejection reason (required)" className="flex-1 bg-gray-50 border-red-400 text-gray-900 min-w-[200px]" data-testid="kyc-reject-reason" />
                       <Button onClick={reject} className="rounded-full bg-red-500 text-white font-bold" data-testid="kyc-reject-confirm">Confirm</Button>
-                      <Button onClick={() => setRejectState({ id: null, reason: "" })} variant="outline" className="rounded-full border-white/20 bg-white/5 text-slate-300">Cancel</Button>
+                      <Button onClick={() => setRejectState({ id: null, reason: "" })} variant="outline" className="rounded-full border-gray-300 bg-gray-100 text-gray-600">Cancel</Button>
                     </div>
                   )}
                 </div>
@@ -1169,21 +1169,21 @@ function PenaltyBonusTab({ actor }) {
   };
 
   return (
-    <Card className="glass-strong border-white/10 text-white mt-5">
+    <Card className="bg-white border-gray-200 shadow-sm text-gray-900 mt-5">
       <CardHeader><CardTitle>Penalty / Bonus</CardTitle></CardHeader>
       <CardContent className="space-y-4">
         <div className="flex gap-2">
-          <Input placeholder="Search user by email or name" value={q} onChange={e => setQ(e.target.value)} onKeyDown={e => e.key === "Enter" && search()} className="bg-black/40 border-white/10 text-white" />
-          <Button onClick={search} className="rounded-full bg-purple-600 text-white">Search</Button>
+          <Input placeholder="Search user by email or name" value={q} onChange={e => setQ(e.target.value)} onKeyDown={e => e.key === "Enter" && search()} className="bg-gray-50 border-gray-300 text-gray-900" />
+          <Button onClick={search} className="rounded-full bg-gradient-to-r from-red-700 to-black text-white">Search</Button>
         </div>
         {users.length > 0 && (
-          <div className="divide-y divide-white/5 border border-white/10 rounded-xl overflow-hidden">
+          <div className="divide-y divide-gray-100 border border-gray-200 rounded-xl overflow-hidden">
             {users.slice(0, 8).map(u => (
               <button key={u.id} onClick={() => { setSel(u); setUsers([]); }}
-                className="w-full text-left px-4 py-3 hover:bg-white/5 flex items-center justify-between">
+                className="w-full text-left px-4 py-3 hover:bg-gray-50 flex items-center justify-between">
                 <div>
                   <div className="font-medium">{u.name}</div>
-                  <div className="text-xs text-slate-400">{u.email}</div>
+                  <div className="text-xs text-gray-400">{u.email}</div>
                 </div>
                 <div className="text-sm text-emerald-400">{fmtINR((u.wallet?.deposit||0)+(u.wallet?.winning||0)+(u.wallet?.bonus||0))}</div>
               </button>
@@ -1191,14 +1191,14 @@ function PenaltyBonusTab({ actor }) {
           </div>
         )}
         {sel && (
-          <div className="rounded-2xl bg-black/40 border border-white/10 p-4 space-y-3">
-            <div className="font-semibold text-purple-300">{sel.name} — {sel.email}</div>
-            <div className="text-xs text-slate-400">
+          <div className="rounded-2xl bg-gray-50 border border-gray-200 p-4 space-y-3">
+            <div className="font-semibold text-red-700">{sel.name} — {sel.email}</div>
+            <div className="text-xs text-gray-400">
               Deposit: {fmtINR(sel.wallet?.deposit)} | Winning: {fmtINR(sel.wallet?.winning)} | Bonus: {fmtINR(sel.wallet?.bonus)}
             </div>
             <Select value={type} onValueChange={setType}>
-              <SelectTrigger className="bg-black/40 border-white/10 text-white"><SelectValue /></SelectTrigger>
-              <SelectContent className="bg-[#0F0F14] border-white/10 text-white">
+              <SelectTrigger className="bg-gray-50 border-gray-300 text-gray-900"><SelectValue /></SelectTrigger>
+              <SelectContent className="bg-white border-gray-200 text-gray-900">
                 <SelectItem value="bonus">Add Bonus</SelectItem>
                 <SelectItem value="add_winning">Add Winning</SelectItem>
                 <SelectItem value="penalty">Deduct from Deposit (Penalty)</SelectItem>
@@ -1206,19 +1206,19 @@ function PenaltyBonusTab({ actor }) {
             </Select>
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <Label className="text-slate-300 text-xs">Amount (₹)</Label>
-                <Input type="number" value={amount} onChange={e => setAmount(e.target.value)} className="bg-black/40 border-white/10 text-white mt-1" placeholder="0" />
+                <Label className="text-gray-600 text-xs">Amount (₹)</Label>
+                <Input type="number" value={amount} onChange={e => setAmount(e.target.value)} className="bg-gray-50 border-gray-300 text-gray-900 mt-1" placeholder="0" />
               </div>
               <div>
-                <Label className="text-slate-300 text-xs">Reason (required)</Label>
-                <Input value={reason} onChange={e => setReason(e.target.value)} className="bg-black/40 border-white/10 text-white mt-1" placeholder="Admin note" />
+                <Label className="text-gray-600 text-xs">Reason (required)</Label>
+                <Input value={reason} onChange={e => setReason(e.target.value)} className="bg-gray-50 border-gray-300 text-gray-900 mt-1" placeholder="Admin note" />
               </div>
             </div>
             <div className="flex gap-2">
-              <Button onClick={apply} disabled={busy || !amount || !reason.trim()} className="rounded-full bg-gradient-to-r from-purple-600 to-blue-600 text-white font-bold">
+              <Button onClick={apply} disabled={busy || !amount || !reason.trim()} className="rounded-full bg-gradient-to-r from-red-700 to-black text-white font-bold">
                 {busy ? "Applying…" : "Apply"}
               </Button>
-              <Button onClick={() => setSel(null)} variant="outline" className="rounded-full border-white/20 bg-white/5 text-white">Cancel</Button>
+              <Button onClick={() => setSel(null)} variant="outline" className="rounded-full border-gray-300 bg-gray-100 text-gray-700">Cancel</Button>
             </div>
           </div>
         )}
@@ -1250,20 +1250,20 @@ function ReferralSettingsTab() {
   };
 
   return (
-    <Card className="glass-strong border-white/10 text-white mt-5">
+    <Card className="bg-white border-gray-200 shadow-sm text-gray-900 mt-5">
       <CardHeader><CardTitle>Referral &amp; Contact Settings</CardTitle></CardHeader>
       <CardContent className="space-y-4 max-w-md">
         <div>
-          <Label className="text-slate-300">Referral Bonus Amount (₹)</Label>
-          <Input type="number" value={bonus} onChange={e => setBonus(e.target.value)} className="bg-black/40 border-white/10 text-white mt-1" />
-          <p className="text-xs text-slate-500 mt-1">Bonus credited to referrer when referred user joins</p>
+          <Label className="text-gray-600">Referral Bonus Amount (₹)</Label>
+          <Input type="number" value={bonus} onChange={e => setBonus(e.target.value)} className="bg-gray-50 border-gray-300 text-gray-900 mt-1" />
+          <p className="text-xs text-gray-500 mt-1">Bonus credited to referrer when referred user joins</p>
         </div>
         <div>
-          <Label className="text-slate-300">WhatsApp Number (with country code)</Label>
-          <Input value={wa} onChange={e => setWa(e.target.value)} className="bg-black/40 border-white/10 text-white mt-1" placeholder="919090000000" />
-          <p className="text-xs text-slate-500 mt-1">Used for the WhatsApp floating button (no + or spaces)</p>
+          <Label className="text-gray-600">WhatsApp Number (with country code)</Label>
+          <Input value={wa} onChange={e => setWa(e.target.value)} className="bg-gray-50 border-gray-300 text-gray-900 mt-1" placeholder="919090000000" />
+          <p className="text-xs text-gray-500 mt-1">Used for the WhatsApp floating button (no + or spaces)</p>
         </div>
-        <Button onClick={save} disabled={busy} className="rounded-full bg-gradient-to-r from-purple-600 to-blue-600 text-white font-bold">
+        <Button onClick={save} disabled={busy} className="rounded-full bg-gradient-to-r from-red-700 to-black text-white font-bold">
           {busy ? "Saving…" : "Save Settings"}
         </Button>
       </CardContent>
@@ -1294,36 +1294,36 @@ function BannersTab() {
   };
 
   return (
-    <Card className="glass-strong border-white/10 text-white mt-5">
+    <Card className="bg-white border-gray-200 shadow-sm text-gray-900 mt-5">
       <CardHeader><CardTitle>Banner Management</CardTitle></CardHeader>
       <CardContent className="space-y-4">
-        <div className="grid sm:grid-cols-2 gap-3 p-4 rounded-xl border border-white/10 bg-black/20">
+        <div className="grid sm:grid-cols-2 gap-3 p-4 rounded-xl border border-gray-200 bg-gray-50">
           <div>
-            <Label className="text-slate-300 text-xs">Title *</Label>
-            <Input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} className="bg-black/40 border-white/10 text-white mt-1" placeholder="e.g. Weekend Special!" />
+            <Label className="text-gray-600 text-xs">Title *</Label>
+            <Input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} className="bg-gray-50 border-gray-300 text-gray-900 mt-1" placeholder="e.g. Weekend Special!" />
           </div>
           <div>
-            <Label className="text-slate-300 text-xs">Subtitle</Label>
-            <Input value={form.subtitle} onChange={e => setForm(f => ({ ...f, subtitle: e.target.value }))} className="bg-black/40 border-white/10 text-white mt-1" placeholder="Short description" />
+            <Label className="text-gray-600 text-xs">Subtitle</Label>
+            <Input value={form.subtitle} onChange={e => setForm(f => ({ ...f, subtitle: e.target.value }))} className="bg-gray-50 border-gray-300 text-gray-900 mt-1" placeholder="Short description" />
           </div>
           <div>
-            <Label className="text-slate-300 text-xs">Image URL (optional)</Label>
-            <Input value={form.image_url} onChange={e => setForm(f => ({ ...f, image_url: e.target.value }))} className="bg-black/40 border-white/10 text-white mt-1" placeholder="https://..." />
+            <Label className="text-gray-600 text-xs">Image URL (optional)</Label>
+            <Input value={form.image_url} onChange={e => setForm(f => ({ ...f, image_url: e.target.value }))} className="bg-gray-50 border-gray-300 text-gray-900 mt-1" placeholder="https://..." />
           </div>
           <div>
-            <Label className="text-slate-300 text-xs">Link</Label>
-            <Input value={form.link} onChange={e => setForm(f => ({ ...f, link: e.target.value }))} className="bg-black/40 border-white/10 text-white mt-1" placeholder="/play" />
+            <Label className="text-gray-600 text-xs">Link</Label>
+            <Input value={form.link} onChange={e => setForm(f => ({ ...f, link: e.target.value }))} className="bg-gray-50 border-gray-300 text-gray-900 mt-1" placeholder="/play" />
           </div>
           <div>
-            <Label className="text-slate-300 text-xs">BG From (hex)</Label>
-            <Input value={form.bg_from} onChange={e => setForm(f => ({ ...f, bg_from: e.target.value }))} className="bg-black/40 border-white/10 text-white mt-1" />
+            <Label className="text-gray-600 text-xs">BG From (hex)</Label>
+            <Input value={form.bg_from} onChange={e => setForm(f => ({ ...f, bg_from: e.target.value }))} className="bg-gray-50 border-gray-300 text-gray-900 mt-1" />
           </div>
           <div>
-            <Label className="text-slate-300 text-xs">BG To (hex)</Label>
-            <Input value={form.bg_to} onChange={e => setForm(f => ({ ...f, bg_to: e.target.value }))} className="bg-black/40 border-white/10 text-white mt-1" />
+            <Label className="text-gray-600 text-xs">BG To (hex)</Label>
+            <Input value={form.bg_to} onChange={e => setForm(f => ({ ...f, bg_to: e.target.value }))} className="bg-gray-50 border-gray-300 text-gray-900 mt-1" />
           </div>
           <div className="flex items-end pb-1 col-span-full">
-            <Button onClick={create} className="rounded-full bg-gradient-to-r from-purple-600 to-blue-600 text-white font-bold">Create Banner</Button>
+            <Button onClick={create} className="rounded-full bg-gradient-to-r from-red-700 to-black text-white font-bold">Create Banner</Button>
           </div>
         </div>
         {form.title && (
@@ -1335,12 +1335,12 @@ function BannersTab() {
         )}
         <div className="space-y-3 mt-2">
           {banners.map(b => (
-            <div key={b.id} className="flex items-center gap-3 rounded-xl bg-black/30 border border-white/10 p-3">
+            <div key={b.id} className="flex items-center gap-3 rounded-xl bg-gray-50 border border-gray-200 p-3">
               <div className="w-12 h-12 rounded-xl flex-shrink-0" style={{ background: `linear-gradient(135deg, ${b.bg_from}, ${b.bg_to})` }} />
               <div className="flex-1 min-w-0">
                 <div className="font-semibold truncate">{b.title}</div>
-                {b.subtitle && <div className="text-xs text-slate-400 truncate">{b.subtitle}</div>}
-                <div className="text-xs text-slate-500">→ {b.link} · pos {b.position}</div>
+                {b.subtitle && <div className="text-xs text-gray-400 truncate">{b.subtitle}</div>}
+                <div className="text-xs text-gray-500">→ {b.link} · pos {b.position}</div>
               </div>
               <Switch checked={b.active} onCheckedChange={() => toggleBanner(b)} />
               <Button onClick={() => del(b.id)} size="sm" variant="outline" className="rounded-full border-red-500/30 text-red-300">
@@ -1348,7 +1348,7 @@ function BannersTab() {
               </Button>
             </div>
           ))}
-          {banners.length === 0 && <div className="text-slate-500 text-sm text-center py-6">No banners yet.</div>}
+          {banners.length === 0 && <div className="text-gray-500 text-sm text-center py-6">No banners yet.</div>}
         </div>
       </CardContent>
     </Card>
@@ -1398,38 +1398,38 @@ function SupportMgmtTab() {
     open: "border-blue-500/30 text-blue-300",
     in_progress: "border-amber-500/30 text-amber-300",
     resolved: "border-emerald-500/30 text-emerald-300",
-    closed: "border-slate-500/30 text-slate-400",
+    closed: "border-slate-500/30 text-gray-400",
   };
 
   return (
-    <Card className="glass-strong border-white/10 text-white mt-5">
+    <Card className="bg-white border-gray-200 shadow-sm text-gray-900 mt-5">
       <CardHeader className="flex flex-row items-center gap-3 flex-wrap">
         <CardTitle>Support Tickets</CardTitle>
         <div className="flex gap-2 ml-auto flex-wrap">
           {["open","in_progress","resolved","closed","any"].map(s => (
             <Button key={s} size="sm" onClick={() => setFilter(s)} variant="outline"
-              className={`rounded-full capitalize border-white/20 ${filter === s ? "bg-purple-600 border-purple-600 text-white" : "bg-white/5 text-slate-300"}`}>
+              className={`rounded-full capitalize border-gray-300 ${filter === s ? "bg-gradient-to-r from-red-700 to-black border-red-700 text-white" : "bg-gray-100 text-gray-600"}`}>
               {s.replace("_"," ")}
             </Button>
           ))}
         </div>
       </CardHeader>
       <CardContent>
-        {loading ? <div className="text-slate-400 text-center py-8">Loading…</div> :
-         tickets.length === 0 ? <div className="text-slate-500 text-center py-8">No {filter.replace("_"," ")} tickets.</div> : (
+        {loading ? <div className="text-gray-400 text-center py-8">Loading…</div> :
+         tickets.length === 0 ? <div className="text-gray-500 text-center py-8">No {filter.replace("_"," ")} tickets.</div> : (
           <div className="space-y-3">
             {tickets.map(t => {
               const expanded = expandedId === t.id;
               return (
-                <div key={t.id} className="rounded-2xl bg-black/30 border border-white/10 p-4">
+                <div key={t.id} className="rounded-2xl bg-gray-50 border border-gray-200 p-4">
                   <div className="flex items-start justify-between gap-2 flex-wrap">
                     <button className="text-left flex-1" onClick={() => setExpandedId(expanded ? null : t.id)}>
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-semibold">{t.subject}</span>
                         <Badge variant="outline" className={`text-xs ${STATUS_COLOR[t.status]}`}>{t.status.replace("_"," ")}</Badge>
-                        <Badge variant="outline" className="text-xs border-slate-600 text-slate-400 capitalize">{t.category}</Badge>
+                        <Badge variant="outline" className="text-xs border-slate-600 text-gray-400 capitalize">{t.category}</Badge>
                       </div>
-                      <div className="text-xs text-slate-400 mt-0.5">
+                      <div className="text-xs text-gray-400 mt-0.5">
                         {t.user_name} · {t.user_email} · {new Date(t.created_at || t.createdAt).toLocaleString("en-IN")}
                         {t.replies?.length > 0 && ` · ${t.replies.length} replies`}
                       </div>
@@ -1439,19 +1439,19 @@ function SupportMgmtTab() {
                         <Button size="sm" onClick={() => setTicketStatus(t.id, "resolved")} className="rounded-full bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 text-xs">Resolve</Button>
                       )}
                       {t.status !== "closed" && (
-                        <Button size="sm" onClick={() => setTicketStatus(t.id, "closed")} variant="outline" className="rounded-full border-white/20 bg-white/5 text-slate-400 text-xs">Close</Button>
+                        <Button size="sm" onClick={() => setTicketStatus(t.id, "closed")} variant="outline" className="rounded-full border-gray-300 bg-gray-100 text-gray-500 text-xs">Close</Button>
                       )}
                     </div>
                   </div>
                   {expanded && (
                     <div className="mt-4 space-y-2">
-                      <div className="rounded-xl bg-purple-500/10 border border-purple-500/20 p-3">
-                        <div className="text-xs text-purple-300 font-semibold mb-1">User Message</div>
+                      <div className="rounded-xl bg-red-50 border border-red-100 p-3">
+                        <div className="text-xs text-red-700 font-semibold mb-1">User Message</div>
                         <div className="text-sm text-slate-200 whitespace-pre-wrap">{t.message}</div>
                       </div>
                       {(t.replies || []).map((r, i) => (
-                        <div key={i} className={`rounded-xl p-3 ${r.from === "admin" ? "bg-emerald-500/10 border border-emerald-500/20 ml-4" : "bg-white/5 border border-white/10"}`}>
-                          <div className={`text-xs font-semibold mb-1 ${r.from === "admin" ? "text-emerald-300" : "text-purple-300"}`}>
+                        <div key={i} className={`rounded-xl p-3 ${r.from === "admin" ? "bg-emerald-500/10 border border-emerald-500/20 ml-4" : "bg-gray-50 border border-gray-200"}`}>
+                          <div className={`text-xs font-semibold mb-1 ${r.from === "admin" ? "text-emerald-300" : "text-red-700"}`}>
                             {r.from === "admin" ? `Support (${r.author_name || "Admin"})` : "User"}
                           </div>
                           <div className="text-sm text-slate-200 whitespace-pre-wrap">{r.message}</div>
@@ -1460,9 +1460,9 @@ function SupportMgmtTab() {
                       {t.status !== "closed" && (
                         <div className="flex gap-2 mt-2">
                           <Input value={expanded ? replyText : ""} onChange={e => setReplyText(e.target.value)}
-                            placeholder="Type admin reply…" className="flex-1 bg-black/40 border-white/10 text-white text-sm" />
+                            placeholder="Type admin reply…" className="flex-1 bg-gray-50 border-gray-300 text-gray-900 text-sm" />
                           <Button onClick={() => sendReply(t.id)} disabled={busy || !replyText.trim()}
-                            size="sm" className="rounded-full bg-purple-600 text-white">Send</Button>
+                            size="sm" className="rounded-full bg-gradient-to-r from-red-700 to-black text-white">Send</Button>
                         </div>
                       )}
                     </div>
@@ -1549,89 +1549,89 @@ function PaymentSettingsTab() {
 
   return (
     <div className="space-y-5 mt-5">
-      <Card className="glass-strong border-white/10 text-white">
+      <Card className="bg-white border-gray-200 shadow-sm text-gray-900">
         <CardHeader><CardTitle>Payment & UPI Settings</CardTitle></CardHeader>
         <CardContent className="space-y-4">
           <div className="grid sm:grid-cols-2 gap-4">
             <div>
-              <Label className="text-xs text-slate-400">UPI ID</Label>
-              <Input {...f("admin_upi_id")} placeholder="yourname@upi" className="bg-black/40 border-white/10 text-white mt-1" />
+              <Label className="text-xs text-gray-400">UPI ID</Label>
+              <Input {...f("admin_upi_id")} placeholder="yourname@upi" className="bg-gray-50 border-gray-300 text-gray-900 mt-1" />
             </div>
             <div>
-              <Label className="text-xs text-slate-400">Merchant Name</Label>
-              <Input {...f("admin_upi_name")} placeholder="Ludo Cash Play" className="bg-black/40 border-white/10 text-white mt-1" />
+              <Label className="text-xs text-gray-400">Merchant Name</Label>
+              <Input {...f("admin_upi_name")} placeholder="Ludo Cash Play" className="bg-gray-50 border-gray-300 text-gray-900 mt-1" />
             </div>
             <div>
-              <Label className="text-xs text-slate-400">WhatsApp Number (with country code)</Label>
-              <Input {...f("whatsapp_number")} placeholder="919090000000" className="bg-black/40 border-white/10 text-white mt-1" />
+              <Label className="text-xs text-gray-400">WhatsApp Number (with country code)</Label>
+              <Input {...f("whatsapp_number")} placeholder="919090000000" className="bg-gray-50 border-gray-300 text-gray-900 mt-1" />
             </div>
             <div>
-              <Label className="text-xs text-slate-400">Support Email</Label>
-              <Input {...f("support_email")} type="email" placeholder="support@ludocashplay.in" className="bg-black/40 border-white/10 text-white mt-1" />
+              <Label className="text-xs text-gray-400">Support Email</Label>
+              <Input {...f("support_email")} type="email" placeholder="support@ludocashplay.in" className="bg-gray-50 border-gray-300 text-gray-900 mt-1" />
             </div>
           </div>
 
           {/* QR Code upload section */}
-          <div className="rounded-xl bg-black/30 border border-white/10 p-4 space-y-3">
+          <div className="rounded-xl bg-gray-50 border border-gray-200 p-4 space-y-3">
             <div className="flex items-center justify-between flex-wrap gap-2">
-              <Label className="text-sm text-slate-300 font-semibold">QR Code Image</Label>
+              <Label className="text-sm text-gray-600 font-semibold">QR Code Image</Label>
               {qrUpdatedAt && (
-                <span className="text-xs text-slate-500">Last updated: {new Date(qrUpdatedAt).toLocaleString("en-IN")}</span>
+                <span className="text-xs text-gray-500">Last updated: {new Date(qrUpdatedAt).toLocaleString("en-IN")}</span>
               )}
             </div>
             <div className="flex flex-col sm:flex-row gap-4 items-start">
-              <div className="rounded-xl overflow-hidden border border-white/10 bg-white p-1 shrink-0">
+              <div className="rounded-xl overflow-hidden border border-gray-200 bg-white p-1 shrink-0">
                 {displayQr ? (
                   <img src={displayQr} alt="QR preview" className="w-32 h-32 object-contain block" />
                 ) : (
-                  <div className="w-32 h-32 flex items-center justify-center text-slate-400 text-xs text-center">No QR uploaded</div>
+                  <div className="w-32 h-32 flex items-center justify-center text-gray-400 text-xs text-center">No QR uploaded</div>
                 )}
               </div>
               <div className="flex-1 space-y-3">
                 <div>
-                  <Label className="text-xs text-slate-400 block mb-1">Upload new QR image (JPG/PNG/WEBP, max 2MB)</Label>
-                  <label className={`inline-flex items-center gap-2 cursor-pointer px-4 py-2 rounded-full text-sm font-semibold border transition-all ${qrUploading ? "bg-white/5 border-white/10 text-slate-400 cursor-wait" : "bg-purple-600 border-purple-600 text-white hover:bg-purple-500"}`}>
+                  <Label className="text-xs text-gray-400 block mb-1">Upload new QR image (JPG/PNG/WEBP, max 2MB)</Label>
+                  <label className={`inline-flex items-center gap-2 cursor-pointer px-4 py-2 rounded-full text-sm font-semibold border transition-all ${qrUploading ? "bg-gray-100 border-gray-200 text-gray-400 cursor-wait" : "bg-gradient-to-r from-red-700 to-black border-red-700 text-white hover:opacity-90"}`}>
                     {qrUploading ? "Uploading…" : "Choose QR file"}
                     <input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleQrFileChange} disabled={qrUploading} />
                   </label>
-                  <p className="text-xs text-slate-500 mt-1.5">Old QR is auto-deleted when you upload a new one.</p>
+                  <p className="text-xs text-gray-500 mt-1.5">Old QR is auto-deleted when you upload a new one.</p>
                 </div>
                 <div>
-                  <Label className="text-xs text-slate-400">Or paste QR image URL manually</Label>
-                  <Input {...f("admin_qr_image")} placeholder="https://…/qr.png" className="bg-black/40 border-white/10 text-white mt-1 text-sm" />
+                  <Label className="text-xs text-gray-400">Or paste QR image URL manually</Label>
+                  <Input {...f("admin_qr_image")} placeholder="https://…/qr.png" className="bg-gray-50 border-gray-300 text-gray-900 mt-1 text-sm" />
                 </div>
               </div>
             </div>
           </div>
 
-          <Button disabled={busy} onClick={savePayment} className="rounded-full bg-gradient-to-r from-purple-600 to-blue-600 text-white">Save Payment Settings</Button>
+          <Button disabled={busy} onClick={savePayment} className="rounded-full bg-gradient-to-r from-red-700 to-black text-white">Save Payment Settings</Button>
         </CardContent>
       </Card>
 
-      <Card className="glass-strong border-white/10 text-white">
+      <Card className="bg-white border-gray-200 shadow-sm text-gray-900">
         <CardHeader><CardTitle>Commission Rate</CardTitle></CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-end gap-4">
             <div className="flex-1">
-              <Label className="text-xs text-slate-400">Platform Commission %</Label>
+              <Label className="text-xs text-gray-400">Platform Commission %</Label>
               <Input type="number" min={0} max={50} step={0.5} value={commission} onChange={e => setCommission(Number(e.target.value))}
-                className="bg-black/40 border-white/10 text-white mt-1 w-40" />
-              <p className="text-xs text-slate-500 mt-1">Prize = Stake × 2 × (1 − commission/100). Current: {commission}%</p>
+                className="bg-gray-50 border-gray-300 text-gray-900 mt-1 w-40" />
+              <p className="text-xs text-gray-500 mt-1">Prize = Stake × 2 × (1 − commission/100). Current: {commission}%</p>
             </div>
             <Button disabled={busy} onClick={saveCommission} className="rounded-full bg-amber-600 text-white">Save</Button>
           </div>
         </CardContent>
       </Card>
 
-      <Card className="glass-strong border-white/10 text-white">
+      <Card className="bg-white border-gray-200 shadow-sm text-gray-900">
         <CardHeader><CardTitle>Scrolling Announcement</CardTitle></CardHeader>
         <CardContent className="space-y-4">
           <div>
-            <Label className="text-xs text-slate-400">Announcement text (shown on home page ticker)</Label>
+            <Label className="text-xs text-gray-400">Announcement text (shown on home page ticker)</Label>
             <Textarea value={announcement} onChange={e => setAnnouncement(e.target.value)}
               placeholder="🎉 New tournament this weekend! | Withdrawal time: 10 min"
-              className="bg-black/40 border-white/10 text-white mt-1 resize-none" rows={2} />
-            <p className="text-xs text-slate-500 mt-1">Leave blank to hide the bar.</p>
+              className="bg-gray-50 border-gray-300 text-gray-900 mt-1 resize-none" rows={2} />
+            <p className="text-xs text-gray-500 mt-1">Leave blank to hide the bar.</p>
           </div>
           <Button disabled={busy} onClick={saveAnnouncement} className="rounded-full bg-emerald-600 text-white">Save Announcement</Button>
         </CardContent>

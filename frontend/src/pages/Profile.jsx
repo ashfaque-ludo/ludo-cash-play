@@ -2,19 +2,14 @@ import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { api, fmtINR, formatApiError } from "@/lib/api";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import { Edit2, Check, X, ShieldCheck, ShieldAlert, ShieldOff, Clock, Copy } from "lucide-react";
 import { toast } from "sonner";
+import { Edit2, Check, X, ShieldCheck, ShieldAlert, ShieldOff, Clock, Copy } from "lucide-react";
 
 const KYC_META = {
-  not_submitted: { label:"Not Verified", icon: ShieldOff,   color:"text-slate-400",  bg:"bg-slate-500/10 border-slate-500/30" },
-  pending:       { label:"Under Review", icon: Clock,        color:"text-amber-400",  bg:"bg-amber-500/10 border-amber-500/30" },
-  approved:      { label:"Verified",     icon: ShieldCheck,  color:"text-emerald-400",bg:"bg-emerald-500/10 border-emerald-500/30" },
-  rejected:      { label:"Rejected",     icon: ShieldAlert,  color:"text-red-400",   bg:"bg-red-500/10 border-red-500/30" },
+  not_submitted: { label: "Not Verified", icon: ShieldOff, color: "text-gray-500", bg: "bg-gray-50 border-gray-200" },
+  pending:       { label: "Under Review", icon: Clock,     color: "text-amber-600", bg: "bg-amber-50 border-amber-200" },
+  approved:      { label: "Verified ✓",  icon: ShieldCheck,color: "text-green-700", bg: "bg-green-50 border-green-200" },
+  rejected:      { label: "Rejected",    icon: ShieldAlert, color: "text-red-700",  bg: "bg-red-50 border-red-200" },
 };
 
 export default function Profile() {
@@ -22,14 +17,13 @@ export default function Profile() {
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({ name: "", phone: "" });
   const [saving, setSaving] = useState(false);
-
   const [pwForm, setPwForm] = useState({ current: "", next: "", confirm: "" });
   const [pwSaving, setPwSaving] = useState(false);
   const [pwOpen, setPwOpen] = useState(false);
 
   if (!user || user === false) return null;
 
-  const w = user.wallet || { deposit:0, winning:0, bonus:0 };
+  const w = user.wallet || { deposit: 0, winning: 0, bonus: 0 };
   const kycStatus = user.kyc_status || "not_submitted";
   const KYC = KYC_META[kycStatus];
 
@@ -58,7 +52,7 @@ export default function Profile() {
     try {
       await api.put("/profile/password", { current_password: pwForm.current, new_password: pwForm.next });
       toast.success("Password changed!");
-      setPwForm({ current:"", next:"", confirm:"" });
+      setPwForm({ current: "", next: "", confirm: "" });
       setPwOpen(false);
     } catch (e) { toast.error(formatApiError(e.response?.data?.detail) || e.message); }
     finally { setPwSaving(false); }
@@ -70,148 +64,159 @@ export default function Profile() {
   };
 
   return (
-    <div className="min-h-screen pt-24 pb-16 bg-[#0A0A0E] text-white">
-      <div className="max-w-2xl mx-auto px-6 space-y-6">
-        <div className="mb-2 fade-up">
-          <div className="text-xs uppercase tracking-[0.25em] text-purple-400 font-bold mb-1">Account</div>
-          <h1 className="text-3xl font-extrabold">My Profile</h1>
+    <div className="min-h-screen pt-20 pb-20 bg-gradient-to-b from-amber-50 to-white">
+      <div className="max-w-lg mx-auto px-3 space-y-3">
+
+        <div className="pt-2">
+          <p className="text-xs text-gray-500 uppercase tracking-widest font-semibold">Account</p>
+          <h1 className="text-2xl font-black text-gray-900">My Profile</h1>
         </div>
 
         {/* Avatar + basic info */}
-        <Card className="glass-strong border-white/10 text-white">
-          <CardContent className="pt-6">
-            <div className="flex items-start gap-5">
-              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-purple-600 to-blue-600 grid place-items-center shrink-0 text-2xl font-black">
-                {(user.name || "?")[0].toUpperCase()}
-              </div>
-              <div className="flex-1 min-w-0">
-                {editing ? (
-                  <div className="space-y-3">
-                    <div>
-                      <Label className="text-slate-300 text-xs">Name</Label>
-                      <Input value={form.name} onChange={e => setForm(f=>({...f,name:e.target.value}))}
-                        className="bg-black/40 border-white/10 text-white mt-1 h-9" data-testid="profile-name-input" />
-                    </div>
-                    <div>
-                      <Label className="text-slate-300 text-xs">Phone</Label>
-                      <Input value={form.phone} onChange={e => setForm(f=>({...f,phone:e.target.value}))}
-                        className="bg-black/40 border-white/10 text-white mt-1 h-9" data-testid="profile-phone-input" />
-                    </div>
-                    <div className="flex gap-2">
-                      <Button onClick={saveProfile} disabled={saving} size="sm"
-                        className="rounded-full bg-emerald-500 text-black font-bold" data-testid="profile-save">
-                        <Check className="w-3.5 h-3.5 mr-1" /> {saving ? "Saving…" : "Save"}
-                      </Button>
-                      <Button onClick={() => setEditing(false)} size="sm" variant="outline"
-                        className="rounded-full border-white/20 bg-white/5 text-slate-300">
-                        <X className="w-3.5 h-3.5 mr-1" /> Cancel
-                      </Button>
-                    </div>
-                  </div>
-                ) : (
-                  <>
-                    <div className="flex items-center gap-2">
-                      <h2 className="text-xl font-bold truncate" data-testid="profile-name">{user.name}</h2>
-                      <Button onClick={startEdit} size="sm" variant="ghost"
-                        className="rounded-full text-slate-400 hover:text-white p-1.5 h-auto" data-testid="profile-edit">
-                        <Edit2 className="w-3.5 h-3.5" />
-                      </Button>
-                    </div>
-                    <div className="text-slate-400 text-sm mt-0.5" data-testid="profile-email">{user.email}</div>
-                    {user.phone && <div className="text-slate-400 text-sm" data-testid="profile-phone">{user.phone}</div>}
-                    <div className="text-slate-500 text-xs mt-1">
-                      Member since {new Date(user.createdAt).toLocaleDateString("en-IN", { year:"numeric", month:"long" })}
-                    </div>
-                  </>
-                )}
-              </div>
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4">
+          <div className="flex items-start gap-4">
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-red-700 to-black flex items-center justify-center text-white font-black text-2xl shrink-0">
+              {(user.name || "?")[0].toUpperCase()}
             </div>
-          </CardContent>
-        </Card>
+            <div className="flex-1 min-w-0">
+              {editing ? (
+                <div className="space-y-2">
+                  <div>
+                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1">Name</label>
+                    <input
+                      value={form.name}
+                      onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+                      className="w-full h-10 px-3 rounded-xl bg-gray-50 border border-gray-300 text-gray-900 outline-none focus:border-red-600 focus:ring-2 focus:ring-red-100 text-sm"
+                      data-testid="profile-name-input"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1">Phone</label>
+                    <input
+                      value={form.phone}
+                      onChange={e => setForm(f => ({ ...f, phone: e.target.value }))}
+                      className="w-full h-10 px-3 rounded-xl bg-gray-50 border border-gray-300 text-gray-900 outline-none focus:border-red-600 focus:ring-2 focus:ring-red-100 text-sm"
+                      data-testid="profile-phone-input"
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <button onClick={saveProfile} disabled={saving}
+                      className="flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-green-600 text-white text-sm font-semibold disabled:opacity-50"
+                      data-testid="profile-save">
+                      <Check className="w-3.5 h-3.5" /> {saving ? "Saving…" : "Save"}
+                    </button>
+                    <button onClick={() => setEditing(false)}
+                      className="flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-gray-100 text-gray-700 border border-gray-200 text-sm font-semibold">
+                      <X className="w-3.5 h-3.5" /> Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-lg font-bold text-gray-900 truncate" data-testid="profile-name">{user.name}</h2>
+                    <button onClick={startEdit} className="text-gray-400 hover:text-red-600 transition-colors" data-testid="profile-edit">
+                      <Edit2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                  {user.email && <div className="text-sm text-gray-500" data-testid="profile-email">{user.email}</div>}
+                  {user.phone && <div className="text-sm text-gray-500" data-testid="profile-phone">+91 {user.phone}</div>}
+                  <div className="text-xs text-gray-400 mt-1">
+                    Member since {new Date(user.createdAt).toLocaleDateString("en-IN", { year: "numeric", month: "long" })}
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
 
         {/* Wallet summary */}
-        <Card className="glass-strong border-white/10 text-white">
-          <CardHeader><CardTitle className="text-base">Wallet</CardTitle></CardHeader>
-          <CardContent className="grid grid-cols-3 gap-3">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4">
+          <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Wallet</div>
+          <div className="grid grid-cols-3 gap-2">
             {[
-              { label:"Deposit",  value:w.deposit,  color:"text-blue-400" },
-              { label:"Winnings", value:w.winning,  color:"text-emerald-400" },
-              { label:"Bonus",    value:w.bonus,    color:"text-amber-400" },
+              { label: "Deposit", value: w.deposit, color: "text-blue-700 bg-blue-50" },
+              { label: "Winnings", value: w.winning, color: "text-green-700 bg-green-50" },
+              { label: "Bonus", value: w.bonus, color: "text-amber-700 bg-amber-50" },
             ].map(x => (
-              <div key={x.label} className="rounded-xl bg-white/5 border border-white/10 p-3 text-center">
-                <div className="text-[10px] uppercase tracking-widest text-slate-400">{x.label}</div>
-                <div className={`text-lg font-bold mt-1 ${x.color}`}>{fmtINR(x.value)}</div>
+              <div key={x.label} className={`rounded-xl p-3 text-center ${x.color}`}>
+                <div className="text-sm font-bold">{fmtINR(x.value)}</div>
+                <div className="text-[10px] uppercase font-semibold mt-0.5 opacity-70">{x.label}</div>
               </div>
             ))}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
-        {/* KYC status */}
-        <Card className={`border text-white ${KYC.bg}`}>
-          <CardContent className="py-5 flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <KYC.icon className={`w-6 h-6 ${KYC.color}`} />
-              <div>
-                <div className="font-semibold">KYC Verification</div>
-                <div className={`text-sm ${KYC.color}`}>{KYC.label}</div>
-              </div>
+        {/* KYC */}
+        <div className={`rounded-2xl border p-4 flex items-center justify-between gap-4 ${KYC.bg}`}>
+          <div className="flex items-center gap-3">
+            <KYC.icon className={`w-5 h-5 ${KYC.color}`} />
+            <div>
+              <div className="font-semibold text-gray-900 text-sm">KYC Verification</div>
+              <div className={`text-sm font-medium ${KYC.color}`}>{KYC.label}</div>
             </div>
-            {kycStatus !== "approved" && (
-              <Link to="/kyc">
-                <Button size="sm" className="rounded-full bg-gradient-to-r from-purple-600 to-blue-600 text-white font-bold"
-                  data-testid="kyc-link">
-                  {kycStatus === "not_submitted" ? "Verify Now" : kycStatus === "rejected" ? "Resubmit" : "View Status"}
-                </Button>
-              </Link>
-            )}
-          </CardContent>
-        </Card>
+          </div>
+          {kycStatus !== "approved" && (
+            <Link to="/kyc">
+              <button className="px-4 py-2 rounded-xl bg-gradient-to-r from-red-700 to-black text-white text-xs font-bold shadow"
+                data-testid="kyc-link">
+                {kycStatus === "not_submitted" ? "Verify Now" : kycStatus === "rejected" ? "Resubmit" : "View Status"}
+              </button>
+            </Link>
+          )}
+        </div>
 
         {/* Referral code */}
-        <Card className="glass-strong border-white/10 text-white">
-          <CardContent className="py-5 flex items-center justify-between gap-4">
-            <div>
-              <div className="text-xs uppercase tracking-widest text-slate-400 mb-1">Your Referral Code</div>
-              <div className="font-mono text-xl font-bold grad-text" data-testid="profile-ref-code">{user.referral_code}</div>
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4 flex items-center justify-between gap-4">
+          <div>
+            <div className="text-xs text-gray-500 uppercase tracking-wide font-semibold mb-1">Your Referral Code</div>
+            <div className="font-mono text-xl font-black text-red-700" data-testid="profile-ref-code">
+              {user.referral_code}
             </div>
-            <Button onClick={copyCode} variant="outline" size="sm"
-              className="rounded-full border-white/20 bg-white/5 text-white" data-testid="copy-ref-code">
-              <Copy className="w-3.5 h-3.5 mr-1" /> Copy
-            </Button>
-          </CardContent>
-        </Card>
+          </div>
+          <button onClick={copyCode} className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gray-100 border border-gray-200 text-gray-700 text-sm font-semibold hover:bg-gray-200 transition-all"
+            data-testid="copy-ref-code">
+            <Copy className="w-3.5 h-3.5" /> Copy
+          </button>
+        </div>
 
         {/* Change password */}
-        <Card className="glass-strong border-white/10 text-white">
-          <CardHeader className="flex flex-row items-center">
-            <CardTitle className="text-base">Password</CardTitle>
-            <Button onClick={() => setPwOpen(o=>!o)} variant="outline" size="sm"
-              className="ml-auto rounded-full border-white/20 bg-white/5 text-slate-300" data-testid="pw-toggle">
-              {pwOpen ? "Cancel" : "Change password"}
-            </Button>
-          </CardHeader>
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+          <button
+            onClick={() => setPwOpen(o => !o)}
+            className="w-full flex items-center justify-between px-4 py-3.5 text-left hover:bg-gray-50 transition-colors"
+          >
+            <span className="font-semibold text-gray-900 text-sm">Change Password</span>
+            <span className="text-gray-400 text-xs">{pwOpen ? "▲" : "▼"}</span>
+          </button>
           {pwOpen && (
-            <CardContent className="space-y-4 pt-0">
+            <div className="px-4 pb-4 space-y-3 border-t border-gray-100 pt-3">
               {[
-                { label:"Current password", key:"current", test:"pw-current" },
-                { label:"New password (6+ chars)", key:"next", test:"pw-new" },
-                { label:"Confirm new password", key:"confirm", test:"pw-confirm" },
+                { key: "current", label: "Current Password" },
+                { key: "next", label: "New Password" },
+                { key: "confirm", label: "Confirm New Password" },
               ].map(f => (
                 <div key={f.key}>
-                  <Label className="text-slate-300 text-sm">{f.label}</Label>
-                  <Input type="password" value={pwForm[f.key]}
-                    onChange={e => setPwForm(p=>({...p,[f.key]:e.target.value}))}
-                    className="bg-black/40 border-white/10 text-white mt-1" data-testid={f.test} />
+                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1">{f.label}</label>
+                  <input
+                    type="password"
+                    value={pwForm[f.key]}
+                    onChange={e => setPwForm(p => ({ ...p, [f.key]: e.target.value }))}
+                    className="w-full h-10 px-3 rounded-xl bg-gray-50 border border-gray-300 text-gray-900 outline-none focus:border-red-600 focus:ring-2 focus:ring-red-100 text-sm"
+                  />
                 </div>
               ))}
-              <Button onClick={changePassword} disabled={pwSaving}
-                className="rounded-full bg-gradient-to-r from-purple-600 to-blue-600 text-white font-bold w-full h-10"
-                data-testid="pw-submit">
-                {pwSaving ? "Updating…" : "Update Password"}
-              </Button>
-            </CardContent>
+              <button
+                onClick={changePassword}
+                disabled={pwSaving || !pwForm.current || !pwForm.next || !pwForm.confirm}
+                className="w-full h-10 rounded-xl bg-gradient-to-r from-red-700 to-black text-white font-bold text-sm disabled:opacity-50"
+              >
+                {pwSaving ? "Changing…" : "Change Password"}
+              </button>
+            </div>
           )}
-        </Card>
+        </div>
+
       </div>
     </div>
   );

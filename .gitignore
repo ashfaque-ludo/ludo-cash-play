@@ -34,6 +34,11 @@ Thumbs.db
 *.swp
 *.swo
 
+# Firebase service account keys — NEVER commit these
+*/firebase-service-account.json
+**/serviceAccountKey.json
+**/*service-account*.json
+
 # Uploads (user-uploaded files — not in source control)
 backend/uploads/
 

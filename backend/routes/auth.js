@@ -1,13 +1,12 @@
 require("dotenv").config();
 const router = require("express").Router();
 const jwt = require("jsonwebtoken");
-const rateLimit = require("express-rate-limit");
 const User = require("../models/User");
 const Referral = require("../models/Referral");
 const auth = require("../middleware/auth");
 const { authLimiter } = require("../middleware/rateLimiter");
 const { v4: uuidv4 } = require("uuid");
-const { sendOTP } = require("../utils/msg91Service");
+const { sendOTPviaSMS } = require("../utils/fast2smsService");
 const { generateOTP, canSend, saveOTP, verifyOTP } = require("../utils/otpStore");
 
 const COOKIE = {
@@ -17,15 +16,6 @@ const COOKIE = {
   path: "/",
   maxAge: 7 * 24 * 60 * 60 * 1000,
 };
-
-const otpLimiter = rateLimit({
-  windowMs: 10 * 60 * 1000,
-  max: 5,
-  keyGenerator: (req) => req.body?.phone || req.ip,
-  message: { detail: "Too many OTP requests. Please wait 10 minutes." },
-  standardHeaders: true,
-  legacyHeaders: false,
-});
 
 const sign = (id) => jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn:"7d" });
 
@@ -46,7 +36,7 @@ function findUserByPhone(phone) {
 router.get("/me", auth, (req,res) => res.json(req.user.toPublic()));
 
 // POST /api/auth/send-otp
-router.post("/send-otp", otpLimiter, async (req, res) => {
+router.post("/send-otp", async (req, res) => {
   try {
     const phone = normalizePhone(req.body.phone);
     if (!phone || !/^[6-9]\d{9}$/.test(phone)) {
@@ -59,10 +49,10 @@ router.post("/send-otp", otpLimiter, async (req, res) => {
 
     const otp = generateOTP();
     saveOTP(phone, otp);
-    const result = await sendOTP(phone, otp);
+    const result = await sendOTPviaSMS(phone, otp);
 
     if (!result.ok) {
-      return res.status(500).json({ detail: "Failed to send OTP. Try again." });
+      return res.status(500).json({ detail: `Failed to send OTP: ${result.error || "Try again."}` });
     }
 
     const resp = { ok: true, message: "OTP sent to your phone." };
@@ -72,7 +62,7 @@ router.post("/send-otp", otpLimiter, async (req, res) => {
 });
 
 // POST /api/auth/verify-otp
-router.post("/verify-otp", otpLimiter, async (req, res) => {
+router.post("/verify-otp", async (req, res) => {
   try {
     const { otp, name, referral_code } = req.body;
     const normalized = normalizePhone(req.body.phone);

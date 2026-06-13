@@ -1,7 +1,7 @@
 import React, { useState, Suspense, lazy } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "sonner";
-import { AuthProvider } from "@/contexts/AuthContext";
+import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import Header from "@/components/Header";
@@ -37,6 +37,16 @@ const OpenBattles = lazy(() => import("@/pages/OpenBattles"));
 const RunningBattles = lazy(() => import("@/pages/RunningBattles"));
 const Support = lazy(() => import("@/pages/Support"));
 const Account = lazy(() => import("@/pages/Account"));
+const OwnerPanel = lazy(() => import("@/pages/OwnerPanel"));
+
+function OwnerRoute({ children }) {
+  const { user, ready } = useAuth();
+  if (!ready) return null;
+  if (!user || user.role !== "super_admin" || !user.is_master_owner) {
+    return <Navigate to="/dashboard" replace />;
+  }
+  return children;
+}
 
 function PageLoader() {
   return (
@@ -81,6 +91,9 @@ function AppLayout() {
         <Route path="/support" element={<ProtectedRoute><Support /></ProtectedRoute>} />
         <Route path="/create-room" element={<ProtectedRoute><CreateRoom /></ProtectedRoute>} />
         <Route path="/room-gen" element={<ProtectedRoute><RoomGen /></ProtectedRoute>} />
+
+        {/* Owner Panel - master owner only */}
+        <Route path="/owner-panel" element={<OwnerRoute><OwnerPanel /></OwnerRoute>} />
 
         {/* Admin routes */}
         <Route path="/admin" element={<ProtectedRoute requireRole="support_agent"><Admin /></ProtectedRoute>} />
