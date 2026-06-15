@@ -291,6 +291,7 @@ function ResetPwDialog({ open, user, onClose }) {
 function DepositsTab(){
   const [rows, setRows] = useState([]);
   const [status, setStatus] = useState("pending");
+  const [zoomedUrl, setZoomedUrl] = useState(null);
   const load = async () => { try { const r = await api.get(`/admin/deposits?status=${status}`); setRows(r.data.deposits); } catch {} };
   useEffect(()=>{ load(); /* eslint-disable-line */ }, [status]);
   const act = async (id, action) => {
@@ -298,39 +299,54 @@ function DepositsTab(){
     catch (e) { toast.error(formatApiError(e.response?.data?.detail) || e.message); }
   };
   return (
-    <Card className="bg-white border-gray-200 shadow-sm text-gray-900 mt-5">
-      <CardHeader className="flex flex-row items-center"><CardTitle>Deposits</CardTitle>
-        <Select value={status} onValueChange={setStatus}>
-          <SelectTrigger className="ml-auto bg-gray-50 border-gray-300 text-gray-900 w-40" data-testid="deposit-status-filter"><SelectValue /></SelectTrigger>
-          <SelectContent className="bg-white border-gray-200 text-gray-900">
-            {["pending","approved","rejected"].map(s=> <SelectItem key={s} value={s}>{s}</SelectItem>)}
-          </SelectContent>
-        </Select>
-      </CardHeader>
-      <CardContent className="overflow-x-auto">
-        <Table>
-          <TableHeader><TableRow className="border-gray-200"><TableHead>User</TableHead><TableHead>Amount</TableHead><TableHead>Method</TableHead><TableHead>UPI</TableHead><TableHead>Created</TableHead><TableHead>Actions</TableHead></TableRow></TableHeader>
-          <TableBody>
+    <>
+      {zoomedUrl && (
+        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4" onClick={()=>setZoomedUrl(null)}>
+          <img src={zoomedUrl} alt="Screenshot" className="max-w-full max-h-full rounded-xl shadow-2xl" />
+        </div>
+      )}
+      <Card className="bg-white border-gray-200 shadow-sm text-gray-900 mt-5">
+        <CardHeader className="flex flex-row items-center"><CardTitle>Deposits</CardTitle>
+          <Select value={status} onValueChange={setStatus}>
+            <SelectTrigger className="ml-auto bg-gray-50 border-gray-300 text-gray-900 w-40" data-testid="deposit-status-filter"><SelectValue /></SelectTrigger>
+            <SelectContent className="bg-white border-gray-200 text-gray-900">
+              {["pending","approved","rejected"].map(s=> <SelectItem key={s} value={s}>{s}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </CardHeader>
+        <CardContent className="overflow-x-auto p-0">
+          <div className="space-y-2 p-4">
+            {rows.length === 0 && <div className="text-center text-gray-400 py-8">No {status} deposits.</div>}
             {rows.map(d => (
-              <TableRow key={d.id} className="border-gray-200" data-testid={`deposit-row-${d.id}`}>
-                <TableCell className="text-gray-600">{d.user_email}</TableCell>
-                <TableCell className="font-bold text-emerald-400">{fmtINR(d.amount)}</TableCell>
-                <TableCell>{d.method}</TableCell>
-                <TableCell className="text-xs text-gray-400">{d.upi_id || "—"}</TableCell>
-                <TableCell className="text-xs text-gray-400">{new Date(d.created_at).toLocaleString("en-IN")}</TableCell>
-                <TableCell className="space-x-1">
-                  {d.status === "pending" && <>
-                    <Button size="sm" onClick={()=>act(d.id, "approve")} className="rounded-full bg-emerald-500 text-black font-bold" data-testid={`approve-deposit-${d.id}`}>Approve</Button>
-                    <Button size="sm" onClick={()=>act(d.id, "reject")} variant="outline" className="rounded-full border-red-500/30 text-red-300" data-testid={`reject-deposit-${d.id}`}>Reject</Button>
-                  </>}
-                </TableCell>
-              </TableRow>
+              <div key={d.id} className="border border-gray-200 rounded-xl p-3 space-y-2" data-testid={`deposit-row-${d.id}`}>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <div className="font-bold text-emerald-600 text-lg">{fmtINR(d.amount)}</div>
+                    <div className="text-sm text-gray-700 font-medium">{d.user_name || "—"} · {d.user_label}</div>
+                    {d.utr && <div className="text-xs font-mono text-gray-500 mt-0.5">UTR: {d.utr}</div>}
+                    {d.upi_id && <div className="text-xs text-gray-400">UPI: {d.upi_id}</div>}
+                    <div className="text-xs text-gray-400 mt-1">{new Date(d.created_at).toLocaleString("en-IN")}</div>
+                    <div className={`text-xs font-semibold capitalize mt-0.5 ${d.status==="approved"?"text-emerald-600":d.status==="rejected"?"text-red-500":"text-amber-500"}`}>{d.status}</div>
+                  </div>
+                  {(d.screenshot_url || d.screenshot) && (
+                    <button onClick={()=>setZoomedUrl(d.screenshot_url || d.screenshot)} className="shrink-0">
+                      <img src={d.screenshot_url || d.screenshot} alt="Screenshot"
+                        className="w-16 h-16 rounded-lg object-cover border-2 border-gray-200 hover:border-red-400 transition-all" />
+                    </button>
+                  )}
+                </div>
+                {d.status === "pending" && (
+                  <div className="flex gap-2 pt-1">
+                    <Button size="sm" onClick={()=>act(d.id, "approve")} className="flex-1 rounded-lg bg-emerald-500 text-black font-bold" data-testid={`approve-deposit-${d.id}`}>✓ Approve</Button>
+                    <Button size="sm" onClick={()=>act(d.id, "reject")} variant="outline" className="flex-1 rounded-lg border-red-300 text-red-600" data-testid={`reject-deposit-${d.id}`}>✗ Reject</Button>
+                  </div>
+                )}
+              </div>
             ))}
-            {rows.length === 0 && <TableRow><TableCell colSpan={6} className="text-center text-gray-500 py-6">No deposits.</TableCell></TableRow>}
-          </TableBody>
-        </Table>
-      </CardContent>
-    </Card>
+          </div>
+        </CardContent>
+      </Card>
+    </>
   );
 }
 
