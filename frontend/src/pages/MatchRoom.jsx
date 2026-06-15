@@ -11,6 +11,9 @@ import {
   Camera, AlertTriangle, CheckCircle2, XCircle, Hourglass,
 } from "lucide-react";
 import { toast } from "sonner";
+import CancelBattlePopup from "@/components/CancelBattlePopup";
+import WonPopup from "@/components/WonPopup";
+import LostPopup from "@/components/LostPopup";
 
 const STATUS_CFG = {
   waiting:        { label: "Waiting for opponent",     color: "text-purple-300",  bg: "bg-purple-500/10 border-purple-500/40",  dot: "bg-purple-400",  live: true },
@@ -34,13 +37,16 @@ export default function MatchRoom() {
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
   const [elapsed, setElapsed] = useState(0);
+  const [showCancel, setShowCancel] = useState(false);
+  const [showWon, setShowWon] = useState(false);
+  const [showLost, setShowLost] = useState(false);
   const fileRef = useRef();
 
   const load = async () => {
     try { const r = await api.get(`/matches/${id}`); setMatch(r.data); }
     catch { toast.error("Match not found"); nav("/play"); }
   };
-  useEffect(() => { load(); const i = setInterval(load, 4000); return () => clearInterval(i); }, [id]);
+  useEffect(() => { load(); const i = setInterval(load, 2000); return () => clearInterval(i); }, [id]);
 
   useEffect(() => {
     if (!match) return;
@@ -88,15 +94,21 @@ export default function MatchRoom() {
     reader.readAsDataURL(f);
   };
 
-  const cancelMatch = async () => {
+  const cancelMatch = async (reason) => {
     setBusy(true);
     try {
-      await api.post(`/matches/${id}/cancel`);
+      await api.post(`/matches/${id}/cancel`, { reason });
       toast.success("Battle cancelled — stake refunded to your deposit wallet.");
+      setShowCancel(false);
       await refresh();
       nav("/play");
     } catch (e) { toast.error(formatApiError(e.response?.data?.detail) || e.message); }
     finally { setBusy(false); }
+  };
+
+  const handleResult = async (data) => {
+    await refresh();
+    await load();
   };
 
   const submit = async (result) => {
@@ -116,6 +128,25 @@ export default function MatchRoom() {
 
   return (
     <div className="min-h-screen bg-[#0A0A0E] text-white">
+      <CancelBattlePopup
+        open={showCancel}
+        onClose={() => setShowCancel(false)}
+        onSubmit={cancelMatch}
+        busy={busy}
+      />
+      <WonPopup
+        open={showWon}
+        onClose={() => setShowWon(false)}
+        matchId={id}
+        prize={match?.prize}
+        onResult={handleResult}
+      />
+      <LostPopup
+        open={showLost}
+        onClose={() => setShowLost(false)}
+        matchId={id}
+        onResult={handleResult}
+      />
       {/* Status Banner */}
       <div className={`border-b ${sc.bg} px-4 py-2.5 flex items-center justify-center gap-2`} data-testid="status-banner">
         <span className={`w-2 h-2 rounded-full ${sc.dot} ${sc.live ? "status-dot-live" : ""}`} />
@@ -232,7 +263,7 @@ export default function MatchRoom() {
             {user && match.creator_id === user.id && (
               <Button
                 disabled={busy}
-                onClick={cancelMatch}
+                onClick={() => setShowCancel(true)}
                 variant="outline"
                 className="mt-4 w-full rounded-xl border-red-500/30 bg-red-500/5 text-red-300 font-semibold"
                 data-testid="cancel-waiting-match"
@@ -314,7 +345,7 @@ export default function MatchRoom() {
                 {/* Action buttons */}
                 <Button
                   disabled={busy}
-                  onClick={() => submit("won")}
+                  onClick={() => setShowWon(true)}
                   className="w-full h-13 py-3.5 rounded-xl mb-3 btn-neon-green text-black font-black text-base"
                   data-testid="submit-won"
                 >
@@ -324,7 +355,7 @@ export default function MatchRoom() {
                 <div className="grid grid-cols-2 gap-3">
                   <Button
                     disabled={busy}
-                    onClick={() => submit("lost")}
+                    onClick={() => setShowLost(true)}
                     variant="outline"
                     className="h-11 rounded-xl border-white/20 bg-white/5 text-white font-semibold"
                     data-testid="submit-lost"
@@ -333,7 +364,7 @@ export default function MatchRoom() {
                   </Button>
                   <Button
                     disabled={busy}
-                    onClick={() => submit("cancel")}
+                    onClick={() => setShowCancel(true)}
                     variant="outline"
                     className="h-11 rounded-xl border-red-500/30 bg-red-500/5 text-red-300 font-semibold"
                     data-testid="submit-cancel"

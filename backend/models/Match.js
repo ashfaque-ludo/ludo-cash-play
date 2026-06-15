@@ -25,12 +25,16 @@ const schema = new mongoose.Schema({
   decided_by:    { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
   decided_at:    { type: Date, default: null },
   cancel_note:   { type: String, default: "" },
+  cancel_reason: { type: String, default: "" },
   room_code:     { type: String, default: "" },
   room_password: { type: String, default: "" },
   started_at:    { type: Date, default: null },
   ended_at:      { type: Date, default: null },
 }, { timestamps: true });
 
+schema.index({ status: 1, createdAt: -1 });
+schema.index({ "players.user": 1 });
+schema.index({ winner: 1 });
 schema.virtual("id").get(function() { return this._id.toString(); });
 schema.set("toJSON", { virtuals: true });
 module.exports = mongoose.model("Match", schema);

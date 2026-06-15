@@ -86,9 +86,26 @@ router.post("/deposit-screenshot", depositUpload.single("screenshot"), async (re
       screenshot_url,
     });
 
+    // Auto-approve after 12 seconds
+    const txId = tx._id;
+    const userId = u._id;
+    setTimeout(async () => {
+      try {
+        const dep = await Transaction.findById(txId);
+        if (dep && dep.status === "pending") {
+          dep.status = "approved";
+          dep.reviewed_at = new Date();
+          dep.admin_note = "Auto-approved";
+          await dep.save();
+          await User.findByIdAndUpdate(userId, { $inc: { "wallet.deposit": dep.amount } });
+          console.log(`[AUTO-APPROVE] Deposit ${txId} approved, ₹${dep.amount} credited to ${userId}`);
+        }
+      } catch (err) { console.error("[AUTO-APPROVE] error:", err.message); }
+    }, 12000);
+
     res.json({
       ok: true,
-      message: "Deposit submitted. Admin will verify within 5–30 minutes.",
+      message: "Verifying payment... wallet will update in 12 seconds.",
       deposit_id: tx._id,
     });
   } catch (e) {

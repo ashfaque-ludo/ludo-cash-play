@@ -15,7 +15,7 @@ function absUrl(url) {
 }
 
 // ── 3-Step Deposit Flow ───────────────────────────────────────────────────────
-function DepositFlow({ paymentInfo, onSuccess }) {
+function DepositFlow({ paymentInfo, onSuccess, onBalanceRefresh }) {
   const [step, setStep] = useState("amount"); // amount | payment | screenshot
   const [amount, setAmount] = useState("");
   const [screenshot, setScreenshot] = useState(null);
@@ -23,12 +23,28 @@ function DepositFlow({ paymentInfo, onSuccess }) {
   const [utr, setUtr] = useState("");
   const [copied, setCopied] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [verifying, setVerifying] = useState(false);
+  const [timer, setTimer] = useState(300); // 5 min QR timer
 
   const amt = parseInt(amount) || 0;
+
+  // QR 5-minute countdown
+  useEffect(() => {
+    if (step !== "payment") { setTimer(300); return; }
+    if (timer <= 0) {
+      toast.error("QR session expired. Please restart.");
+      setStep("amount");
+      setTimer(300);
+      return;
+    }
+    const t = setInterval(() => setTimer(s => s - 1), 1000);
+    return () => clearInterval(t);
+  }, [step, timer]);
 
   const handleContinue = () => {
     if (!amt || amt < 10) return toast.error("Minimum deposit is ₹10");
     if (amt > 100000) return toast.error("Maximum deposit is ₹1,00,000");
+    setTimer(300);
     setStep("payment");
   };
 
@@ -72,13 +88,25 @@ function DepositFlow({ paymentInfo, onSuccess }) {
       await api.post("/wallet/deposit-screenshot", fd, {
         headers: { "Content-Type": "multipart/form-data" },
       });
-      toast.success("Deposit submitted! Admin will verify within 5–30 minutes.");
+      toast.success("Verifying payment… wallet will update in ~12 seconds.");
       setStep("amount");
       setAmount("");
       setScreenshot(null);
       setScreenshotPreview("");
       setUtr("");
-      onSuccess?.();
+      // Poll balance for 30 seconds to catch auto-approve
+      setVerifying(true);
+      let polls = 0;
+      const poll = setInterval(async () => {
+        polls++;
+        try { onBalanceRefresh?.(); } catch {}
+        if (polls >= 10) {
+          clearInterval(poll);
+          setVerifying(false);
+          toast.success("Deposit processed! Check your wallet.", { duration: 5000 });
+          onSuccess?.();
+        }
+      }, 3000);
     } catch (e) {
       toast.error(formatApiError(e.response?.data?.detail) || "Submission failed. Try again.");
     } finally {
@@ -143,10 +171,13 @@ function DepositFlow({ paymentInfo, onSuccess }) {
   if (step === "payment") return (
     <div className="space-y-3">
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4 space-y-4">
-        {/* Amount header */}
+        {/* Amount header + timer */}
         <div className="text-center py-2 border-b border-gray-100">
           <p className="text-xs text-gray-400 uppercase tracking-wide">Amount to Pay</p>
           <p className="text-4xl font-black text-gray-900 mt-1">{fmtINR(amt)}</p>
+          <p className={`text-xs font-semibold mt-1 ${timer <= 60 ? "text-red-600" : "text-gray-400"}`}>
+            QR expires in {Math.floor(timer / 60)}:{String(timer % 60).padStart(2, "0")}
+          </p>
         </div>
 
         {/* QR Code */}
@@ -305,12 +336,21 @@ export default function Wallet() {
   }, []);
 
   const loadPaymentInfo = useCallback(async () => {
+    // Show cached immediately
     try {
-      const r = await fetch(`${BACKEND}/api/public/payment-info`, {
-        cache: "no-store",
-        headers: { "Cache-Control": "no-cache" },
-      });
-      setPaymentInfo(await r.json());
+      const cached = localStorage.getItem("lcp_payment_info");
+      const cachedTime = localStorage.getItem("lcp_payment_info_time");
+      if (cached && cachedTime && Date.now() - parseInt(cachedTime) < 5 * 60 * 1000) {
+        setPaymentInfo(JSON.parse(cached));
+      }
+    } catch {}
+    // Refresh in background
+    try {
+      const r = await fetch(`${BACKEND}/api/public/payment-info`);
+      const data = await r.json();
+      setPaymentInfo(data);
+      localStorage.setItem("lcp_payment_info", JSON.stringify(data));
+      localStorage.setItem("lcp_payment_info_time", String(Date.now()));
     } catch {}
   }, []);
 
@@ -407,6 +447,7 @@ export default function Wallet() {
           <DepositFlow
             paymentInfo={paymentInfo}
             onSuccess={async () => { await loadTx(); await refresh(); }}
+            onBalanceRefresh={refresh}
           />
         )}
 

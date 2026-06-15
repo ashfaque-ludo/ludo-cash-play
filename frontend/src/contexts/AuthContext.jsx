@@ -18,7 +18,12 @@ export function AuthProvider({ children }) {
     }
   }, []);
 
-  useEffect(() => { refresh(); }, [refresh]);
+  useEffect(() => {
+    refresh();
+    // Poll balance every 5 seconds for realtime wallet updates
+    const poll = setInterval(refresh, 5000);
+    return () => clearInterval(poll);
+  }, [refresh]);
 
   const login = async (identifier, password, isPhone = false) => {
     try {

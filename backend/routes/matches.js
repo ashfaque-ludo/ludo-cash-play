@@ -65,7 +65,7 @@ function serializeMatch(m) {
 router.get("/", async (req, res) => {
   try {
     const queries = [
-      Match.find({ status: "waiting" }).sort({ createdAt: -1 }).limit(50),
+      Match.find({ status: "waiting" }).sort({ createdAt: -1 }).limit(50).lean(),
     ];
     if (req.user) {
       queries.push(
@@ -186,6 +186,8 @@ router.post("/:id/cancel", async (req, res) => {
     const isCreator = match.players[0]?.user.toString() === req.user._id.toString();
     if (match.status === "waiting" && !isCreator) return res.status(403).json({ detail: "Only creator can cancel a waiting match." });
     match.status = "cancelled";
+    match.cancel_reason = req.body.reason || "";
+    match.cancel_note = req.body.note || req.body.reason || "";
     await match.save();
     for (const p of match.players) {
       await User.findByIdAndUpdate(p.user, { $inc: { "wallet.deposit": match.stake } });

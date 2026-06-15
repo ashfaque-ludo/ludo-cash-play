@@ -115,10 +115,8 @@ router.post("/verify-otp", validators.phone, validators.otp, handleValidation, a
         const referrer = await User.findOne({ referral_code: referral_code.toUpperCase() });
         if (referrer && referrer._id.toString() !== user._id.toString()) {
           user.referred_by = referrer._id;
-          user.wallet.bonus = 50;
           await user.save();
-          await User.findByIdAndUpdate(referrer._id, { $inc: { "wallet.bonus": 25 } });
-          await Referral.create({ referrer: referrer._id, referred: user._id, referral_code: referral_code.toUpperCase(), commission_earned: 25, status: "credited" });
+          await Referral.create({ referrer: referrer._id, referred: user._id, referral_code: referral_code.toUpperCase(), commission_earned: 0, status: "pending" });
         } else { await user.save(); }
       } else { await user.save(); }
     } else {
@@ -189,10 +187,8 @@ router.post("/register", authLimiter, async (req,res) => {
       const referrer = await User.findOne({ referral_code:referral_code.toUpperCase() });
       if (referrer && referrer._id.toString()!==user._id.toString()) {
         user.referred_by = referrer._id;
-        user.wallet.bonus = 50;
         await user.save();
-        await User.findByIdAndUpdate(referrer._id, { $inc:{ "wallet.bonus":25 } });
-        await Referral.create({ referrer:referrer._id, referred:user._id, referral_code:referral_code.toUpperCase(), commission_earned:25, status:"credited" });
+        await Referral.create({ referrer:referrer._id, referred:user._id, referral_code:referral_code.toUpperCase(), commission_earned:0, status:"pending" });
       } else { await user.save(); }
     } else { await user.save(); }
     const token = sign(user._id);
@@ -233,10 +229,8 @@ router.post("/verify-firebase-otp", validators.phone, handleValidation, async (r
         const referrer = await User.findOne({ referral_code: referral_code.toUpperCase() });
         if (referrer && referrer._id.toString() !== user._id.toString()) {
           user.referred_by = referrer._id;
-          user.wallet.bonus = 50;
           await user.save();
-          await User.findByIdAndUpdate(referrer._id, { $inc: { "wallet.bonus": 25 } });
-          await Referral.create({ referrer: referrer._id, referred: user._id, referral_code: referral_code.toUpperCase(), commission_earned: 25, status: "credited" });
+          await Referral.create({ referrer: referrer._id, referred: user._id, referral_code: referral_code.toUpperCase(), commission_earned: 0, status: "pending" });
         } else { await user.save(); }
       } else { await user.save(); }
     } else {

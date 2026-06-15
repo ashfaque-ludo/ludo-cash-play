@@ -61,6 +61,7 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [resendTimer, setResendTimer] = useState(0);
+  const [useBackend, setUseBackend] = useState(false);
 
   // Cleanup on unmount
   useEffect(() => () => clearRecaptcha(), []);
@@ -72,7 +73,7 @@ export default function Login() {
     return () => clearTimeout(t);
   }, [resendTimer]);
 
-  // ── Send OTP ──────────────────────────────────────────────────────────────
+  // ── Send OTP (Firebase first, backend fallback) ───────────────────────────
   const handleSendOtp = async (e) => {
     e?.preventDefault();
     setError("");
@@ -83,38 +84,32 @@ export default function Login() {
     }
     setLoading(true);
 
-    // Firebase path
+    // Try Firebase first
     if (FIREBASE_READY && auth) {
       try {
-        clearRecaptcha(); // always fresh
+        clearRecaptcha();
         const verifier = await getRecaptcha();
         _confirmation = await signInWithPhoneNumber(auth, `+91${clean}`, verifier);
+        setUseBackend(false);
         toast.success("OTP sent to your phone!");
         setStep("otp");
         setResendTimer(60);
-      } catch (err) {
-        clearRecaptcha();
-        const code = err.code || "";
-        let msg = "Failed to send OTP. Try again.";
-        if (code === "auth/invalid-phone-number") msg = "Invalid phone number.";
-        else if (code === "auth/quota-exceeded") msg = "OTP quota exceeded. Contact support.";
-        else if (code === "auth/too-many-requests") msg = "Too many requests. Wait and retry.";
-        else if (code === "auth/billing-not-enabled") msg = "OTP service unavailable. Contact support.";
-        else if (err.message?.includes("already been rendered")) msg = "Refresh page and try again.";
-        else if (err.message) msg = err.message;
-        setError(msg);
-      } finally {
         setLoading(false);
+        return;
+      } catch (fbErr) {
+        clearRecaptcha();
+        _confirmation = null;
+        console.log("[OTP] Firebase failed:", fbErr.code, "— falling back to backend SMS");
       }
-      return;
     }
 
-    // Fallback: backend SMS OTP
+    // Backend SMS fallback
     const r = await sendOtp(clean);
     setLoading(false);
     if (!r.ok) { setError(r.error || "Failed to send OTP"); return; }
-    if (r.dev_otp) toast.success(`Dev OTP: ${r.dev_otp}`, { duration: 10000 });
-    else toast.success("OTP sent to your phone!");
+    setUseBackend(true);
+    if (r.dev_otp) toast.success(`OTP: ${r.dev_otp}`, { duration: 15000 });
+    else toast.success("OTP sent via SMS!");
     setStep("otp");
     setResendTimer(60);
   };
@@ -126,12 +121,12 @@ export default function Login() {
     if (otp.length !== 6) { setError("Enter the 6-digit OTP"); return; }
     setLoading(true);
 
-    // Firebase path
-    if (FIREBASE_READY && auth && _confirmation) {
+    // Firebase verify path
+    if (!useBackend && FIREBASE_READY && auth && _confirmation) {
       try {
         const result = await _confirmation.confirm(otp);
         const idToken = await result.user.getIdToken();
-        const firebasePhone = result.user.phoneNumber; // +91XXXXXXXXXX
+        const firebasePhone = result.user.phoneNumber;
 
         clearRecaptcha();
         _confirmation = null;
@@ -152,7 +147,7 @@ export default function Login() {
       return;
     }
 
-    // Fallback: backend verify OTP
+    // Backend verify OTP path
     const r = await verifyOtp(phone.replace(/\D/g, ""), otp);
     setLoading(false);
     if (!r.ok) { setError(r.error || "Invalid OTP"); return; }

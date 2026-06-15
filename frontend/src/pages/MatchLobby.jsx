@@ -35,7 +35,7 @@ export default function MatchLobby() {
       setTables(t.data.tables); setMatches(m.data.matches);
     } catch {}
   };
-  useEffect(()=>{ load(); const id = setInterval(load, 5000); return ()=>clearInterval(id); }, []);
+  useEffect(()=>{ load(); const id = setInterval(load, 3000); return ()=>clearInterval(id); }, []);
 
   const createMatch = async (stake, isCustom = false) => {
     if (total < stake) return toast.error("Insufficient balance for this stake");

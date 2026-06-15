@@ -25,6 +25,10 @@ const userSchema = new mongoose.Schema({
   last_login_ip:   { type: String, default: "" },
 }, { timestamps: true });
 
+userSchema.index({ phone: 1 });
+userSchema.index({ referral_code: 1 });
+userSchema.index({ role: 1 });
+
 userSchema.pre("save", async function(next) {
   // Strip falsy email/phone so they're absent from the document (not null),
   // which makes the partial unique indexes skip them correctly.

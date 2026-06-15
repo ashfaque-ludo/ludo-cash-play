@@ -15,7 +15,7 @@ export default function Referral() {
 
   if (!user || user === false) return null;
 
-  const link = data?.referral_link || `${window.location.origin}/register?ref=${data?.code || ""}`;
+  const link = `https://ludocashplay.in/signup?ref=${data?.code || user?.referral_code || ""}`;
 
   const copy = async (text) => {
     try { await navigator.clipboard.writeText(text); } catch {}
@@ -26,7 +26,7 @@ export default function Referral() {
 
   const shareWhatsApp = () => {
     const msg = encodeURIComponent(
-      `🎲 Join me on Ludo Cash Play and win real money!\nUse my referral code *${data?.code}* to get a ₹50 welcome bonus.\n👉 ${link}`
+      `🎲 Play Ludo and win real money!\nUse my code: *${data?.code || user?.referral_code}*\n👉 ${link}`
     );
     window.open(`https://wa.me/?text=${msg}`, "_blank");
   };
@@ -34,7 +34,7 @@ export default function Referral() {
   const shareNative = async () => {
     if (navigator.share) {
       try {
-        await navigator.share({ title: "Ludo Cash Play", text: `Join with my code ${data?.code} and get ₹50 bonus!`, url: link });
+        await navigator.share({ title: "Ludo Cash Play", text: `Play Ludo and win real money! Use my code: ${data?.code || user?.referral_code}`, url: link });
         return;
       } catch {}
     }
@@ -50,8 +50,7 @@ export default function Referral() {
           <p className="text-xs text-gray-500 uppercase tracking-widest font-semibold">Invite & Earn</p>
           <h1 className="text-2xl font-black text-gray-900">Refer Friends</h1>
           <p className="text-sm text-gray-500 mt-1">
-            Your friend gets <strong className="text-green-600">₹50</strong> welcome bonus.
-            You earn <strong className="text-orange-600">₹25</strong> instantly!
+            Invite friends to play Ludo. You earn <strong className="text-orange-600">10% of their first deposit</strong> (up to ₹100)!
           </p>
         </div>
 
@@ -118,8 +117,8 @@ export default function Referral() {
           <div className="space-y-3">
             {[
               { step: "1", title: "Share your code", desc: "Send your referral link via WhatsApp or any platform." },
-              { step: "2", title: "Friend signs up", desc: "They register with your code. Both get a bonus instantly." },
-              { step: "3", title: "Earn rewards", desc: "You get ₹25 on signup + 10% of first deposit (max ₹100)." },
+              { step: "2", title: "Friend signs up", desc: "They register using your referral link." },
+              { step: "3", title: "Earn rewards", desc: "You get 10% of their first deposit (max ₹100) when they recharge." },
             ].map(s => (
               <div key={s.step} className="flex items-start gap-3">
                 <div className="w-7 h-7 rounded-full bg-gradient-to-br from-red-700 to-black flex items-center justify-center text-white text-xs font-bold shrink-0">

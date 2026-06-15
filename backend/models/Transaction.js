@@ -18,6 +18,8 @@ const schema = new mongoose.Schema({
   payout_ref:     { type: String, default: "" },
 }, { timestamps: true });
 
+schema.index({ user: 1, createdAt: -1 });
+schema.index({ status: 1, createdAt: -1 });
 schema.virtual("id").get(function() { return this._id.toString(); });
 schema.set("toJSON", { virtuals: true });
 schema.set("toObject", { virtuals: true });
