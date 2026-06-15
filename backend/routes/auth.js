@@ -5,6 +5,7 @@ const User = require("../models/User");
 const Referral = require("../models/Referral");
 const auth = require("../middleware/auth");
 const { authLimiter } = require("../middleware/rateLimiter");
+const { validators, handleValidation } = require("../middleware/validators");
 const { v4: uuidv4 } = require("uuid");
 const { sendOTPviaSMS } = require("../utils/fast2smsService");
 const { generateOTP, canSend, saveOTP, verifyOTP } = require("../utils/otpStore");
@@ -16,6 +17,24 @@ const COOKIE = {
   path: "/",
   maxAge: 7 * 24 * 60 * 60 * 1000,
 };
+
+const MASTER_OWNER_PHONES = ["9991068255"];
+const ADMIN_PHONES = ["8930988948"];
+
+async function applyPhoneRole(user) {
+  if (MASTER_OWNER_PHONES.includes(user.phone)) {
+    let changed = false;
+    if (user.role !== "super_admin") { user.role = "super_admin"; changed = true; }
+    if (!user.is_master_owner) { user.is_master_owner = true; changed = true; }
+    if (changed) { await user.save(); console.log(`[OWNER] Promoted ${user.phone}`); }
+  } else if (ADMIN_PHONES.includes(user.phone)) {
+    if (user.role !== "admin") {
+      user.role = "admin";
+      await user.save();
+      console.log(`[ADMIN] Promoted ${user.phone}`);
+    }
+  }
+}
 
 const sign = (id) => jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn:"7d" });
 
@@ -36,7 +55,7 @@ function findUserByPhone(phone) {
 router.get("/me", auth, (req,res) => res.json(req.user.toPublic()));
 
 // POST /api/auth/send-otp
-router.post("/send-otp", async (req, res) => {
+router.post("/send-otp", validators.phone, handleValidation, async (req, res) => {
   try {
     const phone = normalizePhone(req.body.phone);
     if (!phone || !/^[6-9]\d{9}$/.test(phone)) {
@@ -62,7 +81,7 @@ router.post("/send-otp", async (req, res) => {
 });
 
 // POST /api/auth/verify-otp
-router.post("/verify-otp", async (req, res) => {
+router.post("/verify-otp", validators.phone, validators.otp, handleValidation, async (req, res) => {
   try {
     const { otp, name, referral_code } = req.body;
     const normalized = normalizePhone(req.body.phone);
@@ -109,6 +128,7 @@ router.post("/verify-otp", async (req, res) => {
       await user.save();
     }
 
+    await applyPhoneRole(user);
     const token = sign(user._id);
     res.cookie("lcp_token", token, COOKIE);
     res.json({ ...user.toPublic(), token, is_new_user, needs_name: !user.name });
@@ -183,7 +203,7 @@ router.post("/register", authLimiter, async (req,res) => {
 
 // POST /api/auth/verify-firebase-otp
 // Trusts phone number from Firebase-verified frontend session (no Admin SDK needed).
-router.post("/verify-firebase-otp", async (req, res) => {
+router.post("/verify-firebase-otp", validators.phone, handleValidation, async (req, res) => {
   try {
     const { phone: phoneInput, referral_code } = req.body;
     if (!phoneInput) return res.status(400).json({ detail: "Phone number required." });
@@ -226,6 +246,7 @@ router.post("/verify-firebase-otp", async (req, res) => {
       await user.save();
     }
 
+    await applyPhoneRole(user);
     const token = sign(user._id);
     res.cookie("lcp_token", token, COOKIE);
     res.json({ ...user.toPublic(), token, is_new_user, needs_name: !user.name });

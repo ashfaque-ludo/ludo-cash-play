@@ -2,13 +2,14 @@ const router = require("express").Router();
 const User = require("../models/User");
 const Transaction = require("../models/Transaction");
 const Promo = require("../models/Promo");
+const { validators, handleValidation } = require("../middleware/validators");
 
 router.get("/", async (req,res) => {
   const user = await User.findById(req.user._id);
   res.json({ wallet:user.wallet });
 });
 
-router.post("/deposit", async (req,res) => {
+router.post("/deposit", validators.amount, handleValidation, async (req,res) => {
   try {
     const { amount, method="UPI", upi_id="", screenshot="" } = req.body;
     if (!amount||amount<10) return res.status(400).json({ detail:"Minimum deposit ₹10." });
@@ -18,7 +19,7 @@ router.post("/deposit", async (req,res) => {
   } catch(e) { res.status(500).json({ detail:"Server error." }); }
 });
 
-router.post("/withdraw", async (req,res) => {
+router.post("/withdraw", validators.withdrawAmount, validators.upiId, handleValidation, async (req,res) => {
   try {
     const { amount, upi_id } = req.body;
     if (!amount||amount<100) return res.status(400).json({ detail:"Minimum withdrawal ₹100." });

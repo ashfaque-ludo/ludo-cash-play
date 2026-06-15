@@ -1,20 +1,31 @@
 require("dotenv").config();
-// v7 – profile, kyc, admin/kyc
 const express=require("express");
 const cors=require("cors");
 const helmet=require("helmet");
 const morgan=require("morgan");
 const compression=require("compression");
 const cookieParser=require("cookie-parser");
+const mongoSanitize=require("express-mongo-sanitize");
+const hpp=require("hpp");
 const path=require("path");
 const connectDB=require("./config/db");
 const auth=require("./middleware/auth");
 const {requireRole,attachCan}=require("./middleware/adminAuth");
-const {general,adminLimiter,authLimiter,otpLimiter}=require("./middleware/rateLimiter");
+const {sanitizeInput}=require("./middleware/validators");
+const {
+  general, adminLimiter, authLimiter, otpLimiter,
+  otpVerifyLimiter, uploadLimiter, walletLimiter, withdrawLimiter,
+  matchCreateLimiter, strictLimiter,
+}=require("./middleware/rateLimiter");
 
 const app=express();
 app.use(compression());
-app.use(helmet({crossOriginResourcePolicy:{policy:"cross-origin"}}));
+app.use(helmet({
+  crossOriginResourcePolicy:{policy:"cross-origin"},
+  contentSecurityPolicy: false,
+  crossOriginEmbedderPolicy: false,
+}));
+app.disable("x-powered-by");
 app.set("trust proxy",1);
 
 const ALLOWED_ORIGINS = [
@@ -28,15 +39,22 @@ const ALLOWED_ORIGINS = [
 
 app.use(cors({
   origin: (origin, callback) => {
-    // Allow no-origin requests (curl / mobile native) and all listed origins
-    if (!origin || ALLOWED_ORIGINS.includes(origin)) return callback(null, true);
+    if (!origin) return callback(null, true);
+    if (ALLOWED_ORIGINS.includes(origin)) return callback(null, true);
+    if (/\.vercel\.app$/.test(origin)) return callback(null, true);
     callback(null, false);
   },
   credentials: true,
+  methods: ["GET","POST","PUT","DELETE","OPTIONS","PATCH"],
+  allowedHeaders: ["Content-Type","Authorization"],
 }));
 app.use(express.json({limit:"10mb"}));
+app.use(express.urlencoded({extended:true,limit:"10mb"}));
 app.use(cookieParser());
-app.use(morgan("dev"));
+app.use(morgan("combined"));
+app.use(mongoSanitize());
+app.use(hpp());
+app.use(sanitizeInput);
 app.use(general);
 
 // Serve uploaded files (screenshots, KYC docs)
@@ -46,11 +64,18 @@ app.get("/health",(_, res)=>res.json({status:"ok",ts:Date.now()}));
 app.get("/api/health",(_, res)=>res.json({status:"ok",ts:Date.now()}));
 app.get("/test-route",(_, res)=>res.json({message:"Backend is fresh!", v:"8"}));
 
-// Apply strict rate limits to auth endpoints before the router
+// Route-specific rate limits (applied before routers)
 app.post("/api/auth/login", authLimiter);
 app.post("/api/auth/register", authLimiter);
 app.post("/api/auth/send-otp", otpLimiter);
-app.post("/api/auth/verify-firebase-otp", otpLimiter);
+app.post("/api/auth/verify-otp", otpVerifyLimiter);
+app.post("/api/auth/verify-firebase-otp", otpVerifyLimiter);
+app.use("/api/wallet/withdraw", withdrawLimiter);
+app.use("/api/wallet", walletLimiter);
+app.post("/api/matches/create", matchCreateLimiter);
+app.use("/api/admin/payment-settings/upload-qr", uploadLimiter);
+app.use("/api/admin", adminLimiter);
+app.use("/api/owner", adminLimiter);
 
 app.use("/api/auth",require("./routes/auth"));
 app.use("/api/public",require("./routes/public"));

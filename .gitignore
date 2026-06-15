@@ -41,9 +41,16 @@ Thumbs.db
 
 # Uploads (user-uploaded files — not in source control)
 backend/uploads/
+!backend/uploads/.gitkeep
+!backend/uploads/qr_codes/.gitkeep
 
 # Runtime
 backend/.cache/
+
+# Secrets (extra safety)
+*.pem
+*.key
+*credentials*.json
 
 # Python cache
 __pycache__/
