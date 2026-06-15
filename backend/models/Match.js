@@ -16,7 +16,7 @@ const playerSlot = new mongoose.Schema(
 const schema = new mongoose.Schema({
   label:         { type: String, required: true },
   stake:         { type: Number, required: true },
-  tier:          { type: String, enum: ["standard","premium","vip"], default: "standard" },
+  tier:          { type: String, enum: ["standard","premium","vip","custom"], default: "standard" },
   players:       [playerSlot],
   status:        { type: String, enum: ["waiting","in_progress","awaiting_review","disputed","ended","cancelled"], default: "waiting" },
   winner:        { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
