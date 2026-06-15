@@ -127,19 +127,26 @@ const handleCreate = async (req, res) => {
     }
 
     await debit(req.user._id, stakeAmount);
-    const commission = Math.round(stakeAmount * 2 * PCT / 100);
-    const room_code = genCode(6, true);
-    const room_password = genCode(4);
-    const match = await Match.create({
-      label,
-      stake: stakeAmount,
-      tier,
-      prize_pool: stakeAmount * 2 - commission,
-      commission,
-      room_code,
-      room_password,
-      players: [{ user: req.user._id, id: req.user._id.toString(), name: req.user.name, email: req.user.email }],
-    });
+    let match;
+    try {
+      const commission = Math.round(stakeAmount * 2 * PCT / 100);
+      const room_code = genCode(6, true);
+      const room_password = genCode(4);
+      match = await Match.create({
+        label,
+        stake: stakeAmount,
+        tier,
+        prize_pool: stakeAmount * 2 - commission,
+        commission,
+        room_code,
+        room_password,
+        players: [{ user: req.user._id, id: req.user._id.toString(), name: req.user.name, email: req.user.email }],
+      });
+    } catch (createErr) {
+      // Refund stake if match creation fails after debit
+      await User.findByIdAndUpdate(req.user._id, { $inc: { "wallet.deposit": stakeAmount } });
+      return res.status(400).json({ detail: createErr.message });
+    }
     res.status(201).json({ ok: true, match: serializeMatch(match) });
   } catch (e) { res.status(400).json({ detail: e.message }); }
 };
