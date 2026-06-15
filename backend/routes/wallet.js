@@ -115,29 +115,74 @@ router.post("/deposit-screenshot", depositUpload.single("screenshot"), async (re
 });
 
 // ── POST /wallet/withdraw ─────────────────────────────────────────────────────
-router.post("/withdraw", validators.withdrawAmount, validators.upiId, handleValidation, async (req, res) => {
+router.post("/withdraw", async (req, res) => {
   try {
-    const { amount, upi_id } = req.body;
+    const { amount, method = "upi", upi_id, account_number, ifsc, account_holder } = req.body;
     if (!amount || amount < 100) return res.status(400).json({ detail: "Minimum withdrawal ₹100." });
-    if (!upi_id?.trim()) return res.status(400).json({ detail: "UPI ID required." });
+    if (amount > 50000) return res.status(400).json({ detail: "Maximum withdrawal ₹50,000." });
+
     const user = await User.findById(req.user._id);
-    if ((user.wallet.winning || 0) < amount) {
-      return res.status(400).json({ detail: "Insufficient winning balance. Only prize winnings can be withdrawn." });
+
+    // KYC check
+    if (user.kyc_status !== "approved") {
+      return res.status(403).json({ detail: "Complete KYC verification before withdrawing.", kyc_required: true });
     }
-    user.wallet.winning -= amount;
+
+    const withdrawable = (user.wallet.winning || 0) + (user.wallet.referral || 0);
+    if (withdrawable < amount) {
+      return res.status(400).json({ detail: `Insufficient balance. Withdrawable: ₹${withdrawable} (winnings + referral).` });
+    }
+
+    // Method validation
+    if (method === "upi" && !upi_id?.trim()) return res.status(400).json({ detail: "UPI ID required." });
+    if (method === "bank" && (!account_number?.trim() || !ifsc?.trim() || !account_holder?.trim())) {
+      return res.status(400).json({ detail: "Account number, IFSC and account holder name required." });
+    }
+
+    // Deduct: referral first, then winning
+    let rem = amount;
+    const refBal = user.wallet.referral || 0;
+    if (refBal >= rem) { user.wallet.referral -= rem; rem = 0; }
+    else { rem -= refBal; user.wallet.referral = 0; user.wallet.winning -= rem; }
     await user.save();
+
     const tx = await Transaction.create({
       user: user._id,
       user_email: user.email || "",
       user_phone: user.phone || "",
       type: "withdrawal",
       amount,
-      upi_id: upi_id.trim(),
+      method: method.toUpperCase(),
+      upi_id: method === "upi" ? (upi_id?.trim() || "") : "",
+      account_number: method === "bank" ? (account_number?.trim() || "") : "",
+      ifsc: method === "bank" ? (ifsc?.trim() || "") : "",
+      account_holder: method === "bank" ? (account_holder?.trim() || "") : "",
+      description: `Withdrawal via ${method.toUpperCase()}`,
     });
-    res.status(201).json({ ok: true, transaction: { id: tx._id, amount, status: "pending" } });
+    res.status(201).json({ ok: true, message: "Withdrawal initiated. Processing in 5–30 mins.", transaction: { id: tx._id, amount, status: "pending" } });
   } catch (e) {
     console.error("withdraw error:", e.message);
     res.status(500).json({ detail: e.message || "Server error." });
+  }
+});
+
+// ── POST /wallet/redeem-referral ──────────────────────────────────────────────
+router.post("/redeem-referral", async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id);
+    const refBal = user.wallet.referral || 0;
+    if (refBal < 1) return res.status(400).json({ detail: "No referral balance to redeem." });
+    user.wallet.winning += refBal;
+    user.wallet.referral = 0;
+    await user.save();
+    await Transaction.create({
+      user: user._id, user_phone: user.phone || "",
+      type: "bonus", amount: refBal, status: "completed",
+      description: `Referral ₹${refBal} moved to winning wallet`,
+    });
+    res.json({ ok: true, moved: refBal, message: `₹${refBal} moved to your winning wallet!` });
+  } catch (e) {
+    res.status(500).json({ detail: "Server error." });
   }
 });
 
@@ -163,9 +208,25 @@ router.post("/redeem-promo", async (req, res) => {
 });
 
 // ── GET /wallet/transactions ──────────────────────────────────────────────────
+const TYPE_MAP = {
+  game:     ["match_win", "match_loss", "match_entry"],
+  withdraw: ["withdrawal"],
+  deposit:  ["deposit"],
+  bonus:    ["signup_bonus", "bonus"],
+  penalty:  ["penalty"],
+  referral: ["referral_bonus"],
+};
+
 router.get("/transactions", async (req, res) => {
-  const limit = Math.min(parseInt(req.query.limit) || 50, 100);
-  const txs = await Transaction.find({ user: req.user._id }).sort({ createdAt: -1 }).limit(limit);
+  const limit = Math.min(parseInt(req.query.limit) || 100, 200);
+  const { type } = req.query;
+  const query = { user: req.user._id };
+  if (type && TYPE_MAP[type]) {
+    query.type = { $in: TYPE_MAP[type] };
+  } else if (type && type !== "all") {
+    query.type = type;
+  }
+  const txs = await Transaction.find(query).sort({ createdAt: -1 }).limit(limit);
   res.json({ transactions: txs });
 });
 

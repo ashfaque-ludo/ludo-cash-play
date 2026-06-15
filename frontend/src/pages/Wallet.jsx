@@ -3,7 +3,8 @@ import { useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { api, fmtINR, formatApiError } from "@/lib/api";
 import { toast } from "sonner";
-import { Copy, CheckCircle, Plus, ArrowDownToLine, Tag, RefreshCw, ChevronLeft } from "lucide-react";
+import { Copy, CheckCircle, Plus, ArrowDownToLine, Tag, RefreshCw, ChevronLeft, Gift } from "lucide-react";
+import AnnouncementBar from "@/components/AnnouncementBar";
 
 const QUICK_AMOUNTS = [100, 200, 500, 1000, 2000, 5000];
 const BACKEND = process.env.REACT_APP_BACKEND_URL || "";
@@ -361,23 +362,40 @@ export default function Wallet() {
     return () => clearInterval(timerRef.current);
   }, [loadTx, loadPaymentInfo]);
 
-  const w = user?.wallet || { deposit: 0, winning: 0, bonus: 0 };
-  const total = (w.deposit || 0) + (w.winning || 0) + (w.bonus || 0);
+  const w = user?.wallet || { deposit: 0, winning: 0, bonus: 0, referral: 0 };
+  const total = (w.deposit || 0) + (w.winning || 0) + (w.bonus || 0) + (w.referral || 0);
+
+  const handleRedeemReferral = async () => {
+    if (!(w.referral > 0)) return toast.error("No referral balance to redeem");
+    try {
+      const r = await api.post("/wallet/redeem-referral");
+      toast.success(r.data.message || "Referral balance moved to winnings!");
+      await refresh();
+    } catch (e) {
+      toast.error(e.response?.data?.detail || "Failed to redeem");
+    }
+  };
 
   const handleWithdraw = async () => {
     setWithdrawing(true);
     try {
       const amt = parseFloat(withdrawAmt);
       if (!amt || amt < 100) return toast.error("Minimum withdrawal is ₹100");
+      if (amt > 50000) return toast.error("Maximum withdrawal is ₹50,000");
       if (!withdrawUpi) return toast.error("Enter your UPI ID");
-      await api.post("/wallet/withdraw", { amount: amt, upi_id: withdrawUpi });
-      toast.success("Withdrawal requested. You will be credited soon.");
+      await api.post("/wallet/withdraw", { amount: amt, method: "upi", upi_id: withdrawUpi });
+      toast.success("Withdrawal requested. Processing in 5–30 mins.");
       setWithdrawAmt("");
       setWithdrawUpi("");
       await loadTx();
       await refresh();
     } catch (e) {
-      toast.error(formatApiError(e.response?.data?.detail) || e.message);
+      const detail = e.response?.data?.detail || e.message;
+      if (e.response?.data?.kyc_required) {
+        toast.error("KYC required — verify your identity first.");
+      } else {
+        toast.error(formatApiError(detail) || "Withdrawal failed");
+      }
     } finally {
       setWithdrawing(false);
     }
@@ -404,25 +422,44 @@ export default function Wallet() {
 
   return (
     <div className="min-h-screen pt-20 pb-24 bg-gradient-to-b from-amber-50 to-white">
-      <div className="max-w-2xl mx-auto px-3 space-y-3">
+      <AnnouncementBar />
+      <div className="max-w-2xl mx-auto px-3 space-y-3 mt-2">
 
         {/* Balance card */}
         <div className="bg-gradient-to-br from-red-800 to-black rounded-2xl p-5 text-white shadow">
           <p className="text-xs uppercase tracking-widest text-red-200 font-semibold mb-1">Total Balance</p>
           <p className="text-4xl font-black">{fmtINR(total)}</p>
-          <div className="grid grid-cols-3 gap-2 mt-4">
+          <div className="grid grid-cols-4 gap-2 mt-4">
             {[
-              { l: "Deposit", v: w.deposit, k: "deposit" },
-              { l: "Winnings", v: w.winning, k: "winning" },
-              { l: "Bonus", v: w.bonus, k: "bonus" },
+              { l: "Deposit", v: w.deposit },
+              { l: "Winnings", v: w.winning },
+              { l: "Bonus", v: w.bonus },
+              { l: "Referral", v: w.referral },
             ].map(x => (
-              <div key={x.l} className="bg-white/10 rounded-xl p-2.5 text-center">
-                <div className="text-[10px] uppercase tracking-wide text-white/60">{x.l}</div>
-                <div className="font-bold text-sm mt-0.5">{fmtINR(x.v)}</div>
+              <div key={x.l} className="bg-white/10 rounded-xl p-2 text-center">
+                <div className="text-[9px] uppercase tracking-wide text-white/60">{x.l}</div>
+                <div className="font-bold text-xs mt-0.5">{fmtINR(x.v)}</div>
               </div>
             ))}
           </div>
         </div>
+
+        {/* Referral balance redeem card */}
+        {(w.referral || 0) > 0 && (
+          <div className="bg-amber-50 border border-amber-300 rounded-2xl p-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Gift className="w-8 h-8 text-amber-600" />
+              <div>
+                <p className="font-bold text-gray-900">Referral Earnings</p>
+                <p className="text-sm text-gray-600">{fmtINR(w.referral)} available</p>
+              </div>
+            </div>
+            <button onClick={handleRedeemReferral}
+              className="px-4 py-2 bg-amber-500 text-white rounded-xl font-semibold text-sm hover:bg-amber-600 transition-colors">
+              Redeem
+            </button>
+          </div>
+        )}
 
         {/* Tab switcher */}
         <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-1 flex gap-1">
@@ -455,13 +492,21 @@ export default function Wallet() {
         {tab === "withdraw" && (
           <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4 space-y-4">
             <div className="bg-orange-50 rounded-xl border border-orange-200 px-4 py-3 text-sm text-orange-700">
-              Withdrawals are from your <strong>winnings</strong> balance only.
-              Available: <strong>{fmtINR(w.winning)}</strong>
+              Withdrawable balance: <strong>{fmtINR((w.winning || 0) + (w.referral || 0))}</strong>
+              <span className="block text-xs mt-0.5">(Winnings {fmtINR(w.winning)} + Referral {fmtINR(w.referral || 0)})</span>
             </div>
+
+            {user?.kyc_status !== "approved" && (
+              <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-700">
+                ⚠️ <strong>KYC required</strong> before withdrawal.{" "}
+                <a href="/kyc" className="underline font-semibold">Verify now →</a>
+              </div>
+            )}
+
             <div>
-              <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide block mb-1.5">Amount (min ₹100)</label>
+              <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide block mb-1.5">Amount (min ₹100, max ₹50,000)</label>
               <input type="number" value={withdrawAmt} onChange={e => setWithdrawAmt(e.target.value)}
-                placeholder="e.g. 500" min={100} max={100000}
+                placeholder="e.g. 500" min={100} max={50000}
                 className="w-full h-11 px-3 rounded-xl bg-gray-50 border border-gray-300 text-gray-900 outline-none focus:border-red-600 focus:ring-2 focus:ring-red-100 transition-all" />
             </div>
             <div>

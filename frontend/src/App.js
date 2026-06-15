@@ -1,5 +1,5 @@
-import React, { useState, Suspense, lazy } from "react";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import React, { useState, Suspense, lazy, useEffect } from "react";
+import { BrowserRouter, Routes, Route, Navigate, useParams } from "react-router-dom";
 import { Toaster } from "sonner";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { LanguageProvider } from "@/contexts/LanguageContext";
@@ -13,6 +13,17 @@ import WhatsAppButton from "@/components/WhatsAppButton";
 // Critical path: loaded eagerly
 import Home from "@/pages/Home";
 import Login from "@/pages/Login";
+
+// Inline wrapper: stores referral code then renders Login
+function LoginWithRef() {
+  const { refCode } = useParams();
+  useEffect(() => {
+    if (refCode && /^[A-Z0-9]{4,12}$/i.test(refCode)) {
+      localStorage.setItem("referral_code", refCode.toUpperCase());
+    }
+  }, [refCode]);
+  return <Login />;
+}
 
 // Lazy-loaded routes
 const Register = lazy(() => import("@/pages/Register"));
@@ -68,6 +79,7 @@ function AppLayout() {
         {/* Public */}
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />
+        <Route path="/login/:refCode" element={<LoginWithRef />} />
         <Route path="/register" element={<Register />} />
         <Route path="/signup" element={<Register />} />
         <Route path="/leaderboard" element={<Leaderboard />} />

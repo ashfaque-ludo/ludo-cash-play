@@ -6,6 +6,7 @@ import {
   Wallet as WalletIcon, Sword, Trophy, Sparkles, Crown,
   ArrowRight, Camera, ArrowDownToLine, Clock, User, Plus
 } from "lucide-react";
+import AnnouncementBar from "@/components/AnnouncementBar";
 
 export default function Dashboard() {
   const { user, refresh } = useAuth();
@@ -42,7 +43,8 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen pt-20 pb-20 bg-gradient-to-b from-amber-50 to-white">
-      <div className="max-w-2xl mx-auto px-3 space-y-3">
+      <AnnouncementBar />
+      <div className="max-w-2xl mx-auto px-3 space-y-3 mt-2">
 
         {/* Greeting */}
         <div className="pt-2">

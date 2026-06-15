@@ -1,8 +1,10 @@
 const router = require("express").Router();
 const User = require("../models/User");
 const Match = require("../models/Match");
+const Transaction = require("../models/Transaction");
 const StakeTable = require("../models/StakeTable");
 const Config = require("../models/Config");
+const { payReferralBonus } = require("../utils/referral");
 
 async function getPCT() {
   try {
@@ -247,11 +249,31 @@ router.post("/:id/submit-result", async (req, res) => {
         return res.json({ ok: true, auto_resolved: false, status: "disputed", match: serializeMatch(match) });
       }
       const w = match.players.find(p => p.claimed_win === true);
+      const l = match.players.find(p => p.claimed_win === false);
       match.winner = w.user;
       match.status = "ended";
       match.ended_at = new Date();
       await match.save();
       await User.findByIdAndUpdate(w.user, { $inc: { "wallet.winning": match.prize_pool } });
+
+      // Record match transactions
+      await Transaction.create({
+        user: w.user, user_phone: "", type: "match_win", amount: match.prize_pool,
+        status: "completed", description: `Won ₹${match.prize_pool} battle`,
+        meta: { match: match._id, stake: match.stake },
+      });
+      if (l) {
+        await Transaction.create({
+          user: l.user, user_phone: "", type: "match_loss", amount: -match.stake,
+          status: "completed", description: `Lost ₹${match.stake} battle`,
+          meta: { match: match._id, stake: match.stake },
+        });
+      }
+
+      // Pay 1% referral bonus to both players' referrers
+      await payReferralBonus(w.user, match.stake, match._id);
+      if (l) await payReferralBonus(l.user, match.stake, match._id);
+
       return res.json({ ok: true, auto_resolved: true, winner_id: w.user.toString(), match: serializeMatch(match) });
     }
 

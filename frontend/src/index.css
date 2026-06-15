@@ -76,6 +76,16 @@ code {
     }
 }
 
+/* Marquee animation for AnnouncementBar */
+@keyframes marquee {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+.animate-marquee {
+  animation: marquee 20s linear infinite;
+  display: inline-block;
+}
+
 /* Custom utilities */
 .glass { backdrop-filter: blur(18px); background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); }
 .glass-strong { backdrop-filter: blur(24px); background: rgba(10,10,14,0.7); border: 1px solid rgba(255,255,255,0.10); }

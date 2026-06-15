@@ -121,6 +121,8 @@ export default function Login() {
     if (otp.length !== 6) { setError("Enter the 6-digit OTP"); return; }
     setLoading(true);
 
+    const storedRef = localStorage.getItem("referral_code") || undefined;
+
     // Firebase verify path
     if (!useBackend && FIREBASE_READY && auth && _confirmation) {
       try {
@@ -131,9 +133,10 @@ export default function Login() {
         clearRecaptcha();
         _confirmation = null;
 
-        const r = await verifyFirebaseOtp(idToken, firebasePhone);
+        const r = await verifyFirebaseOtp(idToken, firebasePhone, storedRef);
         setLoading(false);
         if (!r.ok) { setError(r.error || "Login failed"); return; }
+        if (storedRef) localStorage.removeItem("referral_code");
         toast.success("Welcome to Ludo Cash Play!");
         nav(redirectPath(r.user, from), { replace: true });
       } catch (err) {
@@ -148,9 +151,10 @@ export default function Login() {
     }
 
     // Backend verify OTP path
-    const r = await verifyOtp(phone.replace(/\D/g, ""), otp);
+    const r = await verifyOtp(phone.replace(/\D/g, ""), otp, undefined, storedRef);
     setLoading(false);
     if (!r.ok) { setError(r.error || "Invalid OTP"); return; }
+    if (storedRef) localStorage.removeItem("referral_code");
     toast.success("Welcome to Ludo Cash Play!");
     nav(redirectPath(r.user, from), { replace: true });
   };

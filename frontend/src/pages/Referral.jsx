@@ -1,179 +1,156 @@
 import React, { useEffect, useState } from "react";
 import { api, fmtINR } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
-import { Copy, Check, Share2, Users, Gift, MessageCircle } from "lucide-react";
+import { Copy, Share2, MessageCircle, Users, IndianRupee, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
+import AnnouncementBar from "@/components/AnnouncementBar";
 
 export default function Referral() {
   const { user } = useAuth();
-  const [data, setData] = useState(null);
-  const [copied, setCopied] = useState(false);
+  const [stats, setStats] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    api.get("/referral/my").then(r => setData(r.data)).catch(() => {});
-  }, []);
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      const r = await api.get("/referral/my");
+      setStats(r.data);
+    } catch {}
+    finally { setLoading(false); }
+  };
+
+  useEffect(() => { fetchData(); }, []);
 
   if (!user || user === false) return null;
 
-  const link = `https://ludocashplay.in/signup?ref=${data?.code || user?.referral_code || ""}`;
+  const code = stats?.code || user?.referral_code || "";
+  const shareUrl = `https://ludocashplay.in/login/${code}`;
+  const shareMessage = `🎮 Play Ludo and Win Cash Daily!\n⚡ 24x7 Live Support\n💰 Commission Charge 5%\n🎁 Referral Bonus 1% on All Games\n⚡ Instant Withdrawal Via UPI/Bank\n${shareUrl}\n\nRegister Now, My refer code is ${code}`;
 
-  const copy = async (text) => {
-    try { await navigator.clipboard.writeText(text); } catch {}
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
-    toast.success("Copied!");
+  const copyCode = () => {
+    navigator.clipboard.writeText(code).catch(() => {});
+    toast.success("Code copied!");
   };
 
-  const shareWhatsApp = () => {
-    const msg = encodeURIComponent(
-      `🎲 Play Ludo and win real money!\nUse my code: *${data?.code || user?.referral_code}*\n👉 ${link}`
-    );
-    window.open(`https://wa.me/?text=${msg}`, "_blank");
+  const copyLink = () => {
+    navigator.clipboard.writeText(shareUrl).catch(() => {});
+    toast.success("Link copied!");
   };
 
-  const shareNative = async () => {
+  const whatsappShare = () => {
+    window.open(`https://wa.me/?text=${encodeURIComponent(shareMessage)}`, "_blank");
+  };
+
+  const nativeShare = async () => {
     if (navigator.share) {
-      try {
-        await navigator.share({ title: "Ludo Cash Play", text: `Play Ludo and win real money! Use my code: ${data?.code || user?.referral_code}`, url: link });
-        return;
-      } catch {}
+      try { await navigator.share({ title: "Ludo Cash Play", text: shareMessage, url: shareUrl }); return; }
+      catch {}
     }
-    copy(link);
+    copyLink();
   };
 
   return (
-    <div className="min-h-screen pt-20 pb-20 bg-gradient-to-b from-amber-50 to-white">
-      <div className="max-w-lg mx-auto px-3 space-y-3">
+    <div className="min-h-screen pt-20 bg-gradient-to-b from-amber-50 to-white pb-24">
+      <AnnouncementBar />
+      {/* Header */}
+      <div className="bg-gradient-to-r from-red-700 to-black text-white p-6 text-center">
+        <h1 className="text-2xl font-bold">Refer & Earn</h1>
+        <p className="text-white/80 text-sm mt-1">Get 1% on every game your friends play — LIFETIME!</p>
+      </div>
 
-        {/* Hero */}
-        <div className="pt-2">
-          <p className="text-xs text-gray-500 uppercase tracking-widest font-semibold">Invite & Earn</p>
-          <h1 className="text-2xl font-black text-gray-900">Refer Friends</h1>
-          <p className="text-sm text-gray-500 mt-1">
-            Invite friends to play Ludo. You earn <strong className="text-orange-600">10% of their first deposit</strong> (up to ₹100)!
-          </p>
+      {/* Referral Code Card */}
+      <div className="bg-white rounded-2xl shadow-md border border-gray-200 m-4 p-4">
+        <p className="text-sm text-gray-500 text-center mb-1">Your Referral Code</p>
+        <p className="text-4xl font-black text-center text-red-700 tracking-widest mb-4">{code || "—"}</p>
+        <div className="flex gap-2">
+          <button onClick={copyCode}
+            className="flex-1 py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold flex items-center justify-center gap-2 text-sm">
+            <Copy className="w-4 h-4" /> Copy Code
+          </button>
+          <button onClick={copyLink}
+            className="flex-1 py-3 bg-blue-50 text-blue-700 rounded-xl font-semibold flex items-center justify-center gap-2 text-sm">
+            <Share2 className="w-4 h-4" /> Copy Link
+          </button>
         </div>
-
-        {/* Stats row */}
-        <div className="grid grid-cols-3 gap-2">
-          {[
-            { label: "Your Code", value: data?.code || "—", color: "text-red-700 bg-red-50 border-red-200", testId: "referral-code" },
-            { label: "Friends", value: data?.referred_count ?? 0, color: "text-blue-700 bg-blue-50 border-blue-200", testId: "referral-count" },
-            { label: "Earned", value: fmtINR(data?.total_earnings ?? 0), color: "text-green-700 bg-green-50 border-green-200", testId: "referral-earnings" },
-          ].map(s => (
-            <div key={s.label} className={`rounded-2xl border p-3 text-center ${s.color}`}>
-              <div className="text-[10px] uppercase font-bold opacity-70 mb-1">{s.label}</div>
-              <div className="font-black text-lg" data-testid={s.testId}>{s.value}</div>
-            </div>
-          ))}
+        <div className="flex gap-2 mt-2">
+          <button onClick={whatsappShare}
+            className="flex-1 py-3 bg-[#25D366] text-white rounded-xl font-semibold flex items-center justify-center gap-2 text-sm">
+            <MessageCircle className="w-4 h-4" /> WhatsApp
+          </button>
+          <button onClick={nativeShare}
+            className="flex-1 py-3 bg-gradient-to-r from-red-700 to-black text-white rounded-xl font-semibold flex items-center justify-center gap-2 text-sm">
+            <Share2 className="w-4 h-4" /> Share
+          </button>
         </div>
+      </div>
 
-        {/* Referral link card */}
-        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4 space-y-3">
-          <div className="text-sm font-bold text-gray-900">Your Referral Link</div>
-
-          <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2">
-            <span className="font-mono text-xs text-gray-600 truncate flex-1" data-testid="referral-link">{link}</span>
-            <button
-              onClick={() => copy(link)}
-              className="shrink-0 p-1.5 rounded-lg bg-gray-100 border border-gray-200 hover:bg-gray-200 transition-all"
-              data-testid="copy-referral"
-            >
-              {copied ? <Check className="w-3.5 h-3.5 text-green-600" /> : <Copy className="w-3.5 h-3.5 text-gray-500" />}
-            </button>
-          </div>
-
-          <div className="flex gap-2 flex-wrap">
-            <button
-              onClick={shareWhatsApp}
-              className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-[#25D366] text-white font-bold text-sm shadow hover:opacity-90 transition-all"
-              data-testid="whatsapp-share"
-            >
-              <MessageCircle className="w-4 h-4" /> WhatsApp
-            </button>
-            <button
-              onClick={shareNative}
-              className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-gradient-to-r from-red-700 to-black text-white font-bold text-sm shadow hover:opacity-90 transition-all"
-              data-testid="share-referral"
-            >
-              <Share2 className="w-4 h-4" /> Share
-            </button>
-            <button
-              onClick={() => copy(data?.code || "")}
-              className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-gray-100 border border-gray-200 text-gray-700 font-bold text-sm hover:bg-gray-200 transition-all"
-              data-testid="copy-code"
-            >
-              <Copy className="w-4 h-4" /> Copy Code
-            </button>
-          </div>
+      {/* Stats */}
+      <div className="grid grid-cols-2 gap-3 mx-4 mb-4">
+        <div className="bg-white rounded-2xl p-4 border border-gray-200 shadow-sm">
+          <Users className="w-6 h-6 text-blue-500 mb-1" />
+          <p className="text-2xl font-bold text-gray-900">{loading ? "—" : (stats?.total_referrals || 0)}</p>
+          <p className="text-xs text-gray-500">Total Referrals</p>
         </div>
+        <div className="bg-white rounded-2xl p-4 border border-gray-200 shadow-sm">
+          <IndianRupee className="w-6 h-6 text-green-500 mb-1" />
+          <p className="text-2xl font-bold text-gray-900">{loading ? "—" : fmtINR(stats?.total_earned || 0)}</p>
+          <p className="text-xs text-gray-500">Total Earned</p>
+        </div>
+      </div>
 
-        {/* How it works */}
-        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
-          <div className="flex items-center gap-2 mb-3">
-            <Gift className="w-4 h-4 text-orange-500" />
-            <span className="font-bold text-gray-900 text-sm">How it works</span>
+      {/* Share message preview */}
+      <div className="bg-green-50 border border-green-200 rounded-2xl mx-4 p-4 mb-4">
+        <p className="text-xs font-bold text-green-700 mb-2">📤 WhatsApp Message Preview</p>
+        <pre className="text-xs text-gray-700 whitespace-pre-wrap font-sans">{shareMessage}</pre>
+      </div>
+
+      {/* How it works */}
+      <div className="bg-amber-50 border border-amber-200 rounded-2xl mx-4 p-4 mb-4">
+        <h3 className="font-bold text-gray-900 mb-2">💡 How it works</h3>
+        <ol className="text-sm text-gray-700 space-y-1.5">
+          <li>1. Share your code or link with friends</li>
+          <li>2. They sign up using your referral link</li>
+          <li>3. You earn <strong>1% on EVERY game</strong> they play</li>
+          <li>4. Earnings go to your Referral Wallet instantly</li>
+          <li>5. Redeem referral earnings from your Wallet page</li>
+        </ol>
+      </div>
+
+      {/* Referral list */}
+      <div className="bg-white rounded-2xl shadow-sm mx-4 p-4 mb-4">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="font-bold text-gray-900">Your Referrals ({stats?.total_referrals || 0})</h3>
+          <button onClick={fetchData} className="text-gray-400 hover:text-red-700">
+            <RefreshCw className="w-4 h-4" />
+          </button>
+        </div>
+        {loading ? (
+          <div className="flex justify-center py-6">
+            <div className="w-6 h-6 border-2 border-red-600 border-t-transparent rounded-full animate-spin" />
           </div>
-          <div className="space-y-3">
-            {[
-              { step: "1", title: "Share your code", desc: "Send your referral link via WhatsApp or any platform." },
-              { step: "2", title: "Friend signs up", desc: "They register using your referral link." },
-              { step: "3", title: "Earn rewards", desc: "You get 10% of their first deposit (max ₹100) when they recharge." },
-            ].map(s => (
-              <div key={s.step} className="flex items-start gap-3">
-                <div className="w-7 h-7 rounded-full bg-gradient-to-br from-red-700 to-black flex items-center justify-center text-white text-xs font-bold shrink-0">
-                  {s.step}
-                </div>
+        ) : stats?.referrals?.length > 0 ? (
+          <div className="space-y-2">
+            {stats.referrals.map((r, i) => (
+              <div key={r.id || i} className="flex justify-between items-center p-3 bg-gray-50 rounded-xl">
                 <div>
-                  <div className="font-semibold text-gray-900 text-sm">{s.title}</div>
-                  <div className="text-xs text-gray-500">{s.desc}</div>
+                  <p className="font-medium text-sm text-gray-900">
+                    {r.phone ? `XXXXX${String(r.phone).slice(-5)}` : r.name || "User"}
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    Joined: {new Date(r.joined || r.created_at).toLocaleDateString("en-IN")}
+                  </p>
                 </div>
+                <p className="font-bold text-green-600">{fmtINR(r.earnings || 0)}</p>
               </div>
             ))}
           </div>
-        </div>
-
-        {/* Referred users */}
-        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
-            <div className="flex items-center gap-2">
-              <Users className="w-4 h-4 text-gray-500" />
-              <span className="font-bold text-gray-900 text-sm">Friends Referred</span>
-            </div>
-            {data?.referred_count > 0 && (
-              <span className="text-xs font-semibold bg-red-100 text-red-700 px-2 py-0.5 rounded-full">
-                {data.referred_count} total
-              </span>
-            )}
-          </div>
-
-          {!data ? (
-            <div className="text-gray-400 text-sm text-center py-8">Loading…</div>
-          ) : data.referrals?.length ? (
-            <div className="divide-y divide-gray-100">
-              {data.referrals.map(r => (
-                <div key={r.id} className="flex items-center justify-between px-4 py-3" data-testid={`referral-row-${r.id}`}>
-                  <div>
-                    <div className="font-semibold text-gray-900 text-sm">{r.name}</div>
-                    <div className="text-xs text-gray-400">{r.email} · {new Date(r.created_at).toLocaleDateString("en-IN")}</div>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <div className="font-bold text-green-600 text-sm">{fmtINR(r.commission)}</div>
-                    <span className={`text-[10px] uppercase font-bold px-1.5 py-0.5 rounded-full ${r.status === "credited" ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"}`}>
-                      {r.status}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-gray-400 text-sm text-center py-8">
-              No referrals yet. Share your link to start earning!
-            </div>
-          )}
-        </div>
-
+        ) : (
+          <p className="text-sm text-gray-400 text-center py-4">
+            No referrals yet. Share your link to start earning!
+          </p>
+        )}
       </div>
+
     </div>
   );
 }

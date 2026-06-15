@@ -2,7 +2,7 @@ const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
 
 const walletSchema = new mongoose.Schema(
-  { deposit: { type: Number, default: 0 }, winning: { type: Number, default: 0 }, bonus: { type: Number, default: 0 } },
+  { deposit: { type: Number, default: 0 }, winning: { type: Number, default: 0 }, bonus: { type: Number, default: 0 }, referral: { type: Number, default: 0 } },
   { _id: false }
 );
 
