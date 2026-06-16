@@ -43,17 +43,25 @@ router.get('/banners', withCache('banners', 30000, async () => {
   return { banners: banners.map(b => ({ ...b.toObject(), id: b._id.toString() })) };
 }));
 
-router.get('/payment-info', withCache('payment_info', 30000, async () => {
-  const [admin_upi_id, admin_upi_name, admin_qr_image, whatsapp_number, support_email, announcement] = await Promise.all([
-    Config.get('admin_upi_id', 'ludocashplay@upi'),
-    Config.get('admin_upi_name', 'Ludo Cash Play'),
-    Config.get('admin_qr_image', ''),
-    Config.get('whatsapp_number', '919090000000'),
-    Config.get('support_email', 'support@ludocashplay.in'),
-    Config.get('announcement', ''),
-  ]);
-  return { admin_upi_id, admin_upi_name, admin_qr_image, whatsapp_number, support_email, announcement };
-}));
+router.get('/payment-info', async (req, res) => {
+  try {
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate');
+    res.set('Pragma', 'no-cache');
+    res.set('Expires', '0');
+    _cache.delete('payment_info'); // bust any in-memory cache
+    const [admin_upi_id, admin_upi_name, admin_qr_image, whatsapp_number, support_email, announcement] = await Promise.all([
+      Config.get('admin_upi_id', 'ludocashplay@upi'),
+      Config.get('admin_upi_name', 'Ludo Cash Play'),
+      Config.get('admin_qr_image', ''),
+      Config.get('whatsapp_number', '919090000000'),
+      Config.get('support_email', 'support@ludocashplay.in'),
+      Config.get('announcement', ''),
+    ]);
+    res.json({ admin_upi_id, admin_upi_name, admin_qr_image, whatsapp_number, support_email, announcement });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
 
 router.get('/online-count', (req, res) => {
   // Randomize within the cache window so it still looks live

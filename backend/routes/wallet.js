@@ -142,9 +142,7 @@ router.post("/deposit-screenshot", depositUpload.single("screenshot"), async (re
     const amt = parseFloat(req.body.amount);
     if (!amt || amt < 10 || amt > 100000)
       return res.status(400).json({ detail: "Amount must be ₹10–₹1,00,000." });
-    const utr = (req.body.utr || "").trim().toUpperCase();
-    if (!utr || utr.length < 6)
-      return res.status(400).json({ detail: "Valid UTR / Transaction ID required (min 6 chars)." });
+    const utr = (req.body.utr || "").trim().toUpperCase(); // optional — admin verifies from screenshot
 
     const backendUrl = process.env.BACKEND_URL || `${req.protocol}://${req.get("host")}`;
     const screenshot_url = `${backendUrl}/uploads/deposits/${req.file.filename}`;

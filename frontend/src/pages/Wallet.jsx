@@ -81,11 +81,11 @@ function DepositPage({ onBack }) {
   const [step, setStep] = useState("amount");
   const [amount, setAmount] = useState("");
   const [payInfo, setPayInfo] = useState(null);
+  const [fetchTime, setFetchTime] = useState(null);
   const [countdown, setCountdown] = useState(600);
   const [copied, setCopied] = useState(false);
   const [screenshot, setScreenshot] = useState(null);
   const [screenshotName, setScreenshotName] = useState("");
-  const [utr, setUtr] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [pendingList, setPendingList] = useState([]);
   const timerRef = useRef(null);
@@ -96,7 +96,6 @@ function DepositPage({ onBack }) {
   const stopTimer = () => { if (timerRef.current) clearInterval(timerRef.current); };
   useEffect(() => () => stopTimer(), []);
 
-  // Load user's pending deposits
   const loadPending = useCallback(async () => {
     try {
       const r = await api.get("/wallet/deposits");
@@ -109,26 +108,32 @@ function DepositPage({ onBack }) {
     if (!amt || amt < 10) return toast.error("Minimum deposit ₹10");
     if (amt > 60000) return toast.error("Maximum deposit ₹60,000");
     try {
-      const r = await api.get(`/wallet/payment-info?amount=${amt}`);
+      // Fetch admin's REAL payment info from DB (no cache)
+      const r = await api.get(`/public/payment-info`);
       setPayInfo(r.data);
+      setFetchTime(Date.now());
       setCountdown(600);
       setStep("qr");
       timerRef.current = setInterval(() => {
         setCountdown(c => { if (c <= 1) { stopTimer(); return 0; } return c - 1; });
       }, 1000);
     } catch (e) {
-      toast.error(e.response?.data?.detail || "Failed to load payment info");
+      toast.error("Failed to load payment info. Try again.");
     }
   };
 
-  const copyUpi = async () => {
-    await navigator.clipboard.writeText(payInfo?.upi_id || "");
-    setCopied(true); setTimeout(() => setCopied(false), 2000);
-    toast.success("UPI ID copied!");
+  const upiId = payInfo?.admin_upi_id || "";
+  const merchantName = payInfo?.admin_upi_name || "Ludo Cash Play";
+
+  const buildUpiUrl = (scheme = "upi") => {
+    const p = new URLSearchParams({ pa: upiId, pn: merchantName, am: String(amt), cu: "INR", tn: `Deposit ${amt}` });
+    return `${scheme}://pay?${p.toString()}`;
   };
 
-  const openUpiApp = () => {
-    if (payInfo?.upi_url) window.location.href = payInfo.upi_url;
+  const copyUpi = async () => {
+    await navigator.clipboard.writeText(upiId);
+    setCopied(true); setTimeout(() => setCopied(false), 2000);
+    toast.success("UPI ID copied!");
   };
 
   const onFile = (e) => {
@@ -139,14 +144,11 @@ function DepositPage({ onBack }) {
 
   const handleSubmit = async () => {
     if (!screenshot) return toast.error("Upload your payment screenshot");
-    const utrVal = utr.trim().toUpperCase();
-    if (!utrVal || utrVal.length < 6) return toast.error("Enter valid UTR / Transaction ID (min 6 chars)");
     setSubmitting(true);
     try {
       const fd = new FormData();
       fd.append("screenshot", screenshot);
       fd.append("amount", String(amt));
-      fd.append("utr", utrVal);
       await api.post("/wallet/deposit-screenshot", fd, {
         headers: { "Content-Type": "multipart/form-data" },
       });
@@ -170,11 +172,11 @@ function DepositPage({ onBack }) {
           <CheckCircle className="w-12 h-12 text-green-500" />
         </div>
         <h2 className="text-xl font-black text-gray-900 mb-1">Screenshot Submitted!</h2>
-        <p className="text-gray-500 text-sm">Admin will verify your payment and credit ₹{amt} within</p>
+        <p className="text-gray-500 text-sm">Admin will verify and credit ₹{amt} within</p>
         <p className="text-red-700 font-black text-lg">5–30 minutes</p>
       </div>
       <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-sm text-amber-800">
-        ℹ️ You'll see the balance update in your wallet once admin approves.
+        ℹ️ Balance updates once admin approves in the Admin panel.
       </div>
       <button onClick={onBack}
         className="w-full py-3 bg-gradient-to-r from-red-700 to-black text-white font-black rounded-xl">
@@ -187,20 +189,22 @@ function DepositPage({ onBack }) {
     <div className="p-3 space-y-4">
       <div className="flex items-center gap-3">
         <button onClick={() => setStep("qr")} className="text-gray-500 font-semibold">← Back</button>
-        <h2 className="font-black text-gray-900">Upload Payment Proof</h2>
+        <h2 className="font-black text-gray-900">Upload Screenshot</h2>
       </div>
 
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4 space-y-4">
-        <p className="text-sm text-gray-600">Amount: <strong className="text-gray-900">₹{amt}</strong></p>
+        <div className="bg-gray-50 rounded-xl p-3">
+          <p className="text-xs text-gray-500">Amount paid</p>
+          <p className="text-2xl font-black text-gray-900">₹{amt}</p>
+        </div>
 
-        {/* Screenshot upload */}
         <div>
           <label className="text-xs font-bold text-gray-600 uppercase tracking-wide block mb-1.5">
             Payment Screenshot *
           </label>
           <div
             onClick={() => fileRef.current?.click()}
-            className={`rounded-xl border-2 border-dashed p-4 text-center cursor-pointer transition-all ${
+            className={`rounded-xl border-2 border-dashed p-5 text-center cursor-pointer transition-all ${
               screenshot ? "border-green-500 bg-green-50" : "border-gray-300 hover:border-red-400 bg-gray-50"
             }`}
           >
@@ -212,86 +216,102 @@ function DepositPage({ onBack }) {
               </div>
             ) : (
               <div>
-                <p className="text-3xl mb-1">📷</p>
+                <p className="text-4xl mb-2">📷</p>
                 <p className="text-sm font-semibold text-gray-600">Tap to upload screenshot</p>
-                <p className="text-xs text-gray-400">JPG, PNG, WebP</p>
+                <p className="text-xs text-gray-400 mt-1">Take screenshot from your UPI app after payment</p>
               </div>
             )}
           </div>
         </div>
 
-        {/* UTR field */}
-        <div>
-          <label className="text-xs font-bold text-gray-600 uppercase tracking-wide block mb-1.5">
-            UTR / Transaction ID *
-          </label>
-          <input
-            value={utr}
-            onChange={e => setUtr(e.target.value)}
-            placeholder="e.g. 407812345678 (from your UPI app)"
-            className="w-full h-11 px-3 rounded-xl bg-gray-50 border border-gray-300 text-gray-900 font-mono outline-none focus:border-red-600 focus:ring-2 focus:ring-red-100 transition-all"
-          />
-          <p className="text-xs text-gray-400 mt-1">Found in your UPI app → Transaction history</p>
-        </div>
-
-        <button onClick={handleSubmit} disabled={submitting}
+        <button onClick={handleSubmit} disabled={submitting || !screenshot}
           className="w-full h-12 rounded-xl bg-gradient-to-r from-red-700 to-black text-white font-black disabled:opacity-50 hover:opacity-90 transition-all flex items-center justify-center gap-2">
           {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-          Submit for Verification
+          Submit Screenshot
         </button>
       </div>
     </div>
   );
 
   if (step === "qr") return (
-    <div className="p-3 space-y-4">
+    <div className="p-3 space-y-3">
       <div className="flex items-center gap-3">
         <button onClick={() => { stopTimer(); setStep("amount"); }} className="text-gray-500 font-semibold">← Back</button>
         <h2 className="font-black text-gray-900">Pay ₹{amt}</h2>
+        <span className={`ml-auto text-xs font-bold ${countdown <= 60 ? "text-red-600" : "text-gray-400"}`}>
+          ⏱ {mm}:{ss}
+        </span>
       </div>
 
-      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4 text-center space-y-4">
-        <div className={`text-sm font-bold ${countdown <= 60 ? "text-red-600" : "text-gray-500"}`}>
-          ⏱ {mm}:{ss} remaining
-        </div>
-
-        {payInfo?.qr_image ? (
+      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4 text-center space-y-3">
+        {/* Admin's real QR image */}
+        {payInfo?.admin_qr_image ? (
           <div className="flex flex-col items-center">
             <div className="bg-white border-4 border-red-200 rounded-2xl p-2 shadow-sm inline-block">
-              <img src={payInfo.qr_image} alt="UPI QR" className="w-56 h-56 object-contain" />
+              <img
+                src={`${payInfo.admin_qr_image}?t=${fetchTime}`}
+                alt="Pay via UPI"
+                className="w-56 h-56 object-contain"
+                onError={e => { e.target.style.display = "none"; }}
+              />
             </div>
-            <p className="text-sm font-bold text-gray-800 mt-2">Scan & pay ₹{amt}</p>
+            <p className="text-sm font-bold text-gray-800 mt-2">Scan with any UPI app · Pay ₹{amt}</p>
           </div>
         ) : (
-          <div className="flex justify-center py-8"><Loader2 className="w-8 h-8 animate-spin text-red-700" /></div>
+          <div className="bg-gray-50 rounded-xl p-4">
+            <p className="text-gray-500 text-sm">No QR uploaded yet. Use UPI ID below.</p>
+          </div>
         )}
 
         {/* UPI ID with copy */}
-        <div className="flex items-center justify-between bg-gray-50 rounded-xl border border-gray-200 px-3 py-2">
-          <div className="text-left">
-            <p className="text-[10px] text-gray-400 uppercase tracking-wide">UPI ID</p>
-            <p className="text-sm font-bold text-gray-900 font-mono">{payInfo?.upi_id}</p>
+        {upiId && (
+          <div className="flex items-center justify-between bg-gray-50 rounded-xl border border-gray-200 px-3 py-2">
+            <div className="text-left">
+              <p className="text-[10px] text-gray-400 uppercase tracking-wide">UPI ID</p>
+              <p className="text-sm font-bold text-gray-900 font-mono">{upiId}</p>
+            </div>
+            <button onClick={copyUpi} className="p-2 rounded-lg bg-white border border-gray-200 shadow-sm">
+              {copied ? <Check className="w-4 h-4 text-green-600" /> : <Copy className="w-4 h-4 text-gray-600" />}
+            </button>
           </div>
-          <button onClick={copyUpi} className="p-2 rounded-lg bg-white border border-gray-200 shadow-sm">
-            {copied ? <Check className="w-4 h-4 text-green-600" /> : <Copy className="w-4 h-4 text-gray-600" />}
+        )}
+
+        {/* App-specific UPI buttons */}
+        <div className="grid grid-cols-3 gap-2">
+          <button
+            onClick={() => { window.location.href = `phonepe://pay?pa=${upiId}&pn=${encodeURIComponent(merchantName)}&am=${amt}&cu=INR`; }}
+            className="py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold text-xs transition-all"
+          >
+            📲 PhonePe
+          </button>
+          <button
+            onClick={() => { window.location.href = `tez://upi/pay?pa=${upiId}&pn=${encodeURIComponent(merchantName)}&am=${amt}&cu=INR&tn=Deposit`; }}
+            className="py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-xs transition-all"
+          >
+            💙 GPay
+          </button>
+          <button
+            onClick={() => { window.location.href = `paytmmp://pay?pa=${upiId}&pn=${encodeURIComponent(merchantName)}&am=${amt}&cu=INR`; }}
+            className="py-2.5 bg-sky-500 hover:bg-sky-600 text-white rounded-xl font-bold text-xs transition-all"
+          >
+            🔵 Paytm
           </button>
         </div>
 
-        <p className="text-xs text-gray-500">
-          Use any UPI app — PhonePe, GPay, Paytm, BHIM, Amazon Pay
-        </p>
-
-        <button onClick={openUpiApp}
-          className="w-full py-3 bg-gradient-to-r from-green-600 to-emerald-700 text-white rounded-xl font-bold shadow">
-          📱 Open UPI App
-        </button>
-
         <button
-          onClick={() => { stopTimer(); setStep("upload"); }}
-          className="w-full py-3 bg-gradient-to-r from-red-700 to-black text-white rounded-xl font-black shadow">
-          I've Paid — Upload Screenshot →
+          onClick={() => { window.location.href = buildUpiUrl("upi"); }}
+          className="w-full py-3 bg-gradient-to-r from-green-600 to-emerald-700 text-white rounded-xl font-bold shadow"
+        >
+          📱 Open Any UPI App
         </button>
       </div>
+
+      <button
+        onClick={() => { stopTimer(); setStep("upload"); }}
+        className="w-full py-3.5 bg-gradient-to-r from-red-700 to-black text-white rounded-xl font-black shadow text-base"
+      >
+        ✅ I've Paid — Upload Screenshot →
+      </button>
     </div>
   );
 
@@ -323,7 +343,7 @@ function DepositPage({ onBack }) {
         </div>
         {amt >= 10 && (
           <p className="text-xs text-center text-gray-500">
-            You'll pay <strong>₹{amt}</strong> via UPI to admin
+            Pay <strong>₹{amt}</strong> to admin via UPI
           </p>
         )}
         <button onClick={handleNext} disabled={!amt || amt < 10}
@@ -333,10 +353,9 @@ function DepositPage({ onBack }) {
       </div>
 
       <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 text-sm text-blue-800">
-        ℹ️ Scan admin's QR → Pay → Upload screenshot + UTR → Admin verifies in 5–30 min
+        ℹ️ Scan admin QR → Pay → Upload screenshot → Admin verifies in 5–30 min
       </div>
 
-      {/* Pending deposits */}
       {pendingList.length > 0 && (
         <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
           <div className="px-4 py-2.5 border-b border-gray-100">

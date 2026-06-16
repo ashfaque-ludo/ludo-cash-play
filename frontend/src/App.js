@@ -93,8 +93,8 @@ function AppLayout() {
 
           {/* Protected user routes */}
           <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-          <Route path="/play" element={<ProtectedRoute><MatchLobby /></ProtectedRoute>} />
-          <Route path="/create-battle" element={<ProtectedRoute><MatchLobby /></ProtectedRoute>} />
+          <Route path="/play" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/create-battle" element={<Navigate to="/dashboard" replace />} />
           <Route path="/running-battles" element={<ProtectedRoute><RunningBattles /></ProtectedRoute>} />
           <Route path="/match/:id" element={<ProtectedRoute><MatchRoom /></ProtectedRoute>} />
           <Route path="/wallet" element={<ProtectedRoute><Wallet /></ProtectedRoute>} />
