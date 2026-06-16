@@ -6,8 +6,8 @@ import { fmtINR } from "@/lib/api";
 import {
   User as UserIcon, Play, Wallet as WalletIcon, History, Phone, Globe,
   FileText, Shield, ChevronRight, LogOut, ArrowDownToLine, Share2,
-  Trophy, Swords, ShieldCheck, Lock, Info, CreditCard,
-  Star, HelpCircle, Dice5,
+  Trophy, Swords, Lock, Info, CreditCard,
+  HelpCircle, Dice5,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -91,7 +91,6 @@ export default function Account() {
       <div className="px-3 mt-3 space-y-2">
         <MenuSection title="My Profile" items={[
           { to: "/profile", icon: UserIcon, label: "Edit Profile", desc: "Change name, avatar", iconBg: "bg-red-100 text-red-700" },
-          { to: "/kyc", icon: ShieldCheck, label: "KYC Verification", desc: user.kyc_status === "approved" ? "Verified ✓" : "Required for withdrawal", iconBg: "bg-green-100 text-green-700", badge: user.kyc_status === "approved" ? "Verified" : "Pending" },
         ]} />
 
         <MenuSection title="Play" items={[

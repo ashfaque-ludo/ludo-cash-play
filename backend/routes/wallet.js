@@ -202,9 +202,6 @@ router.post("/withdraw", async (req, res) => {
 
     const user = await User.findById(req.user._id);
 
-    if (!user.kyc_verified && user.kyc_status !== "approved")
-      return res.status(403).json({ detail: "Complete KYC verification before withdrawing.", kyc_required: true });
-
     const withdrawable = (user.wallet.winning || 0) + (user.wallet.referral || 0);
     if (withdrawable < amount)
       return res.status(400).json({ detail: `Insufficient balance. Withdrawable: ₹${withdrawable}.` });

@@ -9,7 +9,6 @@ import BottomNav from "@/components/BottomNav";
 import Sidebar from "@/components/Sidebar";
 import Footer from "@/components/Footer";
 import WhatsAppButton from "@/components/WhatsAppButton";
-import KYCModal from "@/components/KYCModal";
 import "./i18n"; // init i18next
 
 // Critical path: loaded eagerly
@@ -67,27 +66,6 @@ function PageLoader() {
   );
 }
 
-// KYC gate: shows modal for logged-in users who haven't verified KYC
-// Admin/owner roles skip the gate
-function KYCGate() {
-  const { user, ready } = useAuth();
-  const [dismissed, setDismissed] = useState(false);
-
-  if (!ready || !user || user === false) return null;
-
-  // Skip for admin roles
-  const isAdmin = user.is_master_owner ||
-    ["super_admin","admin","staff_manager","support_agent"].includes(user.role);
-  if (isAdmin) return null;
-
-  const needsKyc = !user.kyc_verified && user.kyc_status !== "approved";
-  if (!needsKyc || dismissed) return null;
-
-  // Don't show on login / register pages
-  if (["/login","/register","/signup"].some(p => window.location.pathname.startsWith(p))) return null;
-
-  return <KYCModal onClose={() => setDismissed(true)} />;
-}
 
 function AppLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -96,7 +74,6 @@ function AppLayout() {
     <>
       <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <Header onMenuOpen={() => setSidebarOpen(true)} />
-      <KYCGate />
       <Suspense fallback={<PageLoader />}>
         <Routes>
           {/* Public */}

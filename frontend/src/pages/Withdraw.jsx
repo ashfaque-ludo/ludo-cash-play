@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { api, fmtINR } from "@/lib/api";
 import { toast } from "sonner";
-import { useNavigate } from "react-router-dom";
+
 
 const STATUS_STYLE = {
   pending:  "bg-amber-100 text-amber-700",
@@ -12,7 +12,6 @@ const STATUS_STYLE = {
 
 export default function Withdraw() {
   const { user, refresh } = useAuth();
-  const nav = useNavigate();
   const [method, setMethod] = useState("upi");
   const [amount, setAmount] = useState("");
   const [upiId, setUpiId] = useState("");
@@ -33,14 +32,12 @@ export default function Withdraw() {
 
   const w = user?.wallet || {};
   const withdrawable = (w.winning || 0) + (w.referral || 0);
-  const kycOk = user?.kyc_verified || user?.kyc_status === "approved";
 
   const handleWithdraw = async () => {
     const amt = parseFloat(amount);
     if (!amt || amt < 100) return toast.error("Minimum withdrawal ₹100");
     if (amt > 50000) return toast.error("Maximum withdrawal ₹50,000");
     if (amt > withdrawable) return toast.error(`Insufficient balance. Withdrawable: ₹${withdrawable}`);
-    if (!kycOk) { toast.error("KYC required. Please verify your identity."); return; }
     if (method === "upi" && !upiId.trim()) return toast.error("Enter your UPI ID");
     if (method === "bank" && (!accNo.trim() || !ifsc.trim() || !holder.trim())) {
       return toast.error("Fill all bank details");
@@ -61,13 +58,7 @@ export default function Withdraw() {
       refresh();
       loadHistory();
     } catch (e) {
-      const detail = e.response?.data?.detail || e.message;
-      if (e.response?.data?.kyc_required) {
-        toast.error("KYC required. Verify your identity first.");
-        nav("/kyc");
-      } else {
-        toast.error(detail || "Withdrawal failed");
-      }
+      toast.error(e.response?.data?.detail || e.message || "Withdrawal failed");
     } finally {
       setLoading(false);
     }
@@ -84,14 +75,6 @@ export default function Withdraw() {
           Winnings {fmtINR(w.winning || 0)} + Referral {fmtINR(w.referral || 0)}
         </p>
       </div>
-
-      {/* KYC warning */}
-      {!kycOk && (
-        <div className="bg-red-50 border border-red-200 rounded-xl p-3 mb-4 flex items-center justify-between">
-          <p className="text-sm text-red-700">⚠️ Complete KYC before withdrawal</p>
-          <button onClick={() => nav("/kyc")} className="text-xs text-red-700 font-black underline">Verify →</button>
-        </div>
-      )}
 
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4 space-y-4 mb-4">
         {/* Amount */}
