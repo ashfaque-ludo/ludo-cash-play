@@ -276,34 +276,19 @@ function DepositPage({ onBack }) {
           </div>
         )}
 
-        {/* App-specific UPI buttons */}
-        <div className="grid grid-cols-3 gap-2">
-          <button
-            onClick={() => { window.location.href = `phonepe://pay?pa=${upiId}&pn=${encodeURIComponent(merchantName)}&am=${amt}&cu=INR`; }}
-            className="py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold text-xs transition-all"
-          >
-            📲 PhonePe
-          </button>
-          <button
-            onClick={() => { window.location.href = `tez://upi/pay?pa=${upiId}&pn=${encodeURIComponent(merchantName)}&am=${amt}&cu=INR&tn=Deposit`; }}
-            className="py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-xs transition-all"
-          >
-            💙 GPay
-          </button>
-          <button
-            onClick={() => { window.location.href = `paytmmp://pay?pa=${upiId}&pn=${encodeURIComponent(merchantName)}&am=${amt}&cu=INR`; }}
-            className="py-2.5 bg-sky-500 hover:bg-sky-600 text-white rounded-xl font-bold text-xs transition-all"
-          >
-            🔵 Paytm
-          </button>
-        </div>
-
         <button
-          onClick={() => { window.location.href = buildUpiUrl("upi"); }}
-          className="w-full py-3 bg-gradient-to-r from-green-600 to-emerald-700 text-white rounded-xl font-bold shadow"
+          onClick={() => {
+            try { window.location.href = buildUpiUrl("upi"); }
+            catch { const a = document.createElement("a"); a.href = buildUpiUrl("upi"); a.click(); }
+          }}
+          className="w-full py-3.5 bg-gradient-to-r from-green-600 to-emerald-700 text-white rounded-xl font-bold shadow text-base"
         >
-          📱 Open Any UPI App
+          📱 Pay via UPI App
         </button>
+
+        <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 text-xs text-blue-800 text-left">
+          📱 <strong>iPhone users:</strong> Open your UPI app first (PhonePe / GPay / Paytm), then scan the QR code or copy the UPI ID above.
+        </div>
       </div>
 
       <button

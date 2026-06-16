@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { api, fmtINR } from "@/lib/api";
 import { toast } from "sonner";
@@ -155,27 +155,6 @@ export default function Dashboard() {
 
       <div className="px-3 pt-3 space-y-4">
 
-        {/* Play Now Card */}
-        <div className="bg-gradient-to-br from-red-800 to-black rounded-2xl overflow-hidden shadow-lg">
-          <div className="p-4 flex items-center justify-between">
-            <div>
-              <p className="text-white/70 text-xs uppercase tracking-widest">Ludo Classic</p>
-              <p className="text-white font-black text-xl mt-0.5">Manual Room Code</p>
-              <span className="mt-1 inline-block bg-yellow-400 text-black text-xs font-bold px-2 py-0.5 rounded">
-                CLASSIC
-              </span>
-            </div>
-            <div className="text-6xl">🎲</div>
-          </div>
-          <div className="px-4 pb-4">
-            <Link to="/play">
-              <button className="w-full py-3 bg-white text-red-800 font-black rounded-xl text-base shadow hover:bg-gray-100 transition-all">
-                PLAY NOW 🎮
-              </button>
-            </Link>
-          </div>
-        </div>
-
         {/* Create Battle */}
         <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
           <h2 className="font-black text-gray-900 text-base mb-3">⚔️ Create a Battle!</h2>
@@ -199,18 +178,7 @@ export default function Dashboard() {
               {creating ? <Loader2 className="w-4 h-4 animate-spin" /> : "Set"}
             </button>
           </div>
-          <div className="flex gap-2 mt-2">
-            {[50, 100, 250, 500].map(v => (
-              <button key={v} onClick={() => setCreateAmt(String(v))}
-                className={`flex-1 py-1.5 rounded-lg text-xs font-bold border transition-all ${
-                  createAmt === String(v)
-                    ? "bg-red-700 text-white border-red-700"
-                    : "bg-gray-50 text-gray-600 border-gray-200"
-                }`}>
-                ₹{v}
-              </button>
-            ))}
-          </div>
+          <p className="text-xs text-gray-400 mt-2 text-center">Min ₹10 · Max ₹50,000 · Winner gets 95% of prize pool</p>
         </div>
 
         {/* Open Battles */}

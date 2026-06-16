@@ -11,6 +11,7 @@ import {
 
 const TABS = [
   { id: "dashboard", label: "Dashboard", icon: BarChart3 },
+  { id: "deposits", label: "💰 Deposits", icon: CreditCard },
   { id: "admins", label: "Admin Management", icon: Users },
   { id: "settings", label: "Platform Settings", icon: Settings },
   { id: "payment", label: "Payment QR", icon: CreditCard },
@@ -75,6 +76,7 @@ export default function OwnerPanel() {
 
         {/* Tab content */}
         {activeTab === "dashboard" && <DashboardTab />}
+        {activeTab === "deposits" && <DepositsTab />}
         {activeTab === "admins" && <AdminsTab />}
         {activeTab === "settings" && <SettingsTab />}
         {activeTab === "payment" && <PaymentQRTab />}
@@ -122,6 +124,93 @@ function DashboardTab() {
         <p className="text-3xl font-black text-white">{stats.commission_pct}%</p>
         <p className="text-slate-400 text-sm mt-1">Platform takes {stats.commission_pct}% of each battle. Change in Platform Settings.</p>
       </div>
+    </div>
+  );
+}
+
+/* ─── Deposits ─── */
+function DepositsTab() {
+  const [rows, setRows] = useState([]);
+  const [status, setStatus] = useState("pending");
+  const [zoomedUrl, setZoomedUrl] = useState(null);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const load = useCallback(async () => {
+    try { const r = await api.get(`/admin/deposits?status=${status}`); setRows(r.data.deposits || []); } catch {}
+  }, [status]);
+
+  const manualRefresh = async () => { setRefreshing(true); await load(); setRefreshing(false); };
+
+  useEffect(() => { load(); const t = setInterval(load, 10000); return () => clearInterval(t); }, [load]);
+
+  const act = async (id, action, note = "") => {
+    try {
+      await api.post(`/admin/deposits/${id}/${action}`, { note });
+      toast.success(`Deposit ${action}d`);
+      load();
+    } catch (e) { toast.error(e.response?.data?.detail || "Failed"); }
+  };
+
+  return (
+    <div className="space-y-4">
+      {zoomedUrl && (
+        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4" onClick={() => setZoomedUrl(null)}>
+          <img src={zoomedUrl} alt="Screenshot" className="max-w-full max-h-full rounded-xl shadow-2xl" />
+        </div>
+      )}
+      <div className="flex items-center gap-3 flex-wrap">
+        <h2 className="text-xl font-black text-white">Deposits</h2>
+        <span className="text-xs text-slate-400">auto-refresh 10s</span>
+        <div className="ml-auto flex gap-2">
+          {["pending","approved","rejected"].map(s => (
+            <button key={s} onClick={() => setStatus(s)}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all capitalize ${status === s ? "bg-yellow-500 text-black" : "bg-slate-700 text-slate-300 hover:bg-slate-600"}`}>
+              {s}
+            </button>
+          ))}
+          <button onClick={manualRefresh} disabled={refreshing}
+            className="px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-700 text-slate-300 hover:bg-slate-600 disabled:opacity-50">
+            {refreshing ? "…" : "↻"}
+          </button>
+        </div>
+      </div>
+
+      {rows.length === 0 ? (
+        <div className="rounded-2xl bg-slate-800/40 border border-white/10 p-8 text-center text-slate-400">No {status} deposits.</div>
+      ) : (
+        <div className="space-y-3">
+          {rows.map(d => (
+            <div key={d.id} className="rounded-2xl bg-slate-800/40 border border-white/10 p-4 space-y-3">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-2xl font-black text-emerald-400">₹{d.amount}</p>
+                  <p className="text-sm text-slate-300 font-medium">{d.user_name || "—"} · {d.user_label}</p>
+                  <p className="text-xs text-slate-500 mt-0.5">{new Date(d.created_at).toLocaleString("en-IN")}</p>
+                  <span className={`text-xs font-bold capitalize ${d.status === "approved" ? "text-emerald-400" : d.status === "rejected" ? "text-red-400" : "text-amber-400"}`}>{d.status}</span>
+                </div>
+                {(d.screenshot_url || d.screenshot) && (
+                  <button onClick={() => setZoomedUrl(d.screenshot_url || d.screenshot)} className="shrink-0">
+                    <img src={d.screenshot_url || d.screenshot} alt="Screenshot"
+                      className="w-20 h-20 rounded-xl object-cover border-2 border-slate-600 hover:border-yellow-400 transition-all" />
+                  </button>
+                )}
+              </div>
+              {d.status === "pending" && (
+                <div className="flex gap-2">
+                  <button onClick={() => act(d.id, "approve")}
+                    className="flex-1 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-black font-black rounded-xl text-sm transition-all">
+                    ✓ Approve — Credit ₹{d.amount}
+                  </button>
+                  <button onClick={() => act(d.id, "reject")}
+                    className="flex-1 py-2.5 bg-red-600 hover:bg-red-500 text-white font-black rounded-xl text-sm transition-all">
+                    ✗ Reject
+                  </button>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

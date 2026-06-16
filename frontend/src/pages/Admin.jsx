@@ -292,8 +292,12 @@ function DepositsTab(){
   const [rows, setRows] = useState([]);
   const [status, setStatus] = useState("pending");
   const [zoomedUrl, setZoomedUrl] = useState(null);
-  const load = async () => { try { const r = await api.get(`/admin/deposits?status=${status}`); setRows(r.data.deposits); } catch {} };
-  useEffect(()=>{ load(); /* eslint-disable-line */ }, [status]);
+  const [refreshing, setRefreshing] = useState(false);
+  const load = useCallback(async () => {
+    try { const r = await api.get(`/admin/deposits?status=${status}`); setRows(r.data.deposits || []); } catch {}
+  }, [status]);
+  const manualRefresh = async () => { setRefreshing(true); await load(); setRefreshing(false); };
+  useEffect(()=>{ load(); const t = setInterval(load, 10000); return ()=>clearInterval(t); }, [load]);
   const act = async (id, action) => {
     try { await api.post(`/admin/deposits/${id}/${action}`); toast.success(`Deposit ${action}d`); load(); }
     catch (e) { toast.error(formatApiError(e.response?.data?.detail) || e.message); }
@@ -306,13 +310,17 @@ function DepositsTab(){
         </div>
       )}
       <Card className="bg-white border-gray-200 shadow-sm text-gray-900 mt-5">
-        <CardHeader className="flex flex-row items-center"><CardTitle>Deposits</CardTitle>
+        <CardHeader className="flex flex-row items-center gap-2 flex-wrap"><CardTitle>Deposits</CardTitle>
+          <span className="text-xs text-gray-400 ml-1">auto-refresh 10s</span>
           <Select value={status} onValueChange={setStatus}>
             <SelectTrigger className="ml-auto bg-gray-50 border-gray-300 text-gray-900 w-40" data-testid="deposit-status-filter"><SelectValue /></SelectTrigger>
             <SelectContent className="bg-white border-gray-200 text-gray-900">
               {["pending","approved","rejected"].map(s=> <SelectItem key={s} value={s}>{s}</SelectItem>)}
             </SelectContent>
           </Select>
+          <Button size="sm" onClick={manualRefresh} disabled={refreshing} variant="outline" className="border-gray-300 text-gray-600">
+            {refreshing ? "…" : "↻ Refresh"}
+          </Button>
         </CardHeader>
         <CardContent className="overflow-x-auto p-0">
           <div className="space-y-2 p-4">
