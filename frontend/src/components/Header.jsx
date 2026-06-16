@@ -40,7 +40,7 @@ export default function Header({ onMenuOpen }) {
   const total = loggedIn ? (user.wallet?.deposit || 0) + (user.wallet?.winning || 0) + (user.wallet?.bonus || 0) : 0;
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 glass-strong border-b border-white/10" data-testid="site-header">
+    <header className="fixed top-0 left-0 right-0 z-50 bg-gradient-to-r from-red-900 to-black shadow-lg" data-testid="site-header">
       <div className="max-w-7xl mx-auto px-3 sm:px-6 h-14 flex items-center justify-between gap-2">
         {/* LEFT: hamburger */}
         <button

@@ -27,13 +27,13 @@ export default function BottomNav() {
   if (loc.pathname.startsWith("/admin") || loc.pathname.startsWith("/super-admin")) return null;
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-40 glass-strong border-t border-white/10 safe-area-pb" data-testid="bottom-nav">
+    <nav className="fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-200 shadow-lg safe-area-pb" data-testid="bottom-nav">
       <div className="flex items-stretch justify-around">
         {TABS.map(tab => {
           if (tab.auth && !loggedIn) {
             return (
               <Link key={tab.to} to="/login"
-                className="flex-1 flex flex-col items-center justify-center py-2 gap-0.5 text-slate-500 hover:text-slate-300 transition-colors min-h-[56px]">
+                className="flex-1 flex flex-col items-center justify-center py-2 gap-0.5 text-gray-400 transition-colors min-h-[56px]">
                 <tab.icon className="w-5 h-5" />
                 <span className="text-[10px] font-medium">{tab.label}</span>
               </Link>
@@ -43,12 +43,12 @@ export default function BottomNav() {
           return (
             <Link key={tab.to} to={tab.to} data-testid={`bottom-nav-${tab.label.toLowerCase().replace(/\s+/g,"-")}`}
               className={`flex-1 flex flex-col items-center justify-center py-2 gap-0.5 transition-colors min-h-[56px] relative ${
-                active ? "text-purple-400" : "text-slate-500 hover:text-slate-300"
+                active ? "text-red-700" : "text-gray-400"
               }`}
             >
-              {active && <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-purple-400 rounded-full" />}
-              <tab.icon className={`w-5 h-5 ${active ? "drop-shadow-[0_0_8px_rgba(167,139,250,0.8)]" : ""}`} />
-              <span className={`text-[10px] font-medium ${active ? "text-purple-300" : ""}`}>{tab.label}</span>
+              {active && <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-red-700 rounded-full" />}
+              <tab.icon className="w-5 h-5" />
+              <span className={`text-[10px] font-bold ${active ? "text-red-700" : ""}`}>{tab.label}</span>
             </Link>
           );
         })}

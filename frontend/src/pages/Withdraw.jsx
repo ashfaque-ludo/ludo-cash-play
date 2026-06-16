@@ -1,189 +1,192 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { api, fmtINR, formatApiError } from "@/lib/api";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import { ArrowDownToLine, Wallet as WalletIcon, Clock } from "lucide-react";
+import { api, fmtINR } from "@/lib/api";
 import { toast } from "sonner";
+import { useNavigate } from "react-router-dom";
 
 const STATUS_STYLE = {
-  pending:  { color:"#f59e0b", bg:"rgba(245,158,11,0.1)",  border:"rgba(245,158,11,0.3)"  },
-  approved: { color:"#10b981", bg:"rgba(16,185,129,0.1)", border:"rgba(16,185,129,0.3)" },
-  rejected: { color:"#ef4444", bg:"rgba(239,68,68,0.1)",  border:"rgba(239,68,68,0.3)"  },
+  pending:  "bg-amber-100 text-amber-700",
+  approved: "bg-green-100 text-green-700",
+  rejected: "bg-red-100 text-red-700",
 };
 
 export default function Withdraw() {
   const { user, refresh } = useAuth();
+  const nav = useNavigate();
+  const [method, setMethod] = useState("upi");
   const [amount, setAmount] = useState("");
-  const [upi, setUpi] = useState("");
-  const [submitting, setSubmitting] = useState(false);
+  const [upiId, setUpiId] = useState("");
+  const [accNo, setAccNo] = useState("");
+  const [ifsc, setIfsc] = useState("");
+  const [holder, setHolder] = useState("");
+  const [loading, setLoading] = useState(false);
   const [history, setHistory] = useState([]);
-  const [loadingHistory, setLoadingHistory] = useState(true);
-
-  const w = user?.wallet || { deposit: 0, winning: 0, bonus: 0 };
 
   const loadHistory = useCallback(async () => {
-    setLoadingHistory(true);
     try {
-      const { data } = await api.get("/wallet/withdrawals");
-      setHistory(data.withdrawals || []);
+      const r = await api.get("/wallet/withdrawals");
+      setHistory(r.data.withdrawals || []);
     } catch {}
-    finally { setLoadingHistory(false); }
   }, []);
 
   useEffect(() => { loadHistory(); }, [loadHistory]);
 
-  const handleSubmit = async () => {
-    const amt = parseFloat(amount);
-    if (!amt || amt < 100) return toast.error("Minimum withdrawal is ₹100");
-    if (!upi.trim()) return toast.error("Enter your UPI ID");
-    if (amt > (w.winning || 0)) return toast.error("Amount exceeds your winning balance");
+  const w = user?.wallet || {};
+  const withdrawable = (w.winning || 0) + (w.referral || 0);
+  const kycOk = user?.kyc_verified || user?.kyc_status === "approved";
 
-    setSubmitting(true);
+  const handleWithdraw = async () => {
+    const amt = parseFloat(amount);
+    if (!amt || amt < 100) return toast.error("Minimum withdrawal ₹100");
+    if (amt > 50000) return toast.error("Maximum withdrawal ₹50,000");
+    if (amt > withdrawable) return toast.error(`Insufficient balance. Withdrawable: ₹${withdrawable}`);
+    if (!kycOk) { toast.error("KYC required. Please verify your identity."); return; }
+    if (method === "upi" && !upiId.trim()) return toast.error("Enter your UPI ID");
+    if (method === "bank" && (!accNo.trim() || !ifsc.trim() || !holder.trim())) {
+      return toast.error("Fill all bank details");
+    }
+
+    setLoading(true);
     try {
-      await api.post("/wallet/withdraw", { amount: amt, upi_id: upi.trim() });
-      toast.success("Withdrawal requested! Admin will process within 24 hours.");
-      setAmount("");
-      setUpi("");
-      await refresh();
-      await loadHistory();
+      const payload = { amount: amt, method };
+      if (method === "upi") payload.upi_id = upiId.trim();
+      else {
+        payload.account_number = accNo.trim();
+        payload.ifsc = ifsc.trim().toUpperCase();
+        payload.account_holder = holder.trim();
+      }
+      await api.post("/wallet/withdraw", payload);
+      toast.success("Withdrawal initiated! Processing in ~60 seconds.");
+      setAmount(""); setUpiId(""); setAccNo(""); setIfsc(""); setHolder("");
+      refresh();
+      loadHistory();
     } catch (e) {
-      toast.error(formatApiError(e.response?.data?.detail) || e.message);
+      const detail = e.response?.data?.detail || e.message;
+      if (e.response?.data?.kyc_required) {
+        toast.error("KYC required. Verify your identity first.");
+        nav("/kyc");
+      } else {
+        toast.error(detail || "Withdrawal failed");
+      }
     } finally {
-      setSubmitting(false);
+      setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen pt-24 pb-16 bg-[#0A0A0E] text-white">
-      <div className="max-w-2xl mx-auto px-6">
-        <div className="mb-8">
-          <div className="text-xs uppercase tracking-[0.25em] text-purple-400 font-bold mb-1">Wallet</div>
-          <h1 className="text-3xl font-extrabold">Withdraw Winnings</h1>
-          <p className="text-slate-400 text-sm mt-1">Only prize winnings can be withdrawn. Deposit balance is non-withdrawable.</p>
-        </div>
+    <div className="min-h-screen bg-gray-50 pt-20 pb-24 px-3">
 
-        {/* Balance cards */}
-        <div className="grid grid-cols-2 gap-4 mb-8">
-          <div className="rounded-2xl bg-emerald-500/10 border border-emerald-500/20 p-5">
-            <div className="text-xs uppercase tracking-widest text-emerald-400 mb-1">Winning balance</div>
-            <div className="text-3xl font-black text-emerald-400">{fmtINR(w.winning)}</div>
-            <div className="text-xs text-emerald-600 mt-1">Available to withdraw</div>
-          </div>
-          <div className="rounded-2xl bg-white/5 border border-white/10 p-5">
-            <div className="text-xs uppercase tracking-widest text-slate-400 mb-1">Deposit balance</div>
-            <div className="text-3xl font-black text-slate-400">{fmtINR(w.deposit)}</div>
-            <div className="text-xs text-slate-600 mt-1">Not withdrawable</div>
-          </div>
-        </div>
-
-        {/* Withdraw form */}
-        <Card className="glass-strong border-white/10 text-white mb-8">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <ArrowDownToLine className="w-4 h-4 text-purple-400" /> Request Withdrawal
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-5">
-            <div className="flex gap-2 flex-wrap">
-              {[100, 250, 500, 1000].map(v => (
-                <Button key={v} variant="outline" size="sm"
-                  className="rounded-full border-white/20 bg-white/5 text-white"
-                  onClick={() => setAmount(String(v))}
-                  disabled={v > (w.winning || 0)}
-                  data-testid={`withdraw-quick-${v}`}>
-                  {fmtINR(v)}
-                </Button>
-              ))}
-            </div>
-
-            <div>
-              <Label className="text-slate-300">Amount (min ₹100)</Label>
-              <Input
-                type="number"
-                min="100"
-                max={w.winning || 0}
-                value={amount}
-                onChange={e => setAmount(e.target.value)}
-                placeholder="Enter amount"
-                className="bg-black/40 border-white/10 text-white mt-1"
-                data-testid="withdraw-amount"
-              />
-              {amount && parseFloat(amount) > 0 && (
-                <p className={`text-xs mt-1 ${parseFloat(amount) > (w.winning||0) ? "text-red-400" : "text-emerald-400"}`}>
-                  {parseFloat(amount) > (w.winning||0)
-                    ? `Exceeds winning balance of ${fmtINR(w.winning)}`
-                    : `Remaining after: ${fmtINR((w.winning||0) - parseFloat(amount))}`}
-                </p>
-              )}
-            </div>
-
-            <div>
-              <Label className="text-slate-300">UPI ID</Label>
-              <Input
-                value={upi}
-                onChange={e => setUpi(e.target.value)}
-                placeholder="yourname@upi"
-                className="bg-black/40 border-white/10 text-white mt-1"
-                data-testid="withdraw-upi"
-              />
-            </div>
-
-            <Button
-              onClick={handleSubmit}
-              disabled={submitting || !amount || !upi || parseFloat(amount) > (w.winning||0)}
-              className="rounded-full bg-gradient-to-r from-purple-600 to-blue-600 text-white font-bold w-full h-11"
-              data-testid="withdraw-submit">
-              {submitting ? "Submitting…" : `Withdraw ${amount ? fmtINR(parseFloat(amount)||0) : ""}`}
-            </Button>
-
-            <p className="text-xs text-slate-500 text-center">
-              Admin processes withdrawals within 24 hours. Funds are sent via manual UPI transfer.
-            </p>
-          </CardContent>
-        </Card>
-
-        {/* Withdrawal history */}
-        <Card className="glass-strong border-white/10 text-white">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Clock className="w-4 h-4 text-slate-400" /> Withdrawal History
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {loadingHistory ? (
-              <div className="text-slate-400 text-sm text-center py-6">Loading…</div>
-            ) : history.length === 0 ? (
-              <div className="text-slate-500 text-sm text-center py-6">No withdrawals yet.</div>
-            ) : (
-              <div className="divide-y divide-white/5">
-                {history.map(tx => {
-                  const s = STATUS_STYLE[tx.status] || STATUS_STYLE.pending;
-                  return (
-                    <div key={tx.id} className="py-4 flex items-start justify-between gap-3" data-testid={`wd-row-${tx.id}`}>
-                      <div>
-                        <div className="font-semibold">{fmtINR(tx.amount)}</div>
-                        <div className="text-xs text-slate-400 mt-0.5">UPI: {tx.upi_id}</div>
-                        <div className="text-xs text-slate-500 mt-0.5">{new Date(tx.created_at).toLocaleString("en-IN")}</div>
-                        {tx.admin_note && (
-                          <div className="text-xs text-red-400 mt-1">Reason: {tx.admin_note}</div>
-                        )}
-                      </div>
-                      <Badge style={{ background: s.bg, borderColor: s.border, color: s.color }}
-                        className="uppercase text-xs font-bold px-3 py-1 shrink-0">
-                        {tx.status}
-                      </Badge>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+      {/* Balance banner */}
+      <div className="bg-gradient-to-r from-green-600 to-green-800 rounded-2xl p-4 text-white mb-4 shadow">
+        <p className="text-sm text-green-100">Withdrawable Balance</p>
+        <p className="text-3xl font-black">{fmtINR(withdrawable)}</p>
+        <p className="text-xs text-green-200 mt-0.5">
+          Winnings {fmtINR(w.winning || 0)} + Referral {fmtINR(w.referral || 0)}
+        </p>
       </div>
+
+      {/* KYC warning */}
+      {!kycOk && (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-3 mb-4 flex items-center justify-between">
+          <p className="text-sm text-red-700">⚠️ Complete KYC before withdrawal</p>
+          <button onClick={() => nav("/kyc")} className="text-xs text-red-700 font-black underline">Verify →</button>
+        </div>
+      )}
+
+      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4 space-y-4 mb-4">
+        {/* Amount */}
+        <div>
+          <label className="text-xs font-bold text-gray-600 uppercase tracking-wide block mb-1.5">
+            Withdrawal Amount
+          </label>
+          <div className="flex items-center bg-gray-50 rounded-xl border border-gray-300 px-3 focus-within:border-red-600 focus-within:ring-2 focus-within:ring-red-100 transition-all">
+            <span className="text-gray-500 font-bold mr-1 text-lg">₹</span>
+            <input type="text" inputMode="numeric" value={amount}
+              onChange={e => setAmount(e.target.value.replace(/\D/g,""))}
+              placeholder="Min ₹100, Max ₹50,000"
+              className="flex-1 bg-transparent py-3 outline-none text-gray-900 text-lg" />
+          </div>
+        </div>
+
+        {/* Method Toggle */}
+        <div>
+          <label className="text-xs font-bold text-gray-600 uppercase tracking-wide block mb-2">Payment Method</label>
+          <div className="grid grid-cols-2 gap-2">
+            {[{id:"upi",label:"📱 UPI"},{id:"bank",label:"🏦 Bank Transfer"}].map(m => (
+              <button key={m.id} onClick={() => setMethod(m.id)}
+                className={`py-2.5 rounded-xl font-bold border-2 transition-all text-sm ${
+                  method === m.id ? "bg-red-700 text-white border-red-700" : "bg-white text-gray-600 border-gray-200"
+                }`}>
+                {m.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* UPI fields */}
+        {method === "upi" && (
+          <div>
+            <label className="text-xs font-bold text-gray-600 uppercase tracking-wide block mb-1.5">UPI ID</label>
+            <input value={upiId} onChange={e => setUpiId(e.target.value)}
+              placeholder="yourname@upi or phone@upi"
+              className="w-full h-11 px-3 rounded-xl bg-gray-50 border border-gray-300 text-gray-900 outline-none focus:border-red-600 focus:ring-2 focus:ring-red-100 transition-all" />
+          </div>
+        )}
+
+        {/* Bank fields */}
+        {method === "bank" && (
+          <div className="space-y-3">
+            <div>
+              <label className="text-xs font-bold text-gray-600 uppercase tracking-wide block mb-1.5">Account Holder Name</label>
+              <input value={holder} onChange={e => setHolder(e.target.value)}
+                placeholder="As per bank records"
+                className="w-full h-11 px-3 rounded-xl bg-gray-50 border border-gray-300 text-gray-900 outline-none focus:border-red-600 focus:ring-2 focus:ring-red-100 transition-all" />
+            </div>
+            <div>
+              <label className="text-xs font-bold text-gray-600 uppercase tracking-wide block mb-1.5">Account Number</label>
+              <input value={accNo} onChange={e => setAccNo(e.target.value.replace(/\D/g,""))}
+                inputMode="numeric" placeholder="e.g. 123456789012"
+                className="w-full h-11 px-3 rounded-xl bg-gray-50 border border-gray-300 text-gray-900 outline-none focus:border-red-600 focus:ring-2 focus:ring-red-100 transition-all" />
+            </div>
+            <div>
+              <label className="text-xs font-bold text-gray-600 uppercase tracking-wide block mb-1.5">IFSC Code</label>
+              <input value={ifsc} onChange={e => setIfsc(e.target.value.toUpperCase())}
+                placeholder="e.g. SBIN0001234"
+                className="w-full h-11 px-3 rounded-xl bg-gray-50 border border-gray-300 text-gray-900 font-mono outline-none focus:border-red-600 focus:ring-2 focus:ring-red-100 transition-all" />
+            </div>
+          </div>
+        )}
+
+        <button onClick={handleWithdraw} disabled={loading}
+          className="w-full h-12 rounded-xl bg-gradient-to-r from-red-700 to-black text-white font-black disabled:opacity-50 hover:opacity-90 transition-all">
+          {loading ? "Processing…" : "Withdraw"}
+        </button>
+      </div>
+
+      {/* Withdrawal history */}
+      {history.length > 0 && (
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+          <div className="px-4 py-3 border-b border-gray-100">
+            <h3 className="font-bold text-gray-900 text-sm">Withdrawal History</h3>
+          </div>
+          <div className="divide-y divide-gray-100">
+            {history.map(tx => (
+              <div key={tx._id || tx.id} className="flex items-center justify-between px-4 py-3">
+                <div>
+                  <p className="text-sm font-semibold text-gray-900">Withdraw via {tx.method || "UPI"}</p>
+                  <p className="text-xs text-gray-400">{new Date(tx.createdAt || tx.created_at).toLocaleString("en-IN")}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm font-black text-red-600">−{fmtINR(tx.amount)}</p>
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${STATUS_STYLE[tx.status] || "bg-gray-100 text-gray-600"}`}>
+                    {tx.status}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

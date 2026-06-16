@@ -71,6 +71,22 @@ export default function Account() {
         </div>
       </div>
 
+      {/* Stats Grid */}
+      <div className="px-3 mt-3 grid grid-cols-2 gap-2">
+        {[
+          { label: "Battles Played", value: user.matches_played || 0, icon: "⚔️" },
+          { label: "Total Deposit", value: fmtINR(user.total_deposit || w.deposit || 0), icon: "💳" },
+          { label: "Total Withdrawal", value: fmtINR(user.total_withdrawn || 0), icon: "💸" },
+          { label: "Referral Earning", value: fmtINR(user.total_referral || w.referral || 0), icon: "🎁" },
+        ].map(s => (
+          <div key={s.label} className="bg-white rounded-xl border border-gray-200 shadow-sm p-3">
+            <div className="text-xl mb-1">{s.icon}</div>
+            <div className="font-black text-gray-900 text-lg">{s.value}</div>
+            <div className="text-xs text-gray-400">{s.label}</div>
+          </div>
+        ))}
+      </div>
+
       {/* Menu sections */}
       <div className="px-3 mt-3 space-y-2">
         <MenuSection title="My Profile" items={[

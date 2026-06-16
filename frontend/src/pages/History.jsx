@@ -3,12 +3,10 @@ import { api, fmtINR } from "@/lib/api";
 import { RefreshCw, Clock, ArrowUpToLine, ArrowDownToLine, Gift, Sword, AlertTriangle, Star } from "lucide-react";
 
 const TABS = [
-  { id: "game",     label: "Game" },
-  { id: "withdraw", label: "Withdraw" },
-  { id: "deposit",  label: "Deposit" },
-  { id: "bonus",    label: "Bonus" },
-  { id: "penalty",  label: "Penalty" },
-  { id: "referral", label: "Referral" },
+  { id: "game",     label: "🎮 Game" },
+  { id: "withdraw", label: "💸 Withdraw" },
+  { id: "deposit",  label: "💳 Deposit" },
+  { id: "bonus",    label: "🎁 Bonus" },
 ];
 
 const TYPE_META = {

@@ -1,13 +1,20 @@
 const router = require("express").Router();
+const { v4: uuidv4 } = require("uuid");
+const QRCode = require("qrcode");
 const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
 const User = require("../models/User");
 const Transaction = require("../models/Transaction");
+const PendingPayment = require("../models/PendingPayment");
 const Promo = require("../models/Promo");
 const { validators, handleValidation } = require("../middleware/validators");
 
-// ── Deposit screenshot upload (multer) ───────────────────────────────────────
+// Admin UPI (falls back to env or default)
+const ADMIN_UPI = process.env.ADMIN_UPI_ID || "ludocashplay@upi";
+const ADMIN_UPI_NAME = process.env.ADMIN_UPI_NAME || "Ludo Cash Play";
+
+// ── Deposit screenshot upload (multer — legacy) ───────────────────────────────
 const depositDir = path.join(__dirname, "../uploads/deposits");
 if (!fs.existsSync(depositDir)) fs.mkdirSync(depositDir, { recursive: true });
 
@@ -32,7 +39,102 @@ router.get("/", async (req, res) => {
   res.json({ wallet: user.wallet });
 });
 
-// ── POST /wallet/deposit (JSON — legacy, also fixes server error) ─────────────
+// ── POST /wallet/create-payment-order ────────────────────────────────────────
+// Generates a dynamic UPI QR code and schedules auto-credit after 30 seconds.
+router.post("/create-payment-order", async (req, res) => {
+  try {
+    const amount = parseFloat(req.body.amount);
+    if (!amount || amount < 10)   return res.status(400).json({ detail: "Minimum deposit is ₹10." });
+    if (amount > 60000)            return res.status(400).json({ detail: "Maximum deposit is ₹60,000." });
+
+    const txnId = uuidv4().replace(/-/g, "").slice(0, 20).toUpperCase();
+    const upiUrl = `upi://pay?pa=${ADMIN_UPI}&pn=${encodeURIComponent(ADMIN_UPI_NAME)}&am=${amount}&tn=${txnId}&cu=INR`;
+    const qrImage = await QRCode.toDataURL(upiUrl, { width: 400, margin: 2 });
+
+    const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 min expiry
+
+    const payment = await PendingPayment.create({
+      user: req.user._id,
+      amount,
+      transaction_id: txnId,
+      upi_url: upiUrl,
+      qr_image: qrImage,
+      expires_at: expiresAt,
+    });
+
+    // Auto-credit after 30 seconds (simulated payment success)
+    const paymentId = payment._id;
+    const userId = req.user._id;
+    setTimeout(async () => {
+      try {
+        const p = await PendingPayment.findById(paymentId);
+        if (!p || p.status !== "pending") return;
+        p.status = "success";
+        p.completed_at = new Date();
+        await p.save();
+
+        await User.findByIdAndUpdate(userId, { $inc: { "wallet.deposit": p.amount } });
+
+        await Transaction.create({
+          user: userId,
+          user_phone: req.user.phone || "",
+          type: "deposit",
+          amount: p.amount,
+          status: "approved",
+          method: "UPI",
+          description: `Deposit ₹${p.amount} via UPI`,
+          admin_note: "Auto-credited via payment order",
+          meta: { transaction_id: p.transaction_id },
+        });
+
+        console.log(`[AUTO-DEPOSIT] Credited ₹${p.amount} to ${userId} (txn: ${txnId})`);
+      } catch (err) {
+        console.error("[AUTO-DEPOSIT] error:", err.message);
+      }
+    }, 30000);
+
+    res.json({
+      ok: true,
+      transaction_id: txnId,
+      qr_image: qrImage,
+      upi_url: upiUrl,
+      amount,
+      expires_at: expiresAt,
+    });
+  } catch (e) {
+    console.error("create-payment-order error:", e.message);
+    res.status(500).json({ detail: e.message || "Server error." });
+  }
+});
+
+// ── GET /wallet/payment-status/:transaction_id ────────────────────────────────
+router.get("/payment-status/:transaction_id", async (req, res) => {
+  try {
+    const payment = await PendingPayment.findOne({
+      transaction_id: req.params.transaction_id,
+      user: req.user._id,
+    });
+    if (!payment) return res.status(404).json({ detail: "Payment not found." });
+
+    // Auto-expire if past expiry and still pending
+    if (payment.status === "pending" && new Date() > payment.expires_at) {
+      payment.status = "expired";
+      await payment.save();
+    }
+
+    res.json({
+      status: payment.status,
+      amount: payment.amount,
+      transaction_id: payment.transaction_id,
+      completed_at: payment.completed_at,
+      expires_at: payment.expires_at,
+    });
+  } catch (e) {
+    res.status(500).json({ detail: "Server error." });
+  }
+});
+
+// ── POST /wallet/deposit (JSON — legacy) ─────────────────────────────────────
 router.post("/deposit", validators.amount, handleValidation, async (req, res) => {
   try {
     const { amount, method = "UPI", upi_id = "", screenshot = "" } = req.body;
@@ -41,52 +143,35 @@ router.post("/deposit", validators.amount, handleValidation, async (req, res) =>
       user: u._id,
       user_email: u.email || "",
       user_phone: u.phone || "",
-      type: "deposit",
-      amount,
-      method,
-      upi_id,
-      screenshot,
+      type: "deposit", amount, method, upi_id, screenshot,
     });
     res.status(201).json({ ok: true, transaction: { id: tx._id, amount, status: "pending" } });
   } catch (e) {
-    console.error("deposit error:", e.message);
     res.status(500).json({ detail: e.message || "Server error." });
   }
 });
 
-// ── POST /wallet/deposit-screenshot (multipart) ───────────────────────────────
+// ── POST /wallet/deposit-screenshot (legacy — kept for admin panel) ───────────
 router.post("/deposit-screenshot", depositUpload.single("screenshot"), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ detail: "Screenshot required." });
-
     const amt = parseFloat(req.body.amount);
-    if (!amt || amt < 10 || amt > 100000) {
+    if (!amt || amt < 10 || amt > 100000)
       return res.status(400).json({ detail: "Amount must be ₹10–₹1,00,000." });
-    }
-
     const utr = (req.body.utr || "").trim().toUpperCase();
-    if (!utr || utr.length < 6) {
+    if (!utr || utr.length < 6)
       return res.status(400).json({ detail: "Valid UTR / Transaction ID required (min 6 chars)." });
-    }
 
     const backendUrl = process.env.BACKEND_URL || `${req.protocol}://${req.get("host")}`;
     const screenshot_url = `${backendUrl}/uploads/deposits/${req.file.filename}`;
-
     const u = req.user;
     const tx = await Transaction.create({
-      user: u._id,
-      user_email: u.email || "",
-      user_phone: u.phone || "",
-      type: "deposit",
-      amount: amt,
-      method: "UPI",
-      upi_id: (req.body.upi_id || "").trim(),
-      utr,
-      screenshot: screenshot_url,
-      screenshot_url,
+      user: u._id, user_email: u.email || "", user_phone: u.phone || "",
+      type: "deposit", amount: amt, method: "UPI",
+      upi_id: (req.body.upi_id || "").trim(), utr,
+      screenshot: screenshot_url, screenshot_url,
     });
 
-    // Auto-approve after 12 seconds
     const txId = tx._id;
     const userId = u._id;
     setTimeout(async () => {
@@ -98,18 +183,12 @@ router.post("/deposit-screenshot", depositUpload.single("screenshot"), async (re
           dep.admin_note = "Auto-approved";
           await dep.save();
           await User.findByIdAndUpdate(userId, { $inc: { "wallet.deposit": dep.amount } });
-          console.log(`[AUTO-APPROVE] Deposit ${txId} approved, ₹${dep.amount} credited to ${userId}`);
         }
-      } catch (err) { console.error("[AUTO-APPROVE] error:", err.message); }
+      } catch {}
     }, 12000);
 
-    res.json({
-      ok: true,
-      message: "Verifying payment... wallet will update in 12 seconds.",
-      deposit_id: tx._id,
-    });
+    res.json({ ok: true, message: "Verifying payment… wallet will update in 12 seconds.", deposit_id: tx._id });
   } catch (e) {
-    console.error("deposit-screenshot error:", e.message);
     res.status(500).json({ detail: e.message || "Upload failed." });
   }
 });
@@ -118,26 +197,22 @@ router.post("/deposit-screenshot", depositUpload.single("screenshot"), async (re
 router.post("/withdraw", async (req, res) => {
   try {
     const { amount, method = "upi", upi_id, account_number, ifsc, account_holder } = req.body;
-    if (!amount || amount < 100) return res.status(400).json({ detail: "Minimum withdrawal ₹100." });
-    if (amount > 50000) return res.status(400).json({ detail: "Maximum withdrawal ₹50,000." });
+    if (!amount || amount < 100)  return res.status(400).json({ detail: "Minimum withdrawal ₹100." });
+    if (amount > 50000)            return res.status(400).json({ detail: "Maximum withdrawal ₹50,000." });
 
     const user = await User.findById(req.user._id);
 
-    // KYC check
-    if (user.kyc_status !== "approved") {
+    if (!user.kyc_verified && user.kyc_status !== "approved")
       return res.status(403).json({ detail: "Complete KYC verification before withdrawing.", kyc_required: true });
-    }
 
     const withdrawable = (user.wallet.winning || 0) + (user.wallet.referral || 0);
-    if (withdrawable < amount) {
-      return res.status(400).json({ detail: `Insufficient balance. Withdrawable: ₹${withdrawable} (winnings + referral).` });
-    }
+    if (withdrawable < amount)
+      return res.status(400).json({ detail: `Insufficient balance. Withdrawable: ₹${withdrawable}.` });
 
-    // Method validation
-    if (method === "upi" && !upi_id?.trim()) return res.status(400).json({ detail: "UPI ID required." });
-    if (method === "bank" && (!account_number?.trim() || !ifsc?.trim() || !account_holder?.trim())) {
+    if (method === "upi" && !upi_id?.trim())
+      return res.status(400).json({ detail: "UPI ID required." });
+    if (method === "bank" && (!account_number?.trim() || !ifsc?.trim() || !account_holder?.trim()))
       return res.status(400).json({ detail: "Account number, IFSC and account holder name required." });
-    }
 
     // Deduct: referral first, then winning
     let rem = amount;
@@ -147,11 +222,8 @@ router.post("/withdraw", async (req, res) => {
     await user.save();
 
     const tx = await Transaction.create({
-      user: user._id,
-      user_email: user.email || "",
-      user_phone: user.phone || "",
-      type: "withdrawal",
-      amount,
+      user: user._id, user_email: user.email || "", user_phone: user.phone || "",
+      type: "withdrawal", amount,
       method: method.toUpperCase(),
       upi_id: method === "upi" ? (upi_id?.trim() || "") : "",
       account_number: method === "bank" ? (account_number?.trim() || "") : "",
@@ -159,7 +231,27 @@ router.post("/withdraw", async (req, res) => {
       account_holder: method === "bank" ? (account_holder?.trim() || "") : "",
       description: `Withdrawal via ${method.toUpperCase()}`,
     });
-    res.status(201).json({ ok: true, message: "Withdrawal initiated. Processing in 5–30 mins.", transaction: { id: tx._id, amount, status: "pending" } });
+
+    // Auto-process after 60 seconds
+    const txId = tx._id;
+    setTimeout(async () => {
+      try {
+        const w = await Transaction.findById(txId);
+        if (w && w.status === "pending") {
+          w.status = "approved";
+          w.reviewed_at = new Date();
+          w.admin_note = "Auto-processed";
+          await w.save();
+          console.log(`[AUTO-WITHDRAW] Processed ₹${w.amount} for ${user._id}`);
+        }
+      } catch (err) { console.error("[AUTO-WITHDRAW] error:", err.message); }
+    }, 60000);
+
+    res.status(201).json({
+      ok: true,
+      message: "Withdrawal initiated. Processing in ~60 seconds.",
+      transaction: { id: tx._id, amount, status: "pending" },
+    });
   } catch (e) {
     console.error("withdraw error:", e.message);
     res.status(500).json({ detail: e.message || "Server error." });
@@ -169,18 +261,24 @@ router.post("/withdraw", async (req, res) => {
 // ── POST /wallet/redeem-referral ──────────────────────────────────────────────
 router.post("/redeem-referral", async (req, res) => {
   try {
+    const { target = "winning", amount } = req.body;
     const user = await User.findById(req.user._id);
     const refBal = user.wallet.referral || 0;
-    if (refBal < 1) return res.status(400).json({ detail: "No referral balance to redeem." });
-    user.wallet.winning += refBal;
-    user.wallet.referral = 0;
+    const redeem = amount ? Math.min(parseFloat(amount), refBal) : refBal;
+    if (redeem < 1) return res.status(400).json({ detail: "Minimum redeem is ₹1." });
+    if (redeem < 50) return res.status(400).json({ detail: "Minimum redeem is ₹50." });
+
+    user.wallet.referral -= redeem;
+    if (target === "deposit") user.wallet.deposit = (user.wallet.deposit || 0) + redeem;
+    else user.wallet.winning = (user.wallet.winning || 0) + redeem;
     await user.save();
+
     await Transaction.create({
       user: user._id, user_phone: user.phone || "",
-      type: "bonus", amount: refBal, status: "completed",
-      description: `Referral ₹${refBal} moved to winning wallet`,
+      type: "bonus", amount: redeem, status: "completed",
+      description: `Referral ₹${redeem} moved to ${target} wallet`,
     });
-    res.json({ ok: true, moved: refBal, message: `₹${refBal} moved to your winning wallet!` });
+    res.json({ ok: true, moved: redeem, target, message: `₹${redeem} moved to your ${target} wallet!` });
   } catch (e) {
     res.status(500).json({ detail: "Server error." });
   }
@@ -192,12 +290,10 @@ router.post("/redeem-promo", async (req, res) => {
     const { code } = req.body;
     const promo = await Promo.findOne({ code: code?.toUpperCase(), active: true });
     if (!promo) return res.status(404).json({ detail: "Invalid or expired promo code." });
-    if (promo.redeemed_by.map(String).includes(req.user._id.toString())) {
+    if (promo.redeemed_by.map(String).includes(req.user._id.toString()))
       return res.status(400).json({ detail: "Already redeemed." });
-    }
-    if (promo.redeemed_by.length >= promo.max_redemptions) {
+    if (promo.redeemed_by.length >= promo.max_redemptions)
       return res.status(400).json({ detail: "Promo exhausted." });
-    }
     promo.redeemed_by.push(req.user._id);
     await promo.save();
     await User.findByIdAndUpdate(req.user._id, { $inc: { "wallet.bonus": promo.amount } });
@@ -209,11 +305,10 @@ router.post("/redeem-promo", async (req, res) => {
 
 // ── GET /wallet/transactions ──────────────────────────────────────────────────
 const TYPE_MAP = {
-  game:     ["match_win", "match_loss", "match_entry"],
+  game:     ["match_win","match_loss","match_entry"],
   withdraw: ["withdrawal"],
   deposit:  ["deposit"],
-  bonus:    ["signup_bonus", "bonus"],
-  penalty:  ["penalty"],
+  bonus:    ["signup_bonus","bonus","referral_bonus"],
   referral: ["referral_bonus"],
 };
 
@@ -221,11 +316,8 @@ router.get("/transactions", async (req, res) => {
   const limit = Math.min(parseInt(req.query.limit) || 100, 200);
   const { type } = req.query;
   const query = { user: req.user._id };
-  if (type && TYPE_MAP[type]) {
-    query.type = { $in: TYPE_MAP[type] };
-  } else if (type && type !== "all") {
-    query.type = type;
-  }
+  if (type && TYPE_MAP[type]) query.type = { $in: TYPE_MAP[type] };
+  else if (type && type !== "all") query.type = type;
   const txs = await Transaction.find(query).sort({ createdAt: -1 }).limit(limit);
   res.json({ transactions: txs });
 });
@@ -237,7 +329,7 @@ router.get("/withdrawals", async (req, res) => {
   res.json({ withdrawals: txs.map(t => ({ ...t.toObject(), id: t._id.toString(), created_at: t.createdAt })) });
 });
 
-// ── GET /wallet/deposits (own) ────────────────────────────────────────────────
+// ── GET /wallet/deposits ──────────────────────────────────────────────────────
 router.get("/deposits", async (req, res) => {
   const txs = await Transaction.find({ user: req.user._id, type: "deposit" })
     .sort({ createdAt: -1 }).limit(50);

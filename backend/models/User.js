@@ -21,6 +21,9 @@ const userSchema = new mongoose.Schema({
   referral_code:   { type: String, unique: true, sparse: true },
   referred_by:     { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
   kyc_status:      { type: String, enum: ["not_submitted","pending","approved","rejected"], default: "not_submitted" },
+  kyc_verified:    { type: Boolean, default: false },
+  aadhaar_last_4:  { type: String, default: "" },
+  kyc_verified_at: { type: Date },
   last_login_at:   { type: Date },
   last_login_ip:   { type: String, default: "" },
 }, { timestamps: true });
