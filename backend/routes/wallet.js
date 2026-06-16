@@ -62,37 +62,6 @@ router.post("/create-payment-order", async (req, res) => {
       expires_at: expiresAt,
     });
 
-    // Auto-credit after 30 seconds (simulated payment success)
-    const paymentId = payment._id;
-    const userId = req.user._id;
-    setTimeout(async () => {
-      try {
-        const p = await PendingPayment.findById(paymentId);
-        if (!p || p.status !== "pending") return;
-        p.status = "success";
-        p.completed_at = new Date();
-        await p.save();
-
-        await User.findByIdAndUpdate(userId, { $inc: { "wallet.deposit": p.amount } });
-
-        await Transaction.create({
-          user: userId,
-          user_phone: req.user.phone || "",
-          type: "deposit",
-          amount: p.amount,
-          status: "approved",
-          method: "UPI",
-          description: `Deposit ₹${p.amount} via UPI`,
-          admin_note: "Auto-credited via payment order",
-          meta: { transaction_id: p.transaction_id },
-        });
-
-        console.log(`[AUTO-DEPOSIT] Credited ₹${p.amount} to ${userId} (txn: ${txnId})`);
-      } catch (err) {
-        console.error("[AUTO-DEPOSIT] error:", err.message);
-      }
-    }, 30000);
-
     res.json({
       ok: true,
       transaction_id: txnId,
@@ -104,6 +73,21 @@ router.post("/create-payment-order", async (req, res) => {
   } catch (e) {
     console.error("create-payment-order error:", e.message);
     res.status(500).json({ detail: e.message || "Server error." });
+  }
+});
+
+// ── GET /wallet/payment-info?amount=X  — static QR for admin UPI ─────────────
+router.get("/payment-info", async (req, res) => {
+  try {
+    const amount = parseFloat(req.query.amount) || 0;
+    const txnRef = `LCP${Date.now()}`;
+    const upiUrl = amount > 0
+      ? `upi://pay?pa=${ADMIN_UPI}&pn=${encodeURIComponent(ADMIN_UPI_NAME)}&am=${amount}&tn=${txnRef}&cu=INR`
+      : `upi://pay?pa=${ADMIN_UPI}&pn=${encodeURIComponent(ADMIN_UPI_NAME)}&cu=INR`;
+    const qrImage = await QRCode.toDataURL(upiUrl, { width: 400, margin: 2 });
+    res.json({ upi_id: ADMIN_UPI, merchant_name: ADMIN_UPI_NAME, upi_url: upiUrl, qr_image: qrImage, txn_ref: txnRef });
+  } catch (e) {
+    res.status(500).json({ detail: "Failed to generate payment QR." });
   }
 });
 
@@ -172,22 +156,7 @@ router.post("/deposit-screenshot", depositUpload.single("screenshot"), async (re
       screenshot: screenshot_url, screenshot_url,
     });
 
-    const txId = tx._id;
-    const userId = u._id;
-    setTimeout(async () => {
-      try {
-        const dep = await Transaction.findById(txId);
-        if (dep && dep.status === "pending") {
-          dep.status = "approved";
-          dep.reviewed_at = new Date();
-          dep.admin_note = "Auto-approved";
-          await dep.save();
-          await User.findByIdAndUpdate(userId, { $inc: { "wallet.deposit": dep.amount } });
-        }
-      } catch {}
-    }, 12000);
-
-    res.json({ ok: true, message: "Verifying payment… wallet will update in 12 seconds.", deposit_id: tx._id });
+    res.json({ ok: true, message: "Screenshot submitted. Admin will verify and credit within 5–30 minutes.", deposit_id: tx._id });
   } catch (e) {
     res.status(500).json({ detail: e.message || "Upload failed." });
   }
@@ -229,24 +198,9 @@ router.post("/withdraw", async (req, res) => {
       description: `Withdrawal via ${method.toUpperCase()}`,
     });
 
-    // Auto-process after 60 seconds
-    const txId = tx._id;
-    setTimeout(async () => {
-      try {
-        const w = await Transaction.findById(txId);
-        if (w && w.status === "pending") {
-          w.status = "approved";
-          w.reviewed_at = new Date();
-          w.admin_note = "Auto-processed";
-          await w.save();
-          console.log(`[AUTO-WITHDRAW] Processed ₹${w.amount} for ${user._id}`);
-        }
-      } catch (err) { console.error("[AUTO-WITHDRAW] error:", err.message); }
-    }, 60000);
-
     res.status(201).json({
       ok: true,
-      message: "Withdrawal initiated. Processing in ~60 seconds.",
+      message: "Withdrawal request submitted. Admin will process within 24 hours.",
       transaction: { id: tx._id, amount, status: "pending" },
     });
   } catch (e) {

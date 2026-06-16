@@ -40,6 +40,8 @@ export default function MatchRoom() {
   const [showCancel, setShowCancel] = useState(false);
   const [showWon, setShowWon] = useState(false);
   const [showLost, setShowLost] = useState(false);
+  const [roomCodeInput, setRoomCodeInput] = useState("");
+  const [settingCode, setSettingCode] = useState(false);
   const fileRef = useRef();
 
   const load = async () => {
@@ -71,6 +73,7 @@ export default function MatchRoom() {
   const myResult = user && match.results?.[user.id];
   const opp = user && match.players?.find(p => p.id !== user.id);
   const sc = STATUS_CFG[match.status] || STATUS_CFG.waiting;
+  const isCreator = user && (match.creator_id === user.id || match.players?.[0]?.id === user.id);
 
   const fmtTime = (s) => `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
 
@@ -109,6 +112,21 @@ export default function MatchRoom() {
   const handleResult = async (data) => {
     await refresh();
     await load();
+  };
+
+  const handleSetRoomCode = async () => {
+    if (!/^\d{6,8}$/.test(roomCodeInput.trim()))
+      return toast.error("Enter 6–8 digit code from Ludo King");
+    setSettingCode(true);
+    try {
+      const r = await api.post(`/matches/${id}/set-room-code`, { room_code: roomCodeInput.trim() });
+      setMatch(r.data.match || r.data);
+      toast.success("Room code set! Opponent can now see it.");
+    } catch (e) {
+      toast.error(e.response?.data?.detail || "Failed to set room code");
+    } finally {
+      setSettingCode(false);
+    }
   };
 
   const submit = async (result) => {
@@ -180,59 +198,83 @@ export default function MatchRoom() {
           </div>
         </div>
 
-        {/* Room Code Card */}
-        <div
-          className={`rounded-3xl p-6 mb-4 fade-up delay-1 ${
-            isVip
-              ? "bg-gradient-to-br from-amber-500/10 to-amber-900/25 border border-amber-500/40 glow-ring-gold"
-              : "glass-strong border border-white/10 glow-ring"
-          }`}
-          data-testid="room-code-box"
-        >
-          <div className="text-[10px] uppercase tracking-[0.2em] text-slate-400 mb-2">Room Code · Open in Ludo King</div>
-          <div className={`text-5xl sm:text-6xl font-black tracking-[0.12em] mb-4 ${isVip ? "grad-text-gold vip-text" : "grad-text room-code-glow"}`}>
-            {match.room_code}
-          </div>
-          <Button
-            onClick={copyRoom}
-            size="sm"
-            className={`rounded-full font-bold ${
+        {/* Room Code Card — only shown when code is set */}
+        {match.room_code ? (
+          <div
+            className={`rounded-3xl p-6 mb-4 fade-up delay-1 ${
               isVip
-                ? "bg-amber-500 hover:bg-amber-400 text-black shadow-[0_0_20px_rgba(234,179,8,0.4)]"
-                : "btn-neon text-white"
+                ? "bg-gradient-to-br from-amber-500/10 to-amber-900/25 border border-amber-500/40 glow-ring-gold"
+                : "glass-strong border border-white/10 glow-ring"
             }`}
-            data-testid="copy-room-code"
+            data-testid="room-code-box"
           >
-            {copied ? <Check className="w-4 h-4 mr-1.5 text-emerald-300" /> : <Copy className="w-4 h-4 mr-1.5" />}
-            {copied ? "Copied!" : "Copy Room Code"}
-          </Button>
+            <div className="text-[10px] uppercase tracking-[0.2em] text-slate-400 mb-2">Ludo King Room Code</div>
+            <div className={`text-5xl sm:text-6xl font-black tracking-[0.12em] mb-4 ${isVip ? "grad-text-gold vip-text" : "grad-text room-code-glow"}`}>
+              {match.room_code}
+            </div>
+            <Button
+              onClick={copyRoom}
+              size="sm"
+              className={`rounded-full font-bold ${isVip ? "bg-amber-500 hover:bg-amber-400 text-black" : "btn-neon text-white"}`}
+              data-testid="copy-room-code"
+            >
+              {copied ? <Check className="w-4 h-4 mr-1.5 text-emerald-300" /> : <Copy className="w-4 h-4 mr-1.5" />}
+              {copied ? "Copied!" : "Copy Code"}
+            </Button>
+          </div>
+        ) : null}
 
-          {/* Password row */}
-          {match.room_password && (
-            <div className="mt-4 pt-4 border-t border-white/10">
-              <div className="text-[10px] uppercase tracking-[0.2em] text-slate-400 mb-2">Room Password</div>
-              <div className="flex items-center gap-3">
-                <div className="text-2xl font-mono font-black text-white tracking-widest select-none">
-                  {showPwd ? match.room_password : "•".repeat(String(match.room_password).length)}
+        {/* Room code setup — shown when in_progress and code not yet set */}
+        {match.status === "in_progress" && !match.room_code && (
+          isCreator ? (
+            <div className="rounded-2xl bg-amber-500/10 border-2 border-amber-500/40 p-5 mb-4 fade-up delay-1">
+              <h3 className="font-bold text-amber-300 mb-3">📱 Set Ludo King Room Code</h3>
+              <div className="bg-black/30 rounded-xl p-3 mb-3">
+                <p className="text-xs font-semibold text-slate-300 mb-2">Steps to get your room code:</p>
+                <ol className="text-xs text-slate-400 space-y-1.5">
+                  <li>1. Open <strong className="text-white">Ludo King</strong> app on your phone</li>
+                  <li>2. Tap <strong className="text-white">Play with Friends</strong></li>
+                  <li>3. Tap <strong className="text-white">Create Room</strong></li>
+                  <li>4. Select <strong className="text-white">Classic Mode</strong></li>
+                  <li>5. Copy the <strong className="text-white">6-digit Room Code</strong> shown</li>
+                  <li>6. Paste it below and tap SET</li>
+                </ol>
+              </div>
+              <input
+                type="text"
+                inputMode="numeric"
+                value={roomCodeInput}
+                onChange={e => setRoomCodeInput(e.target.value.replace(/\D/g, "").slice(0, 8))}
+                placeholder="Enter room code"
+                maxLength={8}
+                className="w-full px-3 py-4 mb-3 bg-black/40 border-2 border-amber-500/60 rounded-xl text-center text-4xl tracking-widest font-black text-white focus:border-amber-400 outline-none"
+              />
+              <Button
+                onClick={handleSetRoomCode}
+                disabled={settingCode || roomCodeInput.length < 6}
+                className="w-full py-3 h-auto bg-gradient-to-r from-amber-500 to-orange-500 text-black font-black rounded-xl disabled:opacity-50 text-base"
+              >
+                {settingCode ? <Loader2 className="w-4 h-4 animate-spin mr-2 inline" /> : null}
+                SET ROOM CODE
+              </Button>
+              <p className="text-xs text-slate-500 text-center mt-2">Your opponent is waiting for this code</p>
+            </div>
+          ) : (
+            <div className="rounded-2xl bg-purple-500/10 border border-purple-500/30 p-5 mb-4 fade-up delay-1">
+              <div className="flex gap-3 items-center">
+                <div className="w-9 h-9 rounded-xl bg-purple-500/20 flex items-center justify-center shrink-0">
+                  <Loader2 className="w-4 h-4 text-purple-400 animate-spin" />
                 </div>
-                <button
-                  onClick={() => setShowPwd(!showPwd)}
-                  className="p-1.5 rounded-full bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
-                  aria-label="Toggle password visibility"
-                >
-                  {showPwd ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-                <button
-                  onClick={copyPwd}
-                  className="p-1.5 rounded-full bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
-                  aria-label="Copy password"
-                >
-                  {copiedPwd ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
-                </button>
+                <div>
+                  <div className="font-bold text-purple-200">Setting up Ludo King room…</div>
+                  <div className="text-sm text-slate-400 mt-0.5">
+                    {match.creator_name || "Creator"} is creating the room in Ludo King. Room code will appear here shortly.
+                  </div>
+                </div>
               </div>
             </div>
-          )}
-        </div>
+          )
+        )}
 
         {/* VS Card */}
         <div className="glass rounded-2xl border border-white/10 p-5 mb-4 fade-up delay-2">
@@ -256,11 +298,11 @@ export default function MatchRoom() {
               <div>
                 <div className="font-bold text-purple-200">Waiting for opponent…</div>
                 <div className="text-sm text-slate-400 mt-1">
-                  Share room code <span className="text-purple-300 font-mono font-bold">{match.room_code}</span> with a friend or wait for someone from the lobby.
+                  Your battle ({fmtINR(match.stake)}) is live in the lobby. Once someone joins, you'll create a Ludo King room.
                 </div>
               </div>
             </div>
-            {user && match.creator_id === user.id && (
+            {user && isCreator && (
               <Button
                 disabled={busy}
                 onClick={() => setShowCancel(true)}
@@ -274,8 +316,8 @@ export default function MatchRoom() {
           </div>
         )}
 
-        {/* Submit result */}
-        {(match.status === "in_progress" || match.status === "awaiting_review" || match.status === "disputed") && me && (
+        {/* Submit result — only shown after room code is set */}
+        {(match.status === "in_progress" || match.status === "awaiting_review" || match.status === "disputed") && me && match.room_code && (
           <div className="rounded-2xl glass-strong border border-white/10 p-5 mb-4 fade-up delay-3" data-testid="submit-result-form">
             {myResult ? (
               <div className="text-center py-3">

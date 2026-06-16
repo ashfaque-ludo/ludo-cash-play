@@ -275,4 +275,23 @@ router.post("/users/wallet-adjust", async (req, res) => {
   } catch (e) { res.status(500).json({ detail: e.message }); }
 });
 
+// POST /api/owner/cleanup-matches — one-time cleanup: delete all matches, refund active stakes
+router.post("/cleanup-matches", async (req, res) => {
+  try {
+    const active = await Match.find({ status: { $in: ["waiting", "in_progress"] } });
+    let refunded = 0;
+    for (const m of active) {
+      for (const p of m.players) {
+        await User.findByIdAndUpdate(p.user, { $inc: { "wallet.deposit": m.stake } });
+        refunded += m.stake;
+      }
+    }
+    const { deletedCount } = await Match.deleteMany({});
+    await ActivityLog.create({ action: "owner_cleanup_matches", actor: req.user._id, actor_email: req.user.email || req.user.phone, actor_role: req.user.role, meta: { deleted: deletedCount, refunded }, ip: req.ip });
+    res.json({ ok: true, deleted: deletedCount, refunded });
+  } catch (e) {
+    res.status(500).json({ detail: e.message });
+  }
+});
+
 module.exports = router;

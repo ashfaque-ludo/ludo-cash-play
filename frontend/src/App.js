@@ -8,7 +8,6 @@ import Header from "@/components/Header";
 import BottomNav from "@/components/BottomNav";
 import Sidebar from "@/components/Sidebar";
 import Footer from "@/components/Footer";
-import WhatsAppButton from "@/components/WhatsAppButton";
 import "./i18n"; // init i18next
 
 // Critical path: loaded eagerly
@@ -123,7 +122,6 @@ function AppLayout() {
       </Suspense>
       <BottomNav />
       <Footer />
-      <WhatsAppButton />
     </>
   );
 }

@@ -132,16 +132,14 @@ const handleCreate = async (req, res) => {
     let match;
     try {
       const commission = Math.round(stakeAmount * 2 * PCT / 100);
-      const room_code = genCode(6, true);
-      const room_password = genCode(4);
       match = await Match.create({
         label,
         stake: stakeAmount,
         tier,
         prize_pool: stakeAmount * 2 - commission,
         commission,
-        room_code,
-        room_password,
+        room_code: "",
+        room_password: "",
         players: [{ user: req.user._id, id: req.user._id.toString(), name: req.user.name, email: req.user.email }],
       });
     } catch (createErr) {
@@ -281,6 +279,27 @@ router.post("/:id/submit-result", async (req, res) => {
     await match.save();
     return res.json({ ok: true, auto_resolved: false, status: "awaiting_review", match: serializeMatch(match) });
   } catch (e) { res.status(500).json({ detail: "Server error." }); }
+});
+
+// POST /matches/:id/set-room-code — creator types room code from Ludo King
+router.post("/:id/set-room-code", async (req, res) => {
+  if (!req.user) return res.status(401).json({ detail: "Not authenticated." });
+  try {
+    const code = (req.body.room_code || "").trim();
+    if (!code || !/^\d{6,8}$/.test(code))
+      return res.status(400).json({ detail: "Room code must be 6–8 digits (from Ludo King)." });
+    const match = await Match.findById(req.params.id);
+    if (!match) return res.status(404).json({ detail: "Match not found." });
+    if (match.status !== "in_progress")
+      return res.status(400).json({ detail: "Match must be in progress to set room code." });
+    const isCreator = match.players[0]?.user.toString() === req.user._id.toString();
+    if (!isCreator) return res.status(403).json({ detail: "Only the creator can set the room code." });
+    match.room_code = code;
+    await match.save();
+    res.json({ ok: true, match: serializeMatch(match) });
+  } catch (e) {
+    res.status(500).json({ detail: "Server error." });
+  }
 });
 
 module.exports = router;

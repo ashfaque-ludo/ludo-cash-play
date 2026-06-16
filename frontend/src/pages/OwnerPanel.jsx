@@ -16,6 +16,7 @@ const TABS = [
   { id: "payment", label: "Payment QR", icon: CreditCard },
   { id: "logs", label: "Activity Log", icon: Activity },
   { id: "users", label: "User Management", icon: Shield },
+  { id: "danger", label: "⚠ Danger Zone", icon: Shield },
 ];
 
 const ROLE_OPTIONS = [
@@ -79,6 +80,7 @@ export default function OwnerPanel() {
         {activeTab === "payment" && <PaymentQRTab />}
         {activeTab === "logs" && <LogsTab />}
         {activeTab === "users" && <UsersTab />}
+        {activeTab === "danger" && <DangerZoneTab />}
       </div>
     </div>
   );
@@ -634,6 +636,54 @@ function PaymentQRTab() {
           className="w-full py-3 bg-gradient-to-r from-yellow-500 to-orange-500 text-black font-bold rounded-xl disabled:opacity-50">
           {busy ? "Saving…" : "Save Settings"}
         </button>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Danger Zone ─── */
+function DangerZoneTab() {
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState(null);
+
+  const handleCleanup = async () => {
+    if (!window.confirm("DELETE ALL BATTLES and refund active stakes? This cannot be undone.")) return;
+    setLoading(true);
+    setResult(null);
+    try {
+      const r = await api.post("/owner/cleanup-matches");
+      setResult({ ok: true, deleted: r.data.deleted, refunded: r.data.refunded });
+    } catch (e) {
+      setResult({ ok: false, msg: e.response?.data?.detail || "Failed" });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="bg-red-900/20 border-2 border-red-500/40 rounded-2xl p-6 max-w-lg">
+      <h3 className="text-xl font-black text-red-400 mb-1">⚠ Danger Zone</h3>
+      <p className="text-slate-400 text-sm mb-5">These actions are irreversible. Use only when necessary.</p>
+      <div className="bg-black/40 border border-red-500/30 rounded-xl p-4">
+        <h4 className="font-bold text-white mb-1">Delete All Battles (Clean Slate)</h4>
+        <p className="text-xs text-slate-400 mb-3">
+          Deletes every match from the database. Active stakes (waiting/in_progress) are refunded to users' deposit wallets. Run once before going live.
+        </p>
+        <button
+          onClick={handleCleanup}
+          disabled={loading}
+          className="px-6 py-2.5 bg-red-600 hover:bg-red-700 text-white font-black rounded-xl disabled:opacity-50 transition-all flex items-center gap-2"
+        >
+          {loading && <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin inline-block" />}
+          {loading ? "Deleting…" : "DELETE ALL BATTLES"}
+        </button>
+        {result && (
+          <div className={`mt-3 p-3 rounded-xl text-sm font-semibold ${result.ok ? "bg-green-900/40 text-green-400" : "bg-red-900/40 text-red-400"}`}>
+            {result.ok
+              ? `✓ Deleted ${result.deleted} battles. Refunded ₹${result.refunded} to users.`
+              : `✗ ${result.msg}`}
+          </div>
+        )}
       </div>
     </div>
   );
