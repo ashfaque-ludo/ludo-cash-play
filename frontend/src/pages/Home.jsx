@@ -65,6 +65,7 @@ function BattleHub({ user }) {
   const [matches, setMatches] = useState([]);
   const [amount, setAmount] = useState("");
   const [busy, setBusy] = useState(false);
+  const prevStatusRef = useRef({});
 
   const total = useMemo(() => {
     if (!user || user === false) return 0;
@@ -75,7 +76,23 @@ function BattleHub({ user }) {
   const load = async () => {
     try {
       const m = await api.get("/matches");
-      setMatches(m.data.matches);
+      const newMatches = m.data.matches;
+
+      // Auto-nav creator to MatchRoom when opponent joins their waiting battle
+      for (const match of newMatches) {
+        const mid = match.id || match._id;
+        const prev = prevStatusRef.current[mid];
+        if (prev === "waiting" && match.status === "in_progress" && match.creator_id === user?.id) {
+          nav(`/match/${mid}`);
+          return;
+        }
+      }
+
+      const newStatus = {};
+      for (const match of newMatches) { newStatus[match.id || match._id] = match.status; }
+      prevStatusRef.current = newStatus;
+
+      setMatches(newMatches);
     } catch {}
   };
 

@@ -273,24 +273,27 @@ router.post("/:id/submit-result", async (req, res) => {
   } catch (e) { res.status(500).json({ detail: "Server error." }); }
 });
 
-// POST /matches/:id/set-room-code — creator types room code from Ludo King
+// POST /matches/:id/set-room-code — creator pastes code from Ludo King
 router.post("/:id/set-room-code", async (req, res) => {
   if (!req.user) return res.status(401).json({ detail: "Not authenticated." });
   try {
-    const code = (req.body.room_code || "").trim();
-    if (!code || !/^\d{6,8}$/.test(code))
-      return res.status(400).json({ detail: "Room code must be 6–8 digits (from Ludo King)." });
+    const { code } = req.body;
+    const trimmed = (code || "").trim();
+    if (!trimmed || !/^\d{6,8}$/.test(trimmed))
+      return res.status(400).json({ detail: "Enter valid 6-8 digit room code from Ludo King app." });
     const match = await Match.findById(req.params.id);
     if (!match) return res.status(404).json({ detail: "Match not found." });
-    if (match.status !== "in_progress")
-      return res.status(400).json({ detail: "Match must be in progress to set room code." });
+    if (!["in_progress", "matched"].includes(match.status))
+      return res.status(400).json({ detail: "Cannot set code at this stage." });
     const isCreator = match.players[0]?.user.toString() === req.user._id.toString();
-    if (!isCreator) return res.status(403).json({ detail: "Only the creator can set the room code." });
-    match.room_code = code;
+    if (!isCreator) return res.status(403).json({ detail: "Only battle creator can set room code." });
+    match.room_code = trimmed;
+    if (match.status === "matched") match.status = "in_progress";
     await match.save();
-    res.json({ ok: true, match: serializeMatch(match) });
+    console.log(`[ROOM CODE SET] match=${match._id} code=${trimmed} by=${req.user.phone || req.user._id}`);
+    res.json({ ok: true, room_code: trimmed, match: serializeMatch(match) });
   } catch (e) {
-    res.status(500).json({ detail: "Server error." });
+    res.status(500).json({ detail: e.message || "Server error." });
   }
 });
 
