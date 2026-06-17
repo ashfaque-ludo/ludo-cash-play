@@ -126,8 +126,27 @@ function DepositPage({ onBack }) {
   const merchantName = payInfo?.admin_upi_name || "Ludo Cash Play";
 
   const buildUpiUrl = (scheme = "upi") => {
-    const p = new URLSearchParams({ pa: upiId, pn: merchantName, am: String(amt), cu: "INR", tn: `Deposit ${amt}` });
+    const p = new URLSearchParams({ pa: upiId, pn: merchantName, am: String(amt), cu: "INR", tn: `Deposit-${Date.now()}` });
     return `${scheme}://pay?${p.toString()}`;
+  };
+
+  const openUPIApp = () => {
+    if (!upiId) { toast.error('UPI ID not configured by admin'); return; }
+    const upiUrl = buildUpiUrl("upi");
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    if (isIOS) {
+      const link = document.createElement('a');
+      link.href = upiUrl;
+      link.setAttribute('rel', 'noopener noreferrer');
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } else {
+      window.location.href = upiUrl;
+    }
+    setTimeout(() => {
+      toast.info('If no app opened, please scan QR code or copy UPI ID');
+    }, 2000);
   };
 
   const copyUpi = async () => {
@@ -277,14 +296,14 @@ function DepositPage({ onBack }) {
         )}
 
         <button
-          onClick={() => {
-            try { window.location.href = buildUpiUrl("upi"); }
-            catch { const a = document.createElement("a"); a.href = buildUpiUrl("upi"); a.click(); }
-          }}
+          onClick={openUPIApp}
           className="w-full py-3.5 bg-gradient-to-r from-green-600 to-emerald-700 text-white rounded-xl font-bold shadow text-base"
         >
           📱 Pay via UPI App
         </button>
+        <p className="text-xs text-gray-500 text-center -mt-1">
+          Will open PhonePe, GPay, Paytm, BHIM, or any UPI app on your phone
+        </p>
 
         <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 text-xs text-blue-800 text-left">
           📱 <strong>iPhone users:</strong> Open your UPI app first (PhonePe / GPay / Paytm), then scan the QR code or copy the UPI ID above.

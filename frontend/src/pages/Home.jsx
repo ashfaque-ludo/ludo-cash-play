@@ -62,13 +62,9 @@ function AnnouncementBar({ text }) {
 function BattleHub({ user }) {
   const nav = useNavigate();
   const { refresh } = useAuth();
-  const [tables, setTables] = useState([]);
   const [matches, setMatches] = useState([]);
+  const [amount, setAmount] = useState("");
   const [busy, setBusy] = useState(false);
-  const [creating, setCreating] = useState(null);
-  const [customAmt, setCustomAmt] = useState("");
-  const [customOpen, setCustomOpen] = useState(false);
-  const [section, setSection] = useState("open"); // open | create | running
 
   const total = useMemo(() => {
     if (!user || user === false) return 0;
@@ -78,56 +74,48 @@ function BattleHub({ user }) {
 
   const load = async () => {
     try {
-      const [t, m] = await Promise.all([api.get("/matches/tables"), api.get("/matches")]);
-      setTables(t.data.tables);
+      const m = await api.get("/matches");
       setMatches(m.data.matches);
     } catch {}
   };
 
   useEffect(() => { load(); const id = setInterval(load, 5000); return () => clearInterval(id); }, []); // eslint-disable-line
 
-  const createMatch = async (stake, isCustom = false) => {
+  const handleCreate = async () => {
+    const stake = parseInt(amount) || 0;
+    if (stake < 10) return toast.error("Minimum ₹10");
+    if (stake > 50000) return toast.error("Maximum ₹50,000");
     if (total < stake) return toast.error("Insufficient balance");
     setBusy(true);
     try {
-      const payload = isCustom ? { custom_stake: stake } : { stake };
-      const { data } = await api.post("/matches", payload);
+      const { data } = await api.post("/matches", { custom_stake: stake });
       const m = data.match || data;
-      toast.success(`Match created — room ${m.room_code}`);
+      toast.success("Battle created!");
       await refresh();
-      nav(`/match/${m.id}`);
+      nav(`/match/${m.id || m._id}`);
     } catch (e) {
       toast.error(formatApiError(e.response?.data?.detail) || e.message);
-    } finally { setBusy(false); setCreating(null); setCustomOpen(false); }
+    } finally { setBusy(false); setAmount(""); }
   };
 
   const joinMatch = async (mid) => {
+    if (busy) return;
     setBusy(true);
     try {
       const { data } = await api.post(`/matches/${mid}/join`, {});
       const m = data.match || data;
       toast.success("Joined match!");
       await refresh();
-      nav(`/match/${m.id}`);
+      nav(`/match/${m.id || m._id}`);
     } catch (e) { toast.error(formatApiError(e.response?.data?.detail) || e.message); }
     finally { setBusy(false); }
   };
 
-  const handleCustomCreate = () => {
-    const amt = Number(customAmt);
-    if (!customAmt || isNaN(amt)) return toast.error("Enter a valid amount");
-    if (!Number.isInteger(amt) || amt % 10 !== 0) return toast.error("Must be a multiple of ₹10");
-    if (amt < 10) return toast.error("Minimum ₹10");
-    if (amt > 50000) return toast.error("Maximum ₹50,000");
-    setCreating({ custom: true, stake: amt, label: `Custom ₹${amt}`, prize: Math.round(amt * 2 * 0.95) });
-    setCustomOpen(false);
-  };
-
-  const openMatches = matches.filter(m => m.status === "waiting" && m.creator_id !== user.id);
-  const runningMatches = matches.filter(m => user && m.player_ids?.includes(user.id) && ["in_progress","awaiting_review"].includes(m.status));
+  const openBattles = matches.filter(m => m.status === "waiting" && m.creator_id !== user.id);
+  const runningBattles = matches.filter(m => user && m.player_ids?.includes(user.id) && ["in_progress","awaiting_review"].includes(m.status));
 
   return (
-    <div className="min-h-screen pt-14 pb-20 bg-gradient-to-b from-amber-50 to-white">
+    <div className="min-h-screen bg-amber-50 pb-24 pt-14">
       {/* Wallet strip */}
       <div className="px-4 py-3 flex items-center justify-between border-b border-gray-200 bg-white shadow-sm">
         <div className="flex items-center gap-2">
@@ -145,200 +133,85 @@ function BattleHub({ user }) {
         </Link>
       </div>
 
-      {/* Quick action strip */}
-      <div className="px-4 pt-4 grid grid-cols-3 gap-2">
-        {[
-          { label: "Open Battles", value: openMatches.length, icon: Swords, key: "open", active: "bg-gradient-to-br from-red-700 to-black" },
-          { label: "Create Battle", value: "+", icon: Play, key: "create", active: "bg-gradient-to-br from-red-700 to-black" },
-          { label: "Running", value: runningMatches.length, icon: Dice5, key: "running", active: "bg-gradient-to-br from-amber-600 to-orange-600" },
-        ].map(item => (
-          <button key={item.key} onClick={() => setSection(item.key)}
-            className={`rounded-2xl p-3 flex flex-col items-center gap-1 border transition-all ${
-              section === item.key
-                ? `${item.active} border-transparent shadow-lg text-white`
-                : "bg-white border-gray-200 text-gray-700 hover:border-gray-300"
-            }`}
+      {/* Create Battle */}
+      <div className="bg-white rounded-2xl shadow border-2 border-gray-200 m-3 p-4">
+        <h2 className="font-bold text-lg text-gray-900 mb-3">Create Battle</h2>
+        <div className="flex gap-2">
+          <div className="flex-1 flex items-center bg-gray-50 border-2 border-gray-300 rounded-xl px-3">
+            <span className="text-gray-700 font-bold mr-1 text-lg">₹</span>
+            <input
+              type="text"
+              inputMode="numeric"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value.replace(/\D/g, '').slice(0, 5))}
+              placeholder="Enter Amount"
+              className="flex-1 bg-transparent outline-none py-3 text-gray-900 text-lg font-bold"
+            />
+          </div>
+          <button
+            onClick={handleCreate}
+            disabled={!amount || parseInt(amount) < 10 || busy}
+            className="px-6 py-3 bg-gray-900 hover:bg-black text-white rounded-xl font-bold disabled:opacity-50"
           >
-            <item.icon className="w-5 h-5" />
-            <span className="text-xs font-bold">{item.label}</span>
-            <span className="text-xs opacity-80">{item.value}</span>
+            {busy ? "..." : "Set"}
           </button>
-        ))}
+        </div>
       </div>
 
       {/* Open Battles */}
-      {section === "open" && (
-        <div className="px-4 pt-5">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="font-bold text-gray-900">Open Battles <Badge variant="outline" className="ml-1 border-gray-200 text-gray-500 text-xs">{openMatches.length}</Badge></h2>
-            <button onClick={load} className="text-gray-400 hover:text-red-700 transition-colors"><RefreshCw className="w-4 h-4" /></button>
+      <div className="px-3 mb-4">
+        <h3 className="font-bold text-gray-900 mb-3 px-1">Open Battles</h3>
+        {openBattles.length === 0 ? (
+          <div className="bg-white rounded-2xl p-8 text-center text-gray-500">
+            No open battles. Create one to start!
           </div>
-          {openMatches.length === 0 ? (
-            <div className="bg-white rounded-2xl border border-gray-200 p-8 text-center text-gray-400 shadow-sm">
-              <Swords className="w-6 h-6 mx-auto text-red-300 mb-2" />
-              No open battles right now. Create one!
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {openMatches.map(m => (
-                <div key={m.id} className={`rounded-2xl border p-4 flex items-center justify-between gap-3 bg-white shadow-sm ${
-                  m.tier === "vip" ? "border-amber-300" : m.tier === "custom" ? "border-teal-300" : "border-gray-200"
-                }`}>
-                  <div className="flex items-center gap-3">
-                    {m.tier === "vip" ? <Crown className="w-5 h-5 text-amber-500" /> : m.tier === "custom" ? <PenLine className="w-5 h-5 text-teal-600" /> : <Dice5 className="w-5 h-5 text-red-700" />}
-                    <div>
-                      <div className="text-sm font-semibold text-gray-900">{m.label}</div>
-                      <div className="text-xs text-gray-400">Entry: {fmtINR(m.stake)} · Win: <span className="text-green-600 font-bold">{fmtINR(m.prize)}</span></div>
-                      <div className="text-xs text-gray-400">by {m.creator_name}</div>
-                    </div>
-                  </div>
-                  <Button size="sm" disabled={busy} onClick={() => joinMatch(m.id)}
-                    className="rounded-full bg-gradient-to-r from-red-700 to-black text-white text-xs px-3">
-                    Join
-                  </Button>
+        ) : (
+          <div className="space-y-3">
+            {openBattles.map(b => (
+              <div key={b.id || b._id} className="bg-white rounded-2xl border-2 border-gray-200 p-4 flex items-center justify-between">
+                <div>
+                  <div className="font-bold text-gray-900 text-lg">{fmtINR(b.stake)}</div>
+                  <div className="text-sm text-gray-500">Prize: <span className="text-green-600 font-bold">{fmtINR(b.prize)}</span></div>
+                  <div className="text-xs text-gray-400">by {b.creator_name}</div>
                 </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Create Battle */}
-      {section === "create" && (
-        <div className="px-4 pt-5">
-          <h2 className="font-bold text-gray-900 mb-3">Choose Stake</h2>
-          <div className="grid grid-cols-2 gap-3">
-            {tables.map(t => {
-              const isVip = t.tier === "vip";
-              const isPremium = t.tier === "premium";
-              return (
-                <button key={t.stake} onClick={() => setCreating(t)}
-                  className={`rounded-2xl p-4 text-left transition-all bg-white shadow-sm border ${isVip
-                    ? "border-amber-300 hover:bg-amber-50"
-                    : isPremium ? "border-red-200 hover:bg-red-50"
-                    : "border-gray-200 hover:bg-gray-50"}`}
+                <button
+                  onClick={() => joinMatch(b.id || b._id)}
+                  disabled={busy}
+                  className="px-5 py-2.5 bg-gradient-to-r from-red-700 to-black text-white rounded-xl font-bold text-sm disabled:opacity-50"
                 >
-                  <div className="flex items-center justify-between mb-2">
-                    {isVip ? <Crown className="w-4 h-4 text-amber-500" /> : <Dice5 className="w-4 h-4 text-red-700" />}
-                    <span className="text-[10px] uppercase tracking-widest text-gray-400">{t.tier}</span>
-                  </div>
-                  <div className={`text-xl font-black ${isVip ? "text-amber-600" : "text-gray-900"}`}>{fmtINR(t.stake)}</div>
-                  <div className="text-xs text-gray-400 mt-1">Win <span className={`font-bold ${isVip ? "text-amber-600" : "text-green-600"}`}>{fmtINR(t.prize)}</span></div>
+                  Join
                 </button>
-              );
-            })}
-
-            {/* Custom */}
-            <button onClick={() => setCustomOpen(true)}
-              className="rounded-2xl p-4 text-left border-2 border-dashed border-red-200 bg-white hover:bg-red-50 transition-colors shadow-sm">
-              <div className="flex items-center justify-between mb-2">
-                <PenLine className="w-4 h-4 text-red-700" />
-                <span className="text-[10px] uppercase tracking-widest text-gray-400">custom</span>
               </div>
-              <div className="text-xl font-black text-red-700">₹?</div>
-              <div className="text-xs text-gray-400 mt-1">Any amount · 5% fee</div>
-            </button>
+            ))}
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Running Battles */}
-      {section === "running" && (
-        <div className="px-4 pt-5">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="font-bold text-gray-900">Running Battles <Badge variant="outline" className="ml-1 border-gray-200 text-gray-500 text-xs">{runningMatches.length}</Badge></h2>
-            <button onClick={load} className="text-gray-400 hover:text-red-700 transition-colors"><RefreshCw className="w-4 h-4" /></button>
+      <div className="px-3">
+        <h3 className="font-bold text-gray-900 mb-3 px-1">Running Battles</h3>
+        {runningBattles.length === 0 ? (
+          <div className="bg-white rounded-2xl p-8 text-center text-gray-500">
+            No running matches
           </div>
-          {runningMatches.length === 0 ? (
-            <div className="bg-white rounded-2xl border border-gray-200 p-8 text-center text-gray-400 shadow-sm">
-              <Dice5 className="w-6 h-6 mx-auto text-amber-400 mb-2" />
-              No running matches. Create or join a battle!
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {runningMatches.map(m => (
-                <Link key={m.id} to={`/match/${m.id}`} className="block rounded-2xl bg-white border border-gray-200 shadow-sm p-4 hover:border-red-300 hover:bg-amber-50 transition-colors">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <div className="font-semibold text-gray-900 text-sm">{m.label}</div>
-                      <div className="text-xs text-gray-400 mt-0.5">Entry: {fmtINR(m.stake)} · Prize: <span className="text-green-600">{fmtINR(m.prize)}</span></div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Badge className="text-[10px] bg-amber-100 text-amber-700 border border-amber-200">{m.status.replace("_"," ")}</Badge>
-                      <ChevronRight className="w-4 h-4 text-gray-400" />
-                    </div>
+        ) : (
+          <div className="space-y-3">
+            {runningBattles.map(b => (
+              <Link key={b.id || b._id} to={`/match/${b.id || b._id}`} className="block bg-white rounded-2xl border-2 border-amber-300 p-4 hover:bg-amber-50 transition-colors">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="font-bold text-gray-900">{b.label || fmtINR(b.stake)}</div>
+                    <div className="text-sm text-gray-500">Prize: <span className="text-green-600 font-bold">{fmtINR(b.prize)}</span></div>
                   </div>
-                </Link>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Create Match confirm */}
-      <Dialog open={!!creating && !creating?.custom} onOpenChange={(o) => !o && setCreating(null)}>
-        <DialogContent className="bg-white border-gray-200 text-gray-900">
-          <DialogHeader><DialogTitle className="text-gray-900">Create {creating?.label} battle</DialogTitle></DialogHeader>
-          <div className="space-y-3 text-sm">
-            <div className="flex justify-between"><span className="text-gray-400">Entry</span><span className="font-bold">{fmtINR(creating?.stake || 0)}</span></div>
-            <div className="flex justify-between"><span className="text-gray-400">Prize on win</span><span className="text-green-600 font-bold">{fmtINR(creating?.prize || 0)}</span></div>
-            <div className="flex justify-between"><span className="text-gray-400">Commission</span><span>5%</span></div>
-            <div className="flex justify-between"><span className="text-gray-400">Your balance</span><span className="font-bold">{fmtINR(total)}</span></div>
+                  <span className="text-xs bg-amber-100 text-amber-700 px-2 py-1 rounded-full font-semibold capitalize">
+                    {b.status.replace(/_/g, " ")}
+                  </span>
+                </div>
+              </Link>
+            ))}
           </div>
-          <DialogFooter>
-            <Button disabled={busy} onClick={() => createMatch(creating.stake, false)}
-              className="rounded-full bg-gradient-to-r from-red-700 to-black text-white">
-              {busy ? "Creating…" : "Create & Open Room"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Custom amount input */}
-      <Dialog open={customOpen} onOpenChange={setCustomOpen}>
-        <DialogContent className="bg-white border-gray-200 text-gray-900">
-          <DialogHeader><DialogTitle className="text-gray-900">Custom battle amount</DialogTitle></DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label className="text-gray-700">Stake amount (₹)</Label>
-              <Input type="number" value={customAmt} onChange={e => setCustomAmt(e.target.value)}
-                placeholder="e.g. 70, 150, 777" min={10} max={50000} step={10}
-                className="bg-gray-50 border-gray-300 text-gray-900 mt-1" />
-              <p className="text-xs text-gray-400 mt-1">Min ₹10 · Max ₹50,000 · Multiple of ₹10</p>
-            </div>
-            {customAmt && Number(customAmt) >= 10 && (
-              <div className="rounded-xl bg-green-50 border border-green-200 p-3 text-sm space-y-1">
-                <div className="flex justify-between"><span className="text-gray-400">Entry</span><span>{fmtINR(Number(customAmt))}</span></div>
-                <div className="flex justify-between"><span className="text-gray-400">Prize on win</span><span className="text-green-600">{fmtINR(Math.round(Number(customAmt) * 2 * 0.95))}</span></div>
-                <div className="flex justify-between"><span className="text-gray-400">Commission</span><span>5%</span></div>
-              </div>
-            )}
-          </div>
-          <DialogFooter>
-            <Button onClick={handleCustomCreate} className="rounded-full bg-gradient-to-r from-red-700 to-black text-white">Continue</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Custom confirm */}
-      <Dialog open={!!creating?.custom} onOpenChange={(o) => !o && setCreating(null)}>
-        <DialogContent className="bg-white border-gray-200 text-gray-900">
-          <DialogHeader><DialogTitle className="text-gray-900">Create custom battle</DialogTitle></DialogHeader>
-          <div className="space-y-3 text-sm">
-            <div className="flex justify-between"><span className="text-gray-400">Entry</span><span className="font-bold">{fmtINR(creating?.stake || 0)}</span></div>
-            <div className="flex justify-between"><span className="text-gray-400">Prize on win</span><span className="text-green-600 font-bold">{fmtINR(creating?.prize || 0)}</span></div>
-            <div className="flex justify-between"><span className="text-gray-400">Commission</span><span>5%</span></div>
-            <div className="flex justify-between"><span className="text-gray-400">Your balance</span><span className="font-bold">{fmtINR(total)}</span></div>
-            <Badge className="bg-red-100 text-red-700 border border-red-200">Custom Battle</Badge>
-          </div>
-          <DialogFooter>
-            <Button disabled={busy} onClick={() => createMatch(creating.stake, true)}
-              className="rounded-full bg-gradient-to-r from-red-700 to-black text-white">
-              {busy ? "Creating…" : "Create & Open Room"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        )}
+      </div>
     </div>
   );
 }

@@ -14,14 +14,6 @@ async function getPCT() {
   return 5; // default 5%; override via Admin > Payment Settings
 }
 
-function genCode(len, alpha = false) {
-  if (alpha) {
-    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-    return Array.from({ length: len }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
-  }
-  return String(Math.floor(Math.random() * Math.pow(10, len))).padStart(len, "0");
-}
-
 async function debit(userId, amount) {
   const user = await User.findById(userId);
   const total = (user.wallet.deposit || 0) + (user.wallet.bonus || 0) + (user.wallet.winning || 0);
@@ -138,7 +130,7 @@ const handleCreate = async (req, res) => {
         tier,
         prize_pool: stakeAmount * 2 - commission,
         commission,
-        room_code: "",
+        room_code: null,
         room_password: "",
         players: [{ user: req.user._id, id: req.user._id.toString(), name: req.user.name, email: req.user.email }],
       });

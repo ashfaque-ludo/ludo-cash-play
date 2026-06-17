@@ -151,6 +151,8 @@ function DepositsTab() {
     } catch (e) { toast.error(e.response?.data?.detail || "Failed"); }
   };
 
+  const toAbsUrl = (u) => !u ? '' : u.startsWith('http') ? u : `${process.env.REACT_APP_BACKEND_URL || ''}${u}`;
+
   return (
     <div className="space-y-4">
       {zoomedUrl && (
@@ -189,8 +191,8 @@ function DepositsTab() {
                   <span className={`text-xs font-bold capitalize ${d.status === "approved" ? "text-emerald-400" : d.status === "rejected" ? "text-red-400" : "text-amber-400"}`}>{d.status}</span>
                 </div>
                 {(d.screenshot_url || d.screenshot) && (
-                  <button onClick={() => setZoomedUrl(d.screenshot_url || d.screenshot)} className="shrink-0">
-                    <img src={d.screenshot_url || d.screenshot} alt="Screenshot"
+                  <button onClick={() => setZoomedUrl(toAbsUrl(d.screenshot_url || d.screenshot))} className="shrink-0">
+                    <img src={toAbsUrl(d.screenshot_url || d.screenshot)} alt="Screenshot"
                       className="w-20 h-20 rounded-xl object-cover border-2 border-slate-600 hover:border-yellow-400 transition-all" />
                   </button>
                 )}

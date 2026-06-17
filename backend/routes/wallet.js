@@ -144,8 +144,7 @@ router.post("/deposit-screenshot", depositUpload.single("screenshot"), async (re
       return res.status(400).json({ detail: "Amount must be ₹10–₹1,00,000." });
     const utr = (req.body.utr || "").trim().toUpperCase(); // optional — admin verifies from screenshot
 
-    const backendUrl = process.env.BACKEND_URL || `${req.protocol}://${req.get("host")}`;
-    const screenshot_url = `${backendUrl}/uploads/deposits/${req.file.filename}`;
+    const screenshot_url = `/uploads/deposits/${req.file.filename}`;
     const u = req.user;
     const tx = await Transaction.create({
       user: u._id, user_email: u.email || "", user_phone: u.phone || "",

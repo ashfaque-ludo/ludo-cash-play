@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Crown, Dice5, Copy, Check, Trophy, X, Eye, EyeOff, Clock,
-  Camera, AlertTriangle, CheckCircle2, XCircle, Hourglass,
+  Camera, AlertTriangle, CheckCircle2, XCircle, Hourglass, Loader2,
 } from "lucide-react";
 import { toast } from "sonner";
 import CancelBattlePopup from "@/components/CancelBattlePopup";

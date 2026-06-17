@@ -302,6 +302,7 @@ function DepositsTab(){
     try { await api.post(`/admin/deposits/${id}/${action}`); toast.success(`Deposit ${action}d`); load(); }
     catch (e) { toast.error(formatApiError(e.response?.data?.detail) || e.message); }
   };
+  const toAbsUrl = (u) => !u ? '' : u.startsWith('http') ? u : `${process.env.REACT_APP_BACKEND_URL || ''}${u}`;
   return (
     <>
       {zoomedUrl && (
@@ -337,8 +338,8 @@ function DepositsTab(){
                     <div className={`text-xs font-semibold capitalize mt-0.5 ${d.status==="approved"?"text-emerald-600":d.status==="rejected"?"text-red-500":"text-amber-500"}`}>{d.status}</div>
                   </div>
                   {(d.screenshot_url || d.screenshot) && (
-                    <button onClick={()=>setZoomedUrl(d.screenshot_url || d.screenshot)} className="shrink-0">
-                      <img src={d.screenshot_url || d.screenshot} alt="Screenshot"
+                    <button onClick={()=>setZoomedUrl(toAbsUrl(d.screenshot_url || d.screenshot))} className="shrink-0">
+                      <img src={toAbsUrl(d.screenshot_url || d.screenshot)} alt="Screenshot"
                         className="w-16 h-16 rounded-lg object-cover border-2 border-gray-200 hover:border-red-400 transition-all" />
                     </button>
                   )}

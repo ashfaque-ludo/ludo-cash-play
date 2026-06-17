@@ -26,7 +26,7 @@ const schema = new mongoose.Schema({
   decided_at:    { type: Date, default: null },
   cancel_note:   { type: String, default: "" },
   cancel_reason: { type: String, default: "" },
-  room_code:     { type: String, default: "" },
+  room_code:     { type: String, default: null },
   room_password: { type: String, default: "" },
   started_at:    { type: Date, default: null },
   ended_at:      { type: Date, default: null },
