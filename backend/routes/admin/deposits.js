@@ -7,6 +7,29 @@ const { logActivity } = require("../../middleware/activityLogger");
 const REFERRAL_DEPOSIT_PCT = 0.10;
 const REFERRAL_DEPOSIT_MAX = 100;
 
+// GET /admin/deposits/pending — explicit pending route for admin panels
+router.get("/pending", async (req, res) => {
+  try {
+    const deposits = await Transaction.find({ type: "deposit", status: "pending" })
+      .populate("user", "name phone email")
+      .sort({ createdAt: -1 })
+      .limit(200);
+    console.log(`[ADMIN] /deposits/pending — found ${deposits.length} records`);
+    res.json({
+      deposits: deposits.map(d => {
+        const obj = d.toObject();
+        obj.id = d._id.toString();
+        obj.created_at = d.createdAt;
+        obj.user_label = d.user?.phone || d.user?.email || obj.user_phone || obj.user_email || "Unknown";
+        obj.user_name = d.user?.name || "";
+        return obj;
+      }),
+    });
+  } catch (e) {
+    res.status(500).json({ detail: "Server error." });
+  }
+});
+
 router.get("/", async (req, res) => {
   const { status = "pending" } = req.query;
   const filter = { type: "deposit" };

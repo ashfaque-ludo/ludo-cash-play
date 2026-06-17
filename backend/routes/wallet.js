@@ -135,26 +135,32 @@ router.post("/deposit", validators.amount, handleValidation, async (req, res) =>
   }
 });
 
-// ── POST /wallet/deposit-screenshot (legacy — kept for admin panel) ───────────
+// ── POST /wallet/deposit-screenshot ──────────────────────────────────────────
 router.post("/deposit-screenshot", depositUpload.single("screenshot"), async (req, res) => {
   try {
+    console.log(`[DEPOSIT] Request from user: ${req.user?.phone || req.user?._id}`);
+    console.log(`[DEPOSIT] File: ${req.file?.filename}`);
+    console.log(`[DEPOSIT] Amount: ${req.body.amount}`);
+
     if (!req.file) return res.status(400).json({ detail: "Screenshot required." });
     const amt = parseFloat(req.body.amount);
     if (!amt || amt < 10 || amt > 100000)
       return res.status(400).json({ detail: "Amount must be ₹10–₹1,00,000." });
-    const utr = (req.body.utr || "").trim().toUpperCase(); // optional — admin verifies from screenshot
 
     const screenshot_url = `/uploads/deposits/${req.file.filename}`;
     const u = req.user;
     const tx = await Transaction.create({
       user: u._id, user_email: u.email || "", user_phone: u.phone || "",
-      type: "deposit", amount: amt, method: "UPI",
-      upi_id: (req.body.upi_id || "").trim(), utr,
+      type: "deposit", status: "pending", amount: amt, method: "UPI",
+      upi_id: (req.body.upi_id || "").trim(),
       screenshot: screenshot_url, screenshot_url,
     });
 
+    console.log(`[DEPOSIT] Created transaction ${tx._id} for user ${u.phone}, amount ₹${amt}`);
+
     res.json({ ok: true, message: "Screenshot submitted. Admin will verify and credit within 5–30 minutes.", deposit_id: tx._id });
   } catch (e) {
+    console.error("[DEPOSIT] Error:", e.message);
     res.status(500).json({ detail: e.message || "Upload failed." });
   }
 });

@@ -88,11 +88,9 @@ function BattleHub({ user }) {
     if (total < stake) return toast.error("Insufficient balance");
     setBusy(true);
     try {
-      const { data } = await api.post("/matches", { custom_stake: stake });
-      const m = data.match || data;
-      toast.success("Battle created!");
-      await refresh();
-      nav(`/match/${m.id || m._id}`);
+      await api.post("/matches", { custom_stake: stake });
+      toast.success("Battle created! Waiting for opponent...");
+      await load();
     } catch (e) {
       toast.error(formatApiError(e.response?.data?.detail) || e.message);
     } finally { setBusy(false); setAmount(""); }
@@ -111,7 +109,7 @@ function BattleHub({ user }) {
     finally { setBusy(false); }
   };
 
-  const openBattles = matches.filter(m => m.status === "waiting" && m.creator_id !== user.id);
+  const openBattles = matches.filter(m => m.status === "waiting");
   const runningBattles = matches.filter(m => user && m.player_ids?.includes(user.id) && ["in_progress","awaiting_review"].includes(m.status));
 
   return (
@@ -174,13 +172,19 @@ function BattleHub({ user }) {
                   <div className="text-sm text-gray-500">Prize: <span className="text-green-600 font-bold">{fmtINR(b.prize)}</span></div>
                   <div className="text-xs text-gray-400">by {b.creator_name}</div>
                 </div>
-                <button
-                  onClick={() => joinMatch(b.id || b._id)}
-                  disabled={busy}
-                  className="px-5 py-2.5 bg-gradient-to-r from-red-700 to-black text-white rounded-xl font-bold text-sm disabled:opacity-50"
-                >
-                  Join
-                </button>
+                {b.creator_id === user.id ? (
+                  <span className="px-4 py-2 bg-gray-100 text-gray-500 rounded-xl font-bold text-xs">
+                    Waiting...
+                  </span>
+                ) : (
+                  <button
+                    onClick={() => joinMatch(b.id || b._id)}
+                    disabled={busy}
+                    className="px-5 py-2.5 bg-gradient-to-r from-red-700 to-black text-white rounded-xl font-bold text-sm disabled:opacity-50"
+                  >
+                    Join
+                  </button>
+                )}
               </div>
             ))}
           </div>

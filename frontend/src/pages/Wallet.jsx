@@ -131,22 +131,18 @@ function DepositPage({ onBack }) {
   };
 
   const openUPIApp = () => {
-    if (!upiId) { toast.error('UPI ID not configured by admin'); return; }
+    if (!upiId) { toast.error('UPI ID not set by admin yet'); return; }
     const upiUrl = buildUpiUrl("upi");
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-    if (isIOS) {
-      const link = document.createElement('a');
-      link.href = upiUrl;
-      link.setAttribute('rel', 'noopener noreferrer');
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    } else {
-      window.location.href = upiUrl;
-    }
+    const link = document.createElement('a');
+    link.href = upiUrl;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    document.body.appendChild(link);
+    link.click();
+    setTimeout(() => { document.body.removeChild(link); }, 100);
     setTimeout(() => {
-      toast.info('If no app opened, please scan QR code or copy UPI ID');
-    }, 2000);
+      toast('If no UPI app opened, please copy UPI ID and pay manually', { duration: 5000 });
+    }, 3000);
   };
 
   const copyUpi = async () => {
