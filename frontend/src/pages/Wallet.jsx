@@ -131,17 +131,17 @@ function DepositPage({ onBack }) {
   };
 
   const openUPIApp = () => {
-    if (!upiId) { toast.error('UPI ID not set by admin yet'); return; }
-    const upiUrl = buildUpiUrl("upi");
+    if (!upiId) { toast.error('UPI ID not set yet'); return; }
+    const upiUrl = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(merchantName)}&am=${amt}&cu=INR&tn=LCP${Date.now()}`;
     const link = document.createElement('a');
     link.href = upiUrl;
     link.target = '_blank';
     link.rel = 'noopener noreferrer';
     document.body.appendChild(link);
     link.click();
-    setTimeout(() => { document.body.removeChild(link); }, 100);
+    setTimeout(() => { if (document.body.contains(link)) document.body.removeChild(link); }, 200);
     setTimeout(() => {
-      toast('If no UPI app opened, please copy UPI ID and pay manually', { duration: 5000 });
+      toast('If no app opened, copy UPI ID and pay manually', { duration: 5000 });
     }, 3000);
   };
 
@@ -413,7 +413,7 @@ export default function Wallet() {
       amount: w.referral || 0,
       desc: "Earned through referrals. Can be redeemed.",
       btn: "Redeem",
-      color: "from-purple-600 to-purple-800",
+      color: "from-[#8B1111] to-[#3B0D0D]",
       icon: "🎁",
       onClick: () => setRedeemOpen(true),
     },

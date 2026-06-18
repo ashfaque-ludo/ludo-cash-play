@@ -46,6 +46,79 @@ router.get("/stats", async (req, res) => {
   }
 });
 
+// GET /api/owner/stats/complete
+router.get("/stats/complete", async (req, res) => {
+  try {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const [
+      totalUsers,
+      todayUsers,
+      totalMatches,
+      completedMatches,
+      cancelledMatches,
+      disputedMatches,
+      openMatches,
+      runningMatches,
+      totalDepositsAgg,
+      pendingDeposits,
+      approvedDeposits,
+      totalWithdrawalsAgg,
+      pendingWithdrawals,
+      approvedWithdrawals,
+      commissionAgg,
+      referralAgg,
+    ] = await Promise.all([
+      User.countDocuments({}),
+      User.countDocuments({ createdAt: { $gte: today } }),
+      Match.countDocuments({}),
+      Match.countDocuments({ status: "ended" }),
+      Match.countDocuments({ status: "cancelled" }),
+      Match.countDocuments({ status: "disputed" }),
+      Match.countDocuments({ status: "waiting" }),
+      Match.countDocuments({ status: "in_progress" }),
+      Transaction.aggregate([{ $match: { type: "deposit", status: "approved" } }, { $group: { _id: null, total: { $sum: "$amount" } } }]),
+      Transaction.countDocuments({ type: "deposit", status: "pending" }),
+      Transaction.countDocuments({ type: "deposit", status: "approved" }),
+      Transaction.aggregate([{ $match: { type: "withdrawal", status: "approved" } }, { $group: { _id: null, total: { $sum: "$amount" } } }]),
+      Transaction.countDocuments({ type: "withdrawal", status: "pending" }),
+      Transaction.countDocuments({ type: "withdrawal", status: "approved" }),
+      Match.aggregate([{ $match: { status: "ended" } }, { $group: { _id: null, total: { $sum: "$commission" } } }]),
+      Transaction.aggregate([{ $match: { type: "referral_bonus" } }, { $group: { _id: null, total: { $sum: "$amount" } } }]),
+    ]);
+
+    res.json({
+      users: { total: totalUsers, today: todayUsers },
+      matches: {
+        total: totalMatches,
+        completed: completedMatches,
+        cancelled: cancelledMatches,
+        disputed: disputedMatches,
+        open: openMatches,
+        running: runningMatches,
+      },
+      deposits: {
+        total_amount: totalDepositsAgg[0]?.total || 0,
+        pending: pendingDeposits,
+        approved: approvedDeposits,
+      },
+      withdrawals: {
+        total_amount: totalWithdrawalsAgg[0]?.total || 0,
+        pending: pendingWithdrawals,
+        approved: approvedWithdrawals,
+      },
+      revenue: {
+        total_commission: commissionAgg[0]?.total || 0,
+        total_referral_paid: referralAgg[0]?.total || 0,
+        net_profit: (commissionAgg[0]?.total || 0) - (referralAgg[0]?.total || 0),
+      },
+    });
+  } catch (e) {
+    res.status(500).json({ detail: e.message });
+  }
+});
+
 // GET /api/owner/admin/list
 router.get("/admin/list", async (req, res) => {
   try {

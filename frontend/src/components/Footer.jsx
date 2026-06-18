@@ -8,7 +8,7 @@ export default function Footer() {
       <div className="max-w-7xl mx-auto px-6 lg:px-12 py-12 grid md:grid-cols-4 gap-8">
         <div className="md:col-span-2">
           <div className="flex items-center gap-2">
-            <Dice5 className="w-6 h-6 text-purple-400" />
+            <Dice5 className="w-6 h-6 text-[#C62828]" />
             <div className="text-white font-extrabold text-lg">LUDO <span className="grad-text">CASH PLAY</span></div>
           </div>
           <p className="text-slate-400 text-sm mt-3 max-w-md">
@@ -19,7 +19,7 @@ export default function Footer() {
                className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass text-white text-sm hover:bg-white/10">
               <Send className="w-4 h-4" /> Telegram
             </a>
-            <a href="https://wa.me/910000000000" target="_blank" rel="noreferrer" data-testid="footer-whatsapp"
+            <a href="https://wa.me/918930988948" target="_blank" rel="noreferrer" data-testid="footer-whatsapp"
                className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass text-white text-sm hover:bg-white/10">
               <MessageCircle className="w-4 h-4" /> WhatsApp
             </a>

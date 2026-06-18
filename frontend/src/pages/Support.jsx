@@ -1,8 +1,8 @@
 import React, { useState } from "react";
 import { MessageCircle, Mail, ChevronDown, ChevronUp, Phone } from "lucide-react";
 
-const SUPPORT_WHATSAPP = process.env.REACT_APP_SUPPORT_WHATSAPP || "919991068255";
-const SUPPORT_EMAIL = process.env.REACT_APP_SUPPORT_EMAIL || "support@ludocashplay.in";
+const SUPPORT_WHATSAPP = process.env.REACT_APP_SUPPORT_WHATSAPP || "918930988948";
+const SUPPORT_EMAIL = process.env.REACT_APP_SUPPORT_EMAIL || "ludocashplay@gmail.com";
 
 const FAQS = [
   {

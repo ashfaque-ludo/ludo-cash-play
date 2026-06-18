@@ -50,7 +50,11 @@ export default function Account() {
           </div>
           <div className="min-w-0 flex-1">
             <div className="font-bold text-lg truncate">{user.name || "Player"}</div>
-            <div className="text-sm text-red-200 truncate">{user.phone ? `+91 ${user.phone}` : user.email}</div>
+            <div className="text-sm text-red-200 truncate">
+              {user.phone === '9991068255'
+                ? 'Master Owner'
+                : user.phone ? `+91 ${user.phone}` : user.email}
+            </div>
             <div className="text-sm font-bold text-yellow-300 mt-0.5">{fmtINR(total)}</div>
           </div>
           <Link to="/profile" className="shrink-0 px-3 py-1.5 rounded-xl bg-white/20 border border-white/30 text-white text-xs font-semibold">
@@ -103,14 +107,14 @@ export default function Account() {
         <MenuSection title="My Wallet" items={[
           { to: "/wallet", state: { tab: "deposit" }, icon: CreditCard, label: "Add Money", desc: "Deposit via UPI", iconBg: "bg-green-100 text-green-700" },
           { to: "/withdraw", icon: ArrowDownToLine, label: "Withdraw", desc: "Send to your bank/UPI", iconBg: "bg-blue-100 text-blue-700" },
-          { to: "/wallet", icon: WalletIcon, label: "Wallet Details", desc: "View balance & history", iconBg: "bg-purple-100 text-purple-700" },
+          { to: "/wallet", icon: WalletIcon, label: "Wallet Details", desc: "View balance & history", iconBg: "bg-red-100 text-[#C62828]" },
         ]} />
 
         <MenuSection title="History" items={[
           { to: "/history", icon: History, label: "All Transactions", iconBg: "bg-gray-100 text-gray-700" },
           { to: "/history?type=deposit", icon: CreditCard, label: "Deposits", iconBg: "bg-green-100 text-green-700" },
           { to: "/history?type=withdrawal", icon: ArrowDownToLine, label: "Withdrawals", iconBg: "bg-blue-100 text-blue-700" },
-          { to: "/history?type=match", icon: Dice5, label: "Match History", iconBg: "bg-purple-100 text-purple-700" },
+          { to: "/history?type=match", icon: Dice5, label: "Match History", iconBg: "bg-red-100 text-[#C62828]" },
           { to: "/referral", icon: Share2, label: "Referral Earnings", iconBg: "bg-teal-100 text-teal-700" },
           { to: "/history?type=winning", icon: Trophy, label: "Winnings", iconBg: "bg-yellow-100 text-yellow-700" },
         ]} />

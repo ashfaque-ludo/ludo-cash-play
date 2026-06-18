@@ -35,7 +35,7 @@ export default function MatchLobby() {
       setTables(t.data.tables); setMatches(m.data.matches);
     } catch {}
   };
-  useEffect(()=>{ load(); const id = setInterval(load, 3000); return ()=>clearInterval(id); }, []);
+  useEffect(()=>{ load(); const id = setInterval(load, 5000); return ()=>clearInterval(id); }, []);
 
   const createMatch = async (stake, isCustom = false) => {
     if (total < stake) return toast.error("Insufficient balance for this stake");
@@ -111,7 +111,7 @@ export default function MatchLobby() {
                 <Input value={joinCode} onChange={(e)=>setJoinCode(e.target.value.toUpperCase())} className="bg-black/40 border-white/10 text-white mt-1" data-testid="join-by-code-input" />
               </div>
               <DialogFooter>
-                <Button onClick={joinByCode} className="rounded-full bg-gradient-to-r from-purple-600 to-blue-600 text-white" data-testid="join-by-code-submit">Join</Button>
+                <Button onClick={joinByCode} className="rounded-full bg-gradient-to-r from-[#8B1111] to-[#C62828] text-white" data-testid="join-by-code-submit">Join</Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
@@ -153,8 +153,8 @@ export default function MatchLobby() {
                       <div className="mt-3 text-xs text-slate-500">{t.active} active matches</div>
                       <Button onClick={() => setCreating(t)} className={`mt-4 w-full rounded-full font-bold ${isVip
                         ? "bg-gradient-to-r from-amber-500 to-amber-700 text-black"
-                        : isPremium ? "bg-gradient-to-r from-purple-600 to-blue-600 text-white"
-                        : "bg-gradient-to-r from-purple-600 to-blue-600 text-white"}`} data-testid={`create-${t.stake}`}>
+                        : isPremium ? "bg-gradient-to-r from-[#8B1111] to-[#C62828] text-white"
+                        : "bg-gradient-to-r from-[#8B1111] to-[#C62828] text-white"}`} data-testid={`create-${t.stake}`}>
                         Create challenge
                       </Button>
                     </CardContent>
@@ -240,7 +240,7 @@ export default function MatchLobby() {
                         <div className="text-xs text-slate-400">by {m.creator_name} · room {m.room_code}</div>
                       </div>
                     </div>
-                    <Button disabled={busy} onClick={()=>joinMatch(m.id)} className="rounded-full bg-gradient-to-r from-purple-600 to-blue-600 text-white" data-testid={`join-${m.id}`}>
+                    <Button disabled={busy} onClick={()=>joinMatch(m.id)} className="rounded-full bg-gradient-to-r from-[#8B1111] to-[#C62828] text-white" data-testid={`join-${m.id}`}>
                       Join <ChevronRight className="w-4 h-4 ml-1" />
                     </Button>
                   </CardContent>
@@ -282,7 +282,7 @@ export default function MatchLobby() {
               <div className="flex justify-between"><span className="text-slate-400">Your balance</span><span className="font-semibold">{fmtINR(total)}</span></div>
             </div>
             <DialogFooter>
-              <Button disabled={busy} onClick={()=>createMatch(creating.stake, false)} className="rounded-full bg-gradient-to-r from-purple-600 to-blue-600 text-white" data-testid="confirm-create">
+              <Button disabled={busy} onClick={()=>createMatch(creating.stake, false)} className="rounded-full bg-gradient-to-r from-[#8B1111] to-[#C62828] text-white" data-testid="confirm-create">
                 {busy ? "Creating…" : "Create & open room"}
               </Button>
             </DialogFooter>

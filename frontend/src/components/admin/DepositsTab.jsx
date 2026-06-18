@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { api } from '@/lib/api';
+import axios from 'axios';
 import { toast } from 'sonner';
 
 const BACKEND = process.env.REACT_APP_BACKEND_URL || '';
@@ -7,33 +7,39 @@ const toImgUrl = (u) => !u ? '' : u.startsWith('http') ? u : `${BACKEND}${u}`;
 
 export default function DepositsTab() {
   const [deposits, setDeposits] = useState([]);
+  const [zoom, setZoom] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [zoomed, setZoomed] = useState(null);
+  const token = localStorage.getItem('lcp_token');
 
-  const fetchDeposits = useCallback(async () => {
+  const load = useCallback(async () => {
     try {
-      const r = await api.get('/admin/deposits/pending');
+      const r = await axios.get(`${BACKEND}/api/admin/deposits/pending`, {
+        headers: { Authorization: `Bearer ${token}` },
+        withCredentials: true,
+      });
       setDeposits(r.data.deposits || []);
     } catch (err) {
-      console.error('[DepositsTab] fetch error:', err);
-      toast.error('Failed to load deposits');
+      console.error('[DepositsTab] fetch error:', err.response?.data || err.message);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [token]);
 
   useEffect(() => {
-    fetchDeposits();
-    const i = setInterval(fetchDeposits, 10000);
+    load();
+    const i = setInterval(load, 8000);
     return () => clearInterval(i);
-  }, [fetchDeposits]);
+  }, [load]);
 
-  const approve = async (id) => {
-    if (!window.confirm('Approve this deposit and credit wallet?')) return;
+  const approve = async (id, amount) => {
+    if (!window.confirm(`Approve ₹${amount}?`)) return;
     try {
-      await api.post(`/admin/deposits/${id}/approve`);
+      await axios.post(`${BACKEND}/api/admin/deposits/${id}/approve`, {}, {
+        headers: { Authorization: `Bearer ${token}` },
+        withCredentials: true,
+      });
       toast.success('Approved! Wallet credited');
-      fetchDeposits();
+      load();
     } catch (err) {
       toast.error(err.response?.data?.detail || 'Failed to approve');
     }
@@ -43,86 +49,108 @@ export default function DepositsTab() {
     const reason = prompt('Reason for rejection:');
     if (!reason) return;
     try {
-      await api.post(`/admin/deposits/${id}/reject`, { note: reason });
+      await axios.post(`${BACKEND}/api/admin/deposits/${id}/reject`, { note: reason }, {
+        headers: { Authorization: `Bearer ${token}` },
+        withCredentials: true,
+      });
       toast.success('Rejected');
-      fetchDeposits();
+      load();
     } catch (err) {
       toast.error(err.response?.data?.detail || 'Failed to reject');
     }
   };
 
   return (
-    <div className="p-4">
-      {zoomed && (
+    <div className="p-4 bg-[#0F0F0F] min-h-screen">
+      {zoom && (
         <div
-          className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4"
-          onClick={() => setZoomed(null)}
+          onClick={() => setZoom(null)}
+          className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4 cursor-pointer"
         >
-          <img src={zoomed} alt="Screenshot" className="max-w-full max-h-full rounded-xl shadow-2xl" />
+          <img src={zoom} alt="Screenshot" className="max-w-full max-h-full rounded-xl shadow-2xl" />
+          <p className="absolute top-4 right-4 text-white text-sm bg-black/50 px-3 py-1 rounded-full">Tap to close</p>
         </div>
       )}
 
       <div className="flex justify-between items-center mb-4">
-        <h2 className="text-2xl font-bold text-gray-900">Pending Deposits ({deposits.length})</h2>
-        <button onClick={fetchDeposits} className="px-4 py-2 bg-blue-600 text-white rounded-lg font-bold text-sm">
+        <h2 className="text-2xl font-black text-white">
+          💰 Pending Deposits ({deposits.length})
+        </h2>
+        <button
+          onClick={load}
+          className="px-4 py-2 bg-[#C62828] text-white rounded-xl text-sm font-bold hover:bg-[#8B1111] transition-colors"
+        >
           🔄 Refresh
         </button>
       </div>
 
       {loading && deposits.length === 0 ? (
-        <p className="text-center py-8 text-gray-500">Loading...</p>
+        <div className="bg-[#1A1A1A] rounded-2xl p-12 text-center text-gray-400">Loading...</div>
       ) : deposits.length === 0 ? (
-        <div className="bg-white rounded-2xl p-12 text-center border border-gray-200">
-          <p className="text-gray-500 text-lg">No pending deposits</p>
-          <p className="text-sm text-gray-400 mt-2">Auto-refreshes every 10 seconds</p>
+        <div className="bg-[#1A1A1A] rounded-2xl p-12 text-center border border-white/10">
+          <p className="text-gray-400 text-lg">No pending deposits</p>
+          <p className="text-sm text-gray-500 mt-2">Auto-refreshes every 8 seconds</p>
         </div>
       ) : (
         <div className="space-y-3">
-          {deposits.map(d => (
-            <div key={d.id || d._id} className="bg-white rounded-2xl border-2 border-yellow-300 p-4">
-              <div className="flex justify-between items-start mb-3">
-                <div>
-                  <p className="text-3xl font-black text-gray-900">₹{d.amount}</p>
-                  <p className="text-sm text-gray-600 mt-1">From: {d.user_label || d.user?.phone || 'Unknown'}</p>
-                  <p className="text-xs text-gray-400">
-                    {new Date(d.created_at || d.createdAt).toLocaleString('en-IN')}
-                  </p>
-                </div>
-                <span className="bg-yellow-100 text-yellow-700 px-3 py-1 rounded-full text-xs font-bold">
-                  PENDING
-                </span>
-              </div>
+          {deposits.map(d => {
+            const imgUrl = toImgUrl(d.screenshot_url || d.screenshot);
+            const userLabel = d.user_label || d.user?.phone || d.user?.email || 'Unknown';
+            const userName = d.user_name || d.user?.name || '';
+            const createdAt = d.created_at || d.createdAt;
 
-              {(d.screenshot_url || d.screenshot) && (
-                <div
-                  className="block mb-3 cursor-pointer"
-                  onClick={() => setZoomed(toImgUrl(d.screenshot_url || d.screenshot))}
-                >
-                  <img
-                    src={toImgUrl(d.screenshot_url || d.screenshot)}
-                    alt="Payment Screenshot"
-                    className="w-full max-w-md mx-auto border-2 border-gray-200 rounded-lg"
-                  />
-                  <p className="text-xs text-blue-600 text-center mt-1">Tap to enlarge</p>
+            return (
+              <div key={d.id || d._id} className="bg-[#1A1A1A] rounded-2xl border-2 border-yellow-500/50 p-4">
+                <div className="flex justify-between items-start mb-3">
+                  <div>
+                    <p className="text-3xl font-black text-green-400">₹{d.amount}</p>
+                    {userName && <p className="text-sm text-gray-300 font-bold">{userName}</p>}
+                    <p className="text-xs text-gray-400">{userLabel}</p>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      {createdAt ? new Date(createdAt).toLocaleString('en-IN') : '—'}
+                    </p>
+                  </div>
+                  <span className="bg-yellow-500/20 text-yellow-400 px-3 py-1 rounded-full text-xs font-black h-fit">
+                    PENDING
+                  </span>
                 </div>
-              )}
 
-              <div className="flex gap-2 mt-3">
-                <button
-                  onClick={() => approve(d.id || d._id)}
-                  className="flex-1 py-3 bg-green-600 hover:bg-green-700 text-white rounded-xl font-bold"
-                >
-                  ✓ Approve
-                </button>
-                <button
-                  onClick={() => reject(d.id || d._id)}
-                  className="flex-1 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold"
-                >
-                  ✗ Reject
-                </button>
+                {imgUrl ? (
+                  <button
+                    onClick={() => setZoom(imgUrl)}
+                    className="block w-full mb-3 cursor-pointer"
+                  >
+                    <img
+                      src={imgUrl}
+                      alt="Payment Screenshot"
+                      className="w-full max-w-md mx-auto rounded-xl border-2 border-gray-700"
+                      onError={e => { e.target.style.display = 'none'; }}
+                    />
+                    <p className="text-xs text-blue-400 text-center mt-1">Tap to zoom</p>
+                  </button>
+                ) : (
+                  <div className="bg-[#0F0F0F] rounded-xl p-3 mb-3 text-center text-gray-500 text-sm border border-white/10">
+                    No screenshot uploaded
+                  </div>
+                )}
+
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => approve(d.id || d._id, d.amount)}
+                    className="flex-1 py-3 bg-green-600 hover:bg-green-700 text-white rounded-xl font-black transition-colors"
+                  >
+                    ✓ Approve
+                  </button>
+                  <button
+                    onClick={() => reject(d.id || d._id)}
+                    className="flex-1 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl font-black transition-colors"
+                  >
+                    ✗ Reject
+                  </button>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

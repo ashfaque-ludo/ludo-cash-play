@@ -64,7 +64,7 @@ export default function OpenBattles() {
             </Button>
             {user && (
               <Link to="/play">
-                <Button className="rounded-full bg-gradient-to-r from-purple-600 to-blue-600 text-white font-bold gap-2">
+                <Button className="rounded-full bg-gradient-to-r from-[#8B1111] to-[#C62828] text-white font-bold gap-2">
                   <Plus className="w-4 h-4" /> Create Battle
                 </Button>
               </Link>
@@ -101,13 +101,13 @@ export default function OpenBattles() {
             <p className="text-slate-500 text-sm mt-2">Be the first — create a battle and wait for an opponent</p>
             {user ? (
               <Link to="/play" className="mt-6 inline-block">
-                <Button className="rounded-full bg-gradient-to-r from-purple-600 to-blue-600 text-white font-bold px-8">
+                <Button className="rounded-full bg-gradient-to-r from-[#8B1111] to-[#C62828] text-white font-bold px-8">
                   Create Battle
                 </Button>
               </Link>
             ) : (
               <Link to="/login" className="mt-6 inline-block">
-                <Button className="rounded-full bg-gradient-to-r from-purple-600 to-blue-600 text-white font-bold px-8">
+                <Button className="rounded-full bg-gradient-to-r from-[#8B1111] to-[#C62828] text-white font-bold px-8">
                   Login to Play
                 </Button>
               </Link>
@@ -166,7 +166,7 @@ export default function OpenBattles() {
                           size="sm"
                           disabled={joining === m.id}
                           onClick={() => join(m)}
-                          className="rounded-full bg-gradient-to-r from-purple-600 to-blue-600 text-white font-bold gap-1"
+                          className="rounded-full bg-gradient-to-r from-[#8B1111] to-[#C62828] text-white font-bold gap-1"
                         >
                           {joining === m.id ? "Joining…" : <><LogIn className="w-3.5 h-3.5" /> Join Battle</>}
                         </Button>
@@ -186,7 +186,7 @@ export default function OpenBattles() {
             <div className="font-bold text-lg mb-1">Ready to win real money?</div>
             <p className="text-slate-400 text-sm mb-4">Create your free account and start playing in minutes.</p>
             <div className="flex gap-3 justify-center">
-              <Link to="/register"><Button className="rounded-full bg-gradient-to-r from-purple-600 to-blue-600 text-white font-bold px-6">Sign Up Free</Button></Link>
+              <Link to="/register"><Button className="rounded-full bg-gradient-to-r from-[#8B1111] to-[#C62828] text-white font-bold px-6">Sign Up Free</Button></Link>
               <Link to="/login"><Button variant="outline" className="rounded-full border-white/20 bg-white/5 text-white px-6">Login</Button></Link>
             </div>
           </div>

@@ -34,7 +34,7 @@ export default function OwnerPanel() {
   if (!user) return null;
 
   return (
-    <div className="min-h-screen pt-20 pb-16 bg-gradient-to-br from-slate-900 via-purple-950 to-slate-900 text-white">
+    <div className="min-h-screen pt-20 pb-16 bg-[#0F0F0F] text-white">
       <div className="max-w-7xl mx-auto px-4 lg:px-8">
         {/* Header */}
         <div className="flex flex-wrap items-end justify-between gap-3 mb-8">
@@ -55,7 +55,7 @@ export default function OwnerPanel() {
         </div>
 
         {/* Tab navigation */}
-        <div className="flex gap-1 bg-slate-800/50 border border-purple-500/20 rounded-2xl p-1 mb-6 flex-wrap">
+        <div className="flex gap-1 bg-[#1A1A1A] border border-white/10 rounded-2xl p-1 mb-6 flex-wrap">
           {TABS.map(t => {
             const Icon = t.icon;
             return (
@@ -92,39 +92,101 @@ export default function OwnerPanel() {
 /* ─── Dashboard ─── */
 function DashboardTab() {
   const [stats, setStats] = useState(null);
+  const [complete, setComplete] = useState(null);
 
-  useEffect(() => {
+  const loadStats = useCallback(() => {
     api.get("/owner/stats").then(r => setStats(r.data)).catch(() => {});
+    api.get("/owner/stats/complete").then(r => setComplete(r.data)).catch(() => {});
   }, []);
 
-  if (!stats) return <LoadingCard />;
+  useEffect(() => {
+    loadStats();
+    const i = setInterval(loadStats, 30000);
+    return () => clearInterval(i);
+  }, [loadStats]);
 
-  const cards = [
-    { label: "Total Users", value: stats.total_users?.toLocaleString(), color: "text-blue-300", bg: "from-blue-500/10 to-blue-500/5" },
-    { label: "Total Matches", value: stats.total_matches?.toLocaleString(), color: "text-purple-300", bg: "from-purple-500/10 to-purple-500/5" },
-    { label: "Completed Matches", value: stats.completed_matches?.toLocaleString(), color: "text-emerald-400", bg: "from-emerald-500/10 to-emerald-500/5" },
-    { label: "Pending Withdrawals", value: stats.pending_withdrawals?.toLocaleString(), color: "text-amber-400", bg: "from-amber-500/10 to-amber-500/5" },
-    { label: "Total Prize Paid", value: fmtINR(stats.total_prize_paid), color: "text-red-300", bg: "from-red-500/10 to-red-500/5" },
-    { label: "Commission Earned", value: fmtINR(stats.commission_earned), color: "text-yellow-400", bg: "from-yellow-500/10 to-yellow-500/5" },
-  ];
+  const fmt = (n) => n?.toLocaleString("en-IN") ?? "—";
+  const fmtR = (n) => n != null ? `₹${Number(n).toLocaleString("en-IN")}` : "—";
 
   return (
-    <div className="space-y-6">
-      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {cards.map(c => (
-          <div key={c.label} className={`rounded-2xl bg-gradient-to-br ${c.bg} border border-white/10 p-5`}>
-            <div className="text-xs uppercase tracking-widest text-slate-400 mb-1">{c.label}</div>
-            <div className={`text-2xl font-black ${c.color}`}>{c.value}</div>
+    <div className="space-y-5">
+      {/* Basic stats */}
+      {stats && (
+        <div className="rounded-2xl bg-[#1A1A1A] border border-white/10 p-5">
+          <div className="flex items-center gap-2 text-yellow-400 font-bold mb-3">
+            <DollarSign className="w-4 h-4" /> Commission Rate: {stats.commission_pct}%
           </div>
-        ))}
-      </div>
-      <div className="rounded-2xl bg-slate-800/30 border border-yellow-500/20 p-5">
-        <div className="flex items-center gap-2 text-yellow-400 font-bold mb-2">
-          <DollarSign className="w-4 h-4" /> Commission Rate
+          <div className="grid grid-cols-2 gap-3">
+            <StatCard label="Commission Earned" value={fmtR(stats.commission_earned)} color="text-yellow-400" />
+            <StatCard label="Total Prize Paid" value={fmtR(stats.total_prize_paid)} color="text-red-300" />
+          </div>
         </div>
-        <p className="text-3xl font-black text-white">{stats.commission_pct}%</p>
-        <p className="text-slate-400 text-sm mt-1">Platform takes {stats.commission_pct}% of each battle. Change in Platform Settings.</p>
-      </div>
+      )}
+
+      {complete ? (
+        <>
+          {/* Users */}
+          <Section title="👥 USERS">
+            <StatCard label="Total Users" value={fmt(complete.users?.total)} color="text-blue-300" />
+            <StatCard label="New Today" value={fmt(complete.users?.today)} color="text-emerald-400" />
+          </Section>
+
+          {/* Matches */}
+          <Section title="⚔️ MATCHES">
+            <StatCard label="Total Played" value={fmt(complete.matches?.total)} color="text-white" />
+            <StatCard label="✅ Completed" value={fmt(complete.matches?.completed)} color="text-emerald-400" />
+            <StatCard label="❌ Cancelled" value={fmt(complete.matches?.cancelled)} color="text-red-400" />
+            <StatCard label="⚠️ Disputed" value={fmt(complete.matches?.disputed)} color="text-amber-400" />
+            <StatCard label="🟢 Open Now" value={fmt(complete.matches?.open)} color="text-green-400" />
+            <StatCard label="🔵 Running Now" value={fmt(complete.matches?.running)} color="text-blue-400" />
+          </Section>
+
+          {/* Deposits */}
+          <Section title="💳 DEPOSITS">
+            <StatCard label="Total Deposited" value={fmtR(complete.deposits?.total_amount)} color="text-green-400" />
+            <StatCard label="⏳ Pending" value={fmt(complete.deposits?.pending)} color="text-amber-400" />
+            <StatCard label="✅ Approved" value={fmt(complete.deposits?.approved)} color="text-emerald-400" />
+          </Section>
+
+          {/* Withdrawals */}
+          <Section title="💸 WITHDRAWALS">
+            <StatCard label="Total Paid Out" value={fmtR(complete.withdrawals?.total_amount)} color="text-[#C62828]" />
+            <StatCard label="⏳ Pending" value={fmt(complete.withdrawals?.pending)} color="text-amber-400" />
+            <StatCard label="✅ Approved" value={fmt(complete.withdrawals?.approved)} color="text-emerald-400" />
+          </Section>
+
+          {/* Revenue */}
+          <Section title="💰 REVENUE">
+            <StatCard label="Commission Earned" value={fmtR(complete.revenue?.total_commission)} color="text-yellow-400" />
+            <StatCard label="Referral Bonus Paid" value={fmtR(complete.revenue?.total_referral_paid)} color="text-red-300" />
+            <StatCard label="💵 Net Profit" value={fmtR(complete.revenue?.net_profit)} color="text-emerald-400" />
+          </Section>
+        </>
+      ) : (
+        <LoadingCard />
+      )}
+
+      <button onClick={loadStats} className="w-full py-3 bg-[#1A1A1A] border border-white/10 text-gray-400 rounded-xl text-sm font-semibold hover:bg-[#C62828]/10 transition-colors">
+        🔄 Refresh Stats
+      </button>
+    </div>
+  );
+}
+
+function Section({ title, children }) {
+  return (
+    <div className="rounded-2xl bg-[#1A1A1A] border border-white/10 p-5">
+      <p className="text-xs uppercase tracking-widest text-slate-400 font-bold mb-3">{title}</p>
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">{children}</div>
+    </div>
+  );
+}
+
+function StatCard({ label, value, color }) {
+  return (
+    <div className="bg-[#0F0F0F] rounded-xl p-3 border border-white/5">
+      <p className="text-[10px] uppercase tracking-wider text-slate-500 mb-1">{label}</p>
+      <p className={`text-xl font-black ${color}`}>{value}</p>
     </div>
   );
 }
@@ -174,7 +236,7 @@ function AdminsTab() {
   return (
     <div className="space-y-6">
       {/* Add admin */}
-      <div className="rounded-2xl bg-slate-800/40 border border-purple-500/20 p-5">
+      <div className="rounded-2xl bg-[#1A1A1A] border border-white/10 p-5">
         <div className="flex items-center gap-2 font-bold text-white mb-4"><UserPlus className="w-4 h-4 text-yellow-400" /> Add New Admin</div>
         <div className="grid sm:grid-cols-2 gap-3 mb-4">
           <InputField label="Full Name *" placeholder="Admin Name" {...fld("name")} />
@@ -198,7 +260,7 @@ function AdminsTab() {
       </div>
 
       {/* Admin list */}
-      <div className="rounded-2xl bg-slate-800/40 border border-purple-500/20 overflow-hidden">
+      <div className="rounded-2xl bg-[#1A1A1A] border border-white/10 overflow-hidden">
         <div className="flex items-center justify-between p-4 border-b border-slate-700">
           <div className="font-bold text-white flex items-center gap-2"><Users className="w-4 h-4 text-yellow-400" /> All Staff ({admins.length})</div>
           <button onClick={load} className="text-slate-400 hover:text-white"><RefreshCw className="w-4 h-4" /></button>
@@ -230,7 +292,7 @@ function AdminsTab() {
                     </select>
                     <button
                       onClick={() => handleRoleChange(a.id, roleChanges[a.id] || a.role)}
-                      className="px-3 py-1.5 rounded-lg bg-purple-600 text-white text-xs font-semibold hover:bg-purple-500">
+                      className="px-3 py-1.5 rounded-lg bg-[#C62828] text-white text-xs font-semibold hover:bg-[#8B1111]">
                       Save
                     </button>
                     <button onClick={() => handleRemove(a.id, a.name)}
@@ -356,7 +418,7 @@ function LogsTab() {
   }, []);
 
   return (
-    <div className="rounded-2xl bg-slate-800/40 border border-purple-500/20 overflow-hidden">
+    <div className="rounded-2xl bg-[#1A1A1A] border border-white/10 overflow-hidden">
       <div className="flex items-center justify-between p-4 border-b border-slate-700">
         <div className="font-bold text-white flex items-center gap-2"><Activity className="w-4 h-4 text-yellow-400" /> Activity Log (last 1000)</div>
       </div>
@@ -375,7 +437,7 @@ function LogsTab() {
               {logs.map(l => (
                 <tr key={l.id || l._id} className="hover:bg-slate-700/20">
                   <td className="px-4 py-3">
-                    <span className="bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded-full text-xs font-mono">{l.action}</span>
+                    <span className="bg-purple-500/20 text-[#C62828] px-2 py-0.5 rounded-full text-xs font-mono">{l.action}</span>
                   </td>
                   <td className="px-4 py-3 text-slate-300 text-xs">{l.actor_email || l.actor_role}</td>
                   <td className="px-4 py-3 text-slate-400 text-xs max-w-[180px] truncate">{l.target || "—"}</td>
@@ -433,7 +495,7 @@ function UsersTab() {
         <span className="text-slate-400 text-sm">{total} total users</span>
       </div>
 
-      <div className="rounded-2xl bg-slate-800/40 border border-purple-500/20 overflow-hidden">
+      <div className="rounded-2xl bg-[#1A1A1A] border border-white/10 overflow-hidden">
         {loading ? <LoadingCard /> : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -517,7 +579,7 @@ function LoadingCard() {
 
 function SettingCard({ title, subtitle, children }) {
   return (
-    <div className="rounded-2xl bg-slate-800/40 border border-purple-500/20 p-5">
+    <div className="rounded-2xl bg-[#1A1A1A] border border-white/10 p-5">
       <div className="mb-4">
         <div className="font-bold text-white text-base">{title}</div>
         {subtitle && <div className="text-slate-400 text-sm mt-0.5">{subtitle}</div>}
@@ -602,7 +664,7 @@ function PaymentQRTab() {
 
   return (
     <div className="mt-6 space-y-6 max-w-xl">
-      <div className="bg-slate-800 border border-purple-500/20 rounded-2xl p-5">
+      <div className="bg-[#1A1A1A] border border-white/10 rounded-2xl p-5">
         <h3 className="text-lg font-bold text-yellow-400 mb-4">Payment QR Code</h3>
         <div className="mb-4">
           {displayQr ? (
@@ -620,7 +682,7 @@ function PaymentQRTab() {
         {qrUploading && <p className="text-yellow-400 text-sm mt-2 animate-pulse">Uploading…</p>}
       </div>
 
-      <div className="bg-slate-800 border border-purple-500/20 rounded-2xl p-5 space-y-4">
+      <div className="bg-[#1A1A1A] border border-white/10 rounded-2xl p-5 space-y-4">
         <h3 className="text-lg font-bold text-yellow-400">UPI & Contact Settings</h3>
         {[
           { key: "admin_upi_id", label: "UPI ID", placeholder: "yourname@upi" },
@@ -632,7 +694,7 @@ function PaymentQRTab() {
             <label className="text-xs text-slate-400 block mb-1">{label}</label>
             <input value={form[key]} onChange={e => setForm(p => ({ ...p, [key]: e.target.value }))}
               placeholder={placeholder}
-              className="w-full bg-slate-700 border border-slate-600 text-white rounded-xl px-3 py-2 text-sm focus:border-yellow-400 outline-none" />
+              className="w-full bg-[#0F0F0F] border border-white/10 text-white rounded-xl px-3 py-2 text-sm focus:border-[#C62828] outline-none" />
           </div>
         ))}
         <button onClick={save} disabled={busy}

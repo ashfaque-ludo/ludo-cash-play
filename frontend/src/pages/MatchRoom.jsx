@@ -68,6 +68,19 @@ export default function MatchRoom() {
     }
   };
 
+  const openLudoKing = () => {
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    const isAndroid = /Android/.test(navigator.userAgent);
+    window.location.href = 'ludoking://';
+    setTimeout(() => {
+      if (isIOS) {
+        window.location.href = 'https://apps.apple.com/in/app/ludo-king/id1142115422';
+      } else if (isAndroid) {
+        window.location.href = 'https://play.google.com/store/apps/details?id=com.ludo.king';
+      }
+    }, 1500);
+  };
+
   const handleResult = async () => {
     await refresh();
     await fetchMatch();
@@ -120,7 +133,7 @@ export default function MatchRoom() {
             </p>
           </div>
           <span className={`text-xs font-bold px-3 py-1.5 rounded-full capitalize ${
-            match.status === 'waiting'       ? 'bg-purple-100 text-purple-700'   :
+            match.status === 'waiting'       ? 'bg-red-100 text-red-700'   :
             match.status === 'in_progress'   ? 'bg-green-100 text-green-700'     :
             match.status === 'ended'         ? 'bg-emerald-100 text-emerald-700' :
             match.status === 'cancelled'     ? 'bg-red-100 text-red-700'         :
@@ -134,9 +147,9 @@ export default function MatchRoom() {
 
       {/* Waiting for opponent */}
       {match.status === 'waiting' && (
-        <div className="bg-white rounded-2xl shadow border-2 border-purple-200 p-5 mb-3 text-center">
-          <div className="w-12 h-12 border-4 border-purple-300 border-t-purple-600 rounded-full animate-spin mx-auto mb-3" />
-          <h3 className="font-bold text-purple-700 mb-1">Waiting for opponent...</h3>
+        <div className="bg-white rounded-2xl shadow border-2 border-red-200 p-5 mb-3 text-center">
+          <div className="w-12 h-12 border-4 border-red-300 border-t-[#C62828] rounded-full animate-spin mx-auto mb-3" />
+          <h3 className="font-bold text-[#C62828] mb-1">Waiting for opponent...</h3>
           <p className="text-sm text-gray-500 mb-4">Your battle is live in the lobby</p>
           {isCreator && (
             <button
@@ -168,6 +181,13 @@ export default function MatchRoom() {
             </ol>
           </div>
 
+          <button
+            onClick={openLudoKing}
+            className="w-full py-4 mb-3 bg-gradient-to-r from-[#8B1111] to-[#C62828] text-white rounded-xl font-black text-lg shadow-lg"
+          >
+            🎮 Open Ludo King App
+          </button>
+
           <input
             type="text"
             inputMode="numeric"
@@ -194,9 +214,9 @@ export default function MatchRoom() {
 
       {/* OPPONENT + NO CODE = Waiting */}
       {!isCreator && !hasRoomCode && isActive && (
-        <div className="bg-white rounded-2xl shadow border-2 border-purple-300 p-6 mb-3 text-center">
-          <div className="w-12 h-12 border-4 border-purple-300 border-t-purple-600 rounded-full animate-spin mx-auto mb-3" />
-          <h3 className="font-bold text-purple-700 mb-2">Waiting for Room Code</h3>
+        <div className="bg-white rounded-2xl shadow border-2 border-red-300 p-6 mb-3 text-center">
+          <div className="w-12 h-12 border-4 border-red-300 border-t-[#C62828] rounded-full animate-spin mx-auto mb-3" />
+          <h3 className="font-bold text-[#C62828] mb-2">Waiting for Room Code</h3>
           <p className="text-sm text-gray-600">
             Creator is generating room code in Ludo King app
           </p>
@@ -233,6 +253,13 @@ export default function MatchRoom() {
               </ol>
             </div>
           )}
+
+          <button
+            onClick={openLudoKing}
+            className="w-full py-4 mt-2 bg-gradient-to-r from-[#8B1111] to-[#C62828] text-white rounded-xl font-black text-lg shadow-lg"
+          >
+            🎮 Open Ludo King App
+          </button>
         </div>
       )}
 

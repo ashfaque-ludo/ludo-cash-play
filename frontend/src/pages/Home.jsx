@@ -320,7 +320,7 @@ function MarketingHome() {
           <div className="mt-10 flex flex-col sm:flex-row gap-4 items-start fade-up">
             <Link to="/register">
               <Button data-testid="hero-play-now" size="lg"
-                className="rounded-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white font-bold text-base px-8 h-14 pulse-glow">
+                className="rounded-full bg-gradient-to-r from-[#8B1111] to-[#C62828] hover:from-[#C62828] hover:to-[#8B1111] text-white font-bold text-base px-8 h-14 pulse-glow">
                 <Zap className="w-5 h-5 mr-2" /> PLAY NOW
               </Button>
             </Link>
@@ -544,7 +544,7 @@ function MarketingHome() {
               { i: Trophy, t: "Win & withdraw", d: "Upload screenshot. Instant UPI payout." },
             ].map((s, i) => (
               <div key={i} className="glass rounded-2xl p-6">
-                <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-purple-600 to-blue-600 grid place-items-center text-white">
+                <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[#8B1111] to-[#C62828] grid place-items-center text-white">
                   <s.i className="w-5 h-5" />
                 </div>
                 <div className="mt-4 text-lg font-bold text-white">{i+1}. {s.t}</div>
@@ -586,7 +586,7 @@ function MarketingHome() {
           <h2 className="text-3xl sm:text-4xl font-extrabold mt-4">Ready to win <span className="grad-text">real money?</span></h2>
           <p className="text-slate-400 mt-3">Join 12,000+ players competing in skill-based Ludo battles.</p>
           <Link to="/register">
-            <Button data-testid="final-cta-play" className="mt-6 rounded-full bg-gradient-to-r from-purple-600 to-blue-600 text-white font-bold px-8 h-12 pulse-glow">
+            <Button data-testid="final-cta-play" className="mt-6 rounded-full bg-gradient-to-r from-[#8B1111] to-[#C62828] text-white font-bold px-8 h-12 pulse-glow">
               <Zap className="w-4 h-4 mr-2" /> Start playing
             </Button>
           </Link>

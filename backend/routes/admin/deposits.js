@@ -13,11 +13,12 @@ router.get("/pending", async (req, res) => {
     const deposits = await Transaction.find({ type: "deposit", status: "pending" })
       .populate("user", "name phone email")
       .sort({ createdAt: -1 })
-      .limit(200);
+      .limit(200)
+      .lean();
     console.log(`[ADMIN] /deposits/pending — found ${deposits.length} records`);
     res.json({
       deposits: deposits.map(d => {
-        const obj = d.toObject();
+        const obj = { ...d };
         obj.id = d._id.toString();
         obj.created_at = d.createdAt;
         obj.user_label = d.user?.phone || d.user?.email || obj.user_phone || obj.user_email || "Unknown";
@@ -38,14 +39,14 @@ router.get("/", async (req, res) => {
   const deposits = await Transaction.find(filter)
     .populate("user", "name phone email")
     .sort({ createdAt: -1 })
-    .limit(200);
+    .limit(200)
+    .lean();
 
   res.json({
     deposits: deposits.map(d => {
-      const obj = d.toObject();
+      const obj = { ...d };
       obj.id = d._id.toString();
       obj.created_at = d.createdAt;
-      // Populate user identity for display
       obj.user_label = d.user?.phone || d.user?.email || obj.user_email || obj.user_phone || "Unknown";
       obj.user_name = d.user?.name || "";
       return obj;

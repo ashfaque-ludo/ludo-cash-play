@@ -54,7 +54,7 @@ export default function RunningBattles() {
               <RefreshCw className="w-4 h-4" /> Refresh
             </Button>
             <Link to="/play">
-              <Button className="rounded-full bg-gradient-to-r from-purple-600 to-blue-600 text-white font-bold">+ New Battle</Button>
+              <Button className="rounded-full bg-gradient-to-r from-[#8B1111] to-[#C62828] text-white font-bold">+ New Battle</Button>
             </Link>
           </div>
         </div>
@@ -69,7 +69,7 @@ export default function RunningBattles() {
             <div className="text-xl font-bold text-slate-400">No active battles</div>
             <p className="text-slate-500 text-sm mt-2">Create or join a battle to get started</p>
             <div className="flex gap-3 justify-center mt-6">
-              <Link to="/play"><Button className="rounded-full bg-gradient-to-r from-purple-600 to-blue-600 text-white font-bold px-8">Create Battle</Button></Link>
+              <Link to="/play"><Button className="rounded-full bg-gradient-to-r from-[#8B1111] to-[#C62828] text-white font-bold px-8">Create Battle</Button></Link>
               <Link to="/open-battles"><Button variant="outline" className="rounded-full border-white/20 bg-white/5 text-white px-8">Open Battles</Button></Link>
             </div>
           </div>
