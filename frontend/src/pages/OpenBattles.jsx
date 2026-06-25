@@ -168,7 +168,7 @@ export default function OpenBattles() {
                           onClick={() => join(m)}
                           className="rounded-full bg-gradient-to-r from-[#8B1111] to-[#C62828] text-white font-bold gap-1"
                         >
-                          {joining === m.id ? "Joining…" : <><LogIn className="w-3.5 h-3.5" /> Join Battle</>}
+                          {joining === m.id ? "Joining…" : <><LogIn className="w-3.5 h-3.5" /> Play</>}
                         </Button>
                       )}
                     </div>

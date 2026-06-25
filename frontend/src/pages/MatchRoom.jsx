@@ -8,6 +8,77 @@ import CancelBattlePopup from "@/components/CancelBattlePopup";
 import WonPopup from "@/components/WonPopup";
 import LostPopup from "@/components/LostPopup";
 
+// Opponent waiting component — 3-min countdown, auto-cancel at 0
+function WaitingForCode({ matchId, onCancel }) {
+  const [timeLeft, setTimeLeft] = useState(180);
+
+  const formatTime = (sec) => {
+    const m = Math.floor(sec / 60);
+    const s = sec % 60;
+    return `${m}:${String(s).padStart(2, '0')}`;
+  };
+
+  const handleAutoCancel = async () => {
+    try {
+      await api.post(`/matches/${matchId}/cancel`, { reason: 'No Room Code - Time Expired' });
+      toast.error('Battle cancelled - room code not set in time');
+    } catch {}
+    onCancel();
+  };
+
+  const handleManualCancel = async () => {
+    if (!window.confirm('Cancel this battle?')) return;
+    try {
+      await api.post(`/matches/${matchId}/cancel`, { reason: 'Cancelled by player - waiting for room code' });
+      toast.success('Battle cancelled. Stake refunded.');
+      onCancel();
+    } catch {
+      toast.error('Failed to cancel');
+    }
+  };
+
+  useEffect(() => {
+    if (timeLeft <= 0) { handleAutoCancel(); return; }
+    const t = setTimeout(() => setTimeLeft(prev => prev - 1), 1000);
+    return () => clearTimeout(t);
+  }, [timeLeft]); // eslint-disable-line
+
+  return (
+    <div className="bg-white rounded-2xl p-5 border-2 border-purple-300 mb-3">
+      <div className="text-center mb-4">
+        <div className={`text-5xl font-black mb-1 ${timeLeft <= 30 ? 'text-red-600' : 'text-purple-700'}`}>
+          {formatTime(timeLeft)}
+        </div>
+        <p className="text-sm text-gray-500">Room code must be set in this time</p>
+      </div>
+
+      <div className="flex items-center justify-center gap-3 mb-4">
+        <div className="w-8 h-8 border-4 border-t-purple-600 border-purple-200 rounded-full animate-spin shrink-0" />
+        <div>
+          <p className="font-bold text-purple-700">Waiting for Room Code</p>
+          <p className="text-xs text-gray-500">Creator is getting code from Ludo King</p>
+        </div>
+      </div>
+
+      {timeLeft <= 60 && timeLeft > 0 && (
+        <div className="bg-red-50 border border-red-300 rounded-xl p-3 mb-3 text-center">
+          <p className="text-red-700 font-bold text-sm">
+            ⚠️ Battle will auto-cancel in {timeLeft} seconds!
+          </p>
+        </div>
+      )}
+
+      <button
+        onClick={handleManualCancel}
+        className="w-full py-3 border-2 border-red-500 text-red-600 rounded-xl font-bold hover:bg-red-50"
+      >
+        Cancel Battle
+      </button>
+      <p className="text-xs text-gray-400 text-center mt-2">Your stake will be refunded on cancel</p>
+    </div>
+  );
+}
+
 export default function MatchRoom() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -15,7 +86,7 @@ export default function MatchRoom() {
   const [match, setMatch] = useState(null);
   const [roomCodeInput, setRoomCodeInput] = useState('');
   const [setting, setSetting] = useState(false);
-  const [timeLeft, setTimeLeft] = useState(300);
+  const [codeTimer, setCodeTimer] = useState(180);
   const [showWon, setShowWon] = useState(false);
   const [showLost, setShowLost] = useState(false);
   const [showCancel, setShowCancel] = useState(false);
@@ -35,17 +106,23 @@ export default function MatchRoom() {
     return () => clearInterval(i);
   }, [id]); // eslint-disable-line
 
-  // Countdown timer — stops when room code is set
+  // Creator 3-min timer — auto-cancel if no code set
   useEffect(() => {
     if (!match) return;
     if (match.room_code) return;
-    if (timeLeft <= 0) {
-      toast.error('Time expired! Please cancel the match.');
+    const myId = user?._id || user?.id;
+    const p1Id = match.player1?._id || match.player1?.id || match.players?.[0]?.id;
+    const creatorCheck = myId?.toString() === p1Id?.toString() || match.creator_id === user?.id;
+    if (!creatorCheck) return;
+    if (codeTimer <= 0) {
+      api.post(`/matches/${id}/cancel`, { reason: 'Creator did not set room code in time' })
+        .then(() => { toast.error('Battle cancelled - no room code set'); navigate('/'); })
+        .catch(() => navigate('/'));
       return;
     }
-    const t = setTimeout(() => setTimeLeft(prev => prev - 1), 1000);
+    const t = setTimeout(() => setCodeTimer(c => c - 1), 1000);
     return () => clearTimeout(t);
-  }, [timeLeft, match]);
+  }, [codeTimer, match]); // eslint-disable-line
 
   const handleSetCode = async () => {
     const trimmed = roomCodeInput.trim();
@@ -83,19 +160,6 @@ export default function MatchRoom() {
     }
   };
 
-  const openLudoKing = () => {
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-    const isAndroid = /Android/.test(navigator.userAgent);
-    window.location.href = 'ludoking://';
-    setTimeout(() => {
-      if (isIOS) {
-        window.location.href = 'https://apps.apple.com/in/app/ludo-king/id1142115422';
-      } else if (isAndroid) {
-        window.location.href = 'https://play.google.com/store/apps/details?id=com.ludo.king';
-      }
-    }, 1500);
-  };
-
   const handleResult = async () => {
     await refresh();
     await fetchMatch();
@@ -114,9 +178,7 @@ export default function MatchRoom() {
 
   const myId = user?._id || user?.id;
   const p1Id = match.player1?._id || match.player1?.id || match.players?.[0]?.id;
-  const isCreator =
-    myId?.toString() === p1Id?.toString() ||
-    match.creator_id === user?.id;
+  const isCreator = myId?.toString() === p1Id?.toString() || match.creator_id === user?.id;
 
   const hasRoomCode = !!match.room_code;
   const isActive = ['in_progress', 'awaiting_review', 'disputed', 'matched'].includes(match.status);
@@ -129,13 +191,12 @@ export default function MatchRoom() {
 
   const stakeAmount = match.stake_amount || match.stake || 0;
   const prizeAmount = match.prize_amount || match.prize || Math.floor(stakeAmount * 2 * 0.95);
-
   const hasPlayer2 = !!(match.player2 || match.players?.[1]);
 
   return (
     <div className="min-h-screen bg-[#f5f5f5] pb-24">
 
-      {/* TOP WARNING BOX - Yellow */}
+      {/* TOP WARNING BOX */}
       <div className="bg-yellow-400 px-4 py-3">
         <p className="text-black text-xs font-semibold text-center leading-5">
           आप सभी से निवेदन कि आप जिस नाम से केवाईसी कर रखे हैं उसी नाम से
@@ -145,7 +206,7 @@ export default function MatchRoom() {
         </p>
       </div>
 
-      {/* HEADER ROW - Back + RULES */}
+      {/* HEADER ROW */}
       <div className="bg-white border-b border-gray-200 px-3 py-3 flex items-center justify-between">
         <button
           onClick={() => navigate(-1)}
@@ -164,23 +225,17 @@ export default function MatchRoom() {
         {/* VS SECTION */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5 mb-4">
           <div className="flex items-center justify-between">
-
-            {/* Player 1 */}
             <div className="flex flex-col items-center flex-1">
               <div className="w-16 h-16 rounded-full bg-gradient-to-br from-red-500 to-red-800 flex items-center justify-center text-white text-2xl font-black mb-2 shadow">
                 {p1Avatar}
               </div>
               <p className="text-gray-900 font-bold text-sm text-center">{p1Name}</p>
             </div>
-
-            {/* VS */}
             <div className="flex flex-col items-center px-4">
               <div className="bg-gradient-to-br from-[#8B1111] to-[#C62828] text-white font-black text-lg px-4 py-2 rounded-xl shadow-md">
                 VS
               </div>
             </div>
-
-            {/* Player 2 */}
             <div className="flex flex-col items-center flex-1">
               {hasPlayer2 ? (
                 <>
@@ -199,8 +254,6 @@ export default function MatchRoom() {
               )}
             </div>
           </div>
-
-          {/* Playing for */}
           <div className="mt-4 pt-3 border-t border-gray-200 text-center">
             <p className="text-gray-500 text-sm">Playing for</p>
             <p className="text-2xl font-black text-green-600">₹{prizeAmount}</p>
@@ -213,13 +266,17 @@ export default function MatchRoom() {
 
         {/* ROOM CODE SECTION */}
         {!hasRoomCode ? (
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4 mb-4">
-
-            <p className="text-gray-900 font-black text-base mb-1">Set Room Code</p>
-            <p className="text-gray-500 text-sm mb-4">लडो किंग से रूम कोड अपलोड करें</p>
-
+          <>
             {isCreator ? (
-              <>
+              <div className="bg-white rounded-2xl shadow-sm border-2 border-amber-400 p-4 mb-4">
+                <h3 className="font-bold text-gray-900 mb-2 text-center">Set Room Code</h3>
+
+                {/* Creator countdown */}
+                <div className={`text-center text-3xl font-black mb-1 ${codeTimer <= 30 ? 'text-red-600' : 'text-amber-600'}`}>
+                  {Math.floor(codeTimer / 60)}:{String(codeTimer % 60).padStart(2, '0')}
+                </div>
+                <p className="text-xs text-center text-gray-500 mb-3">Set room code before time runs out</p>
+
                 <button
                   onClick={() => {
                     window.location.href = 'ludoking://';
@@ -231,7 +288,6 @@ export default function MatchRoom() {
                 >
                   🎮 Open Ludo King App
                 </button>
-
                 <p className="text-xs text-gray-600 text-center mb-3">
                   Open Ludo King → Create Room → Copy code → Paste below
                 </p>
@@ -241,55 +297,38 @@ export default function MatchRoom() {
                   inputMode="numeric"
                   value={roomCodeInput}
                   onChange={(e) => setRoomCodeInput(e.target.value.replace(/\D/g, '').slice(0, 8))}
-                  placeholder="Room Code"
+                  placeholder="Paste room code here"
                   maxLength={8}
-                  className="w-full px-4 py-4 mb-3 border-2 border-gray-300 rounded-xl text-center text-3xl tracking-widest font-black text-gray-900 outline-none focus:border-red-500"
+                  className="w-full px-3 py-4 mb-3 border-2 border-amber-400 rounded-xl text-center text-3xl tracking-widest font-black outline-none focus:border-red-500"
                 />
 
                 <button
                   onClick={handleSetCode}
                   disabled={setting || roomCodeInput.length < 6}
-                  className="w-full py-3 bg-[#C62828] hover:bg-[#8B1111] text-white rounded-xl font-black text-base disabled:opacity-50 transition mb-3"
+                  className="w-full py-3 bg-gradient-to-r from-amber-500 to-orange-500 text-black font-black rounded-xl disabled:opacity-50 mb-3"
                 >
                   {setting ? 'Setting...' : 'SET ROOM CODE'}
                 </button>
-              </>
-            ) : (
-              <div className="flex items-center gap-3 bg-gray-50 rounded-xl p-4 mb-3">
-                <div className="w-8 h-8 border-4 border-red-300 border-t-red-600 rounded-full animate-spin shrink-0" />
-                <p className="text-gray-600 text-sm">
-                  Creator is setting up room code from Ludo King...
-                </p>
+
+                <button
+                  onClick={() => setShowCancel(true)}
+                  className="w-full py-3 bg-gray-800 hover:bg-black text-white rounded-xl font-black text-base transition"
+                >
+                  CANCEL MATCH
+                </button>
               </div>
+            ) : (
+              /* Opponent waiting — WaitingForCode handles its own timer + cancel */
+              <WaitingForCode
+                matchId={id}
+                onCancel={() => navigate('/')}
+              />
             )}
-
-            {/* Timer */}
-            <div className="text-center mb-3">
-              <p className={`text-sm font-bold ${timeLeft < 60 ? 'text-red-600' : 'text-gray-600'}`}>
-                Remaining Time : {timeLeft} Seconds
-              </p>
-            </div>
-
-            {/* Status Box - Hindi */}
-            <div className="bg-gray-100 border border-gray-300 rounded-xl px-4 py-3 mb-3">
-              <p className="text-gray-700 text-sm text-center font-medium">
-                कृपया लूडो किंग से रूम कोड निकालें।
-              </p>
-            </div>
-
-            {/* CANCEL MATCH button */}
-            <button
-              onClick={() => setShowCancel(true)}
-              className="w-full py-3 bg-gray-800 hover:bg-black text-white rounded-xl font-black text-base transition"
-            >
-              CANCEL MATCH
-            </button>
-
-          </div>
+          </>
         ) : (
-          /* CODE IS SET - Show to both players */
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4 mb-4">
-            <p className="text-gray-900 font-black text-base mb-3 text-center">Room Code</p>
+          /* CODE IS SET — both players see code + copy + Play button */
+          <div className="bg-white rounded-2xl shadow-sm border-2 border-green-400 p-4 mb-4">
+            <h3 className="font-bold text-center text-green-700 mb-3">Room Code</h3>
 
             <div className="bg-green-50 border-2 border-green-500 rounded-xl p-4 text-center mb-3">
               <p className="text-5xl font-black tracking-widest text-green-700">
@@ -299,23 +338,27 @@ export default function MatchRoom() {
 
             <button
               onClick={copyCode}
-              className="w-full py-3 bg-green-600 text-white rounded-xl font-black mb-3"
+              className="w-full py-3 bg-green-600 text-white rounded-xl font-bold mb-2"
             >
               📋 Copy Code
             </button>
 
-            {!isCreator && (
-              <button
-                onClick={openLudoKing}
-                className="w-full py-3 mb-3 bg-gradient-to-r from-[#8B1111] to-[#C62828] text-white rounded-xl font-black"
-              >
-                🎮 Open Ludo King to Join
-              </button>
-            )}
+            {/* Play button — opens Ludo King for both players */}
+            <button
+              onClick={() => {
+                window.location.href = 'ludoking://';
+                setTimeout(() => {
+                  window.open('https://play.google.com/store/apps/details?id=com.ludo.king', '_blank');
+                }, 1500);
+              }}
+              className="w-full py-3 bg-gradient-to-r from-red-700 to-black text-white rounded-xl font-bold mb-3"
+            >
+              🎮 Play in Ludo King
+            </button>
 
-            {/* Result Buttons - after code is set */}
+            {/* Result buttons */}
             {isActive && !myResult && (
-              <div className="mt-4 pt-3 border-t border-gray-200">
+              <div className="mt-2 pt-3 border-t border-gray-200">
                 <p className="text-center text-gray-600 text-sm font-bold mb-3">Match Status</p>
                 <div className="grid grid-cols-3 gap-2">
                   <button
@@ -340,9 +383,8 @@ export default function MatchRoom() {
               </div>
             )}
 
-            {/* Already submitted result */}
             {isActive && myResult && (
-              <div className="mt-4 pt-3 border-t border-gray-200 text-center">
+              <div className="mt-2 pt-3 border-t border-gray-200 text-center">
                 <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Your submission</p>
                 <p className={`text-2xl font-black ${myResult.result === 'won' ? 'text-green-600' : 'text-red-600'}`}>
                   {myResult.result === 'won' ? '🏆 WON' : '💔 LOST'}

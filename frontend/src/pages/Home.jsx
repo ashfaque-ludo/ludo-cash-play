@@ -199,7 +199,7 @@ function BattleHub({ user }) {
                     disabled={busy}
                     className="px-5 py-2.5 bg-gradient-to-r from-red-700 to-black text-white rounded-xl font-bold text-sm disabled:opacity-50"
                   >
-                    Join
+                    Play
                   </button>
                 )}
               </div>
