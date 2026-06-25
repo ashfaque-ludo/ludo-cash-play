@@ -96,7 +96,16 @@ function BattleHub({ user }) {
     } catch {}
   };
 
-  useEffect(() => { load(); const id = setInterval(load, 5000); return () => clearInterval(id); }, []); // eslint-disable-line
+  useEffect(() => {
+    load();
+    let id = setInterval(load, 5000);
+    const onVisibility = () => {
+      if (document.hidden) { clearInterval(id); }
+      else { load(); id = setInterval(load, 5000); }
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => { clearInterval(id); document.removeEventListener('visibilitychange', onVisibility); };
+  }, []); // eslint-disable-line
 
   const handleCreate = async () => {
     const stake = parseInt(amount) || 0;
