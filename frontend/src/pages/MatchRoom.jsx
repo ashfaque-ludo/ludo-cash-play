@@ -221,11 +221,20 @@ export default function MatchRoom() {
             {isCreator ? (
               <>
                 <button
-                  onClick={openLudoKing}
-                  className="w-full py-3 mb-3 bg-gradient-to-r from-[#8B1111] to-[#C62828] text-white rounded-xl font-black text-base shadow"
+                  onClick={() => {
+                    window.location.href = 'ludoking://';
+                    setTimeout(() => {
+                      window.open('https://play.google.com/store/apps/details?id=com.ludo.king', '_blank');
+                    }, 1500);
+                  }}
+                  className="w-full py-3 mb-2 bg-gradient-to-r from-green-700 to-green-900 text-white rounded-xl font-bold text-base shadow flex items-center justify-center gap-2"
                 >
-                  🎮 Open Ludo King
+                  🎮 Open Ludo King App
                 </button>
+
+                <p className="text-xs text-gray-600 text-center mb-3">
+                  Open Ludo King → Create Room → Copy code → Paste below
+                </p>
 
                 <input
                   type="text"

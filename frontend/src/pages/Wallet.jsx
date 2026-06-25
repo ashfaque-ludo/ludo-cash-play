@@ -130,19 +130,32 @@ function DepositPage({ onBack }) {
     return `${scheme}://pay?${p.toString()}`;
   };
 
-  const openUPIApp = () => {
-    if (!upiId) { toast.error('UPI ID not set yet'); return; }
-    const upiUrl = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(merchantName)}&am=${amt}&cu=INR&tn=LCP${Date.now()}`;
+  const handlePhonePe = () => {
+    const upiUrl = `phonepe://pay?pa=${upiId}&pn=${encodeURIComponent(merchantName)}&am=${amt}&cu=INR`;
+    window.location.href = upiUrl;
+    setTimeout(() => { window.location.href = 'https://phon.pe/'; }, 1500);
+  };
+
+  const handleGPay = () => {
+    const upiUrl = `tez://upi/pay?pa=${upiId}&pn=${encodeURIComponent(merchantName)}&am=${amt}&cu=INR`;
+    window.location.href = upiUrl;
+    setTimeout(() => { window.location.href = 'https://pay.google.com'; }, 1500);
+  };
+
+  const handlePaytm = () => {
+    const upiUrl = `paytmmp://pay?pa=${upiId}&pn=${encodeURIComponent(merchantName)}&am=${amt}&cu=INR`;
+    window.location.href = upiUrl;
+    setTimeout(() => { window.location.href = 'https://paytm.com'; }, 1500);
+  };
+
+  const handleAnyUPI = () => {
+    const upiUrl = `upi://pay?pa=${upiId}&pn=${encodeURIComponent(merchantName)}&am=${amt}&cu=INR&tn=Deposit`;
     const link = document.createElement('a');
     link.href = upiUrl;
-    link.target = '_blank';
     link.rel = 'noopener noreferrer';
     document.body.appendChild(link);
     link.click();
-    setTimeout(() => { if (document.body.contains(link)) document.body.removeChild(link); }, 200);
-    setTimeout(() => {
-      toast('If no app opened, copy UPI ID and pay manually', { duration: 5000 });
-    }, 3000);
+    setTimeout(() => document.body.removeChild(link), 200);
   };
 
   const copyUpi = async () => {
@@ -291,18 +304,38 @@ function DepositPage({ onBack }) {
           </div>
         )}
 
-        <button
-          onClick={openUPIApp}
-          className="w-full py-3.5 bg-gradient-to-r from-green-600 to-emerald-700 text-white rounded-xl font-bold shadow text-base"
-        >
-          📱 Pay via UPI App
-        </button>
-        <p className="text-xs text-gray-500 text-center -mt-1">
-          Will open PhonePe, GPay, Paytm, BHIM, or any UPI app on your phone
-        </p>
-
-        <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 text-xs text-blue-800 text-left">
-          📱 <strong>iPhone users:</strong> Open your UPI app first (PhonePe / GPay / Paytm), then scan the QR code or copy the UPI ID above.
+        <div className="mb-3">
+          <p className="text-sm font-semibold text-gray-700 text-center mb-3">Pay ₹{amt} via</p>
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              onClick={handlePhonePe}
+              className="flex flex-col items-center justify-center bg-purple-600 text-white rounded-2xl p-4 font-bold shadow-md active:scale-95 transition"
+            >
+              <span className="text-2xl mb-1">📱</span>
+              <span className="text-sm">PhonePe</span>
+            </button>
+            <button
+              onClick={handleGPay}
+              className="flex flex-col items-center justify-center bg-blue-600 text-white rounded-2xl p-4 font-bold shadow-md active:scale-95 transition"
+            >
+              <span className="text-2xl mb-1">💳</span>
+              <span className="text-sm">Google Pay</span>
+            </button>
+            <button
+              onClick={handlePaytm}
+              className="flex flex-col items-center justify-center bg-blue-500 text-white rounded-2xl p-4 font-bold shadow-md active:scale-95 transition"
+            >
+              <span className="text-2xl mb-1">💰</span>
+              <span className="text-sm">Paytm</span>
+            </button>
+            <button
+              onClick={handleAnyUPI}
+              className="flex flex-col items-center justify-center bg-gray-800 text-white rounded-2xl p-4 font-bold shadow-md active:scale-95 transition"
+            >
+              <span className="text-2xl mb-1">🏦</span>
+              <span className="text-sm">Any UPI App</span>
+            </button>
+          </div>
         </div>
       </div>
 
