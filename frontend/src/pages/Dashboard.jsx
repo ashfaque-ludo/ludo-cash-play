@@ -147,9 +147,9 @@ export default function Dashboard() {
       <AnnouncementBar />
       <div className="bg-yellow-400 text-black text-xs font-semibold py-1.5 px-4 overflow-hidden">
         <div className="animate-marquee whitespace-nowrap">
-          🎮 Play Ludo Win Cash &nbsp;|&nbsp; Support: +91 9991068255 &nbsp;|&nbsp; 24x7 Live Help &nbsp;|&nbsp;
+          🎮 Play Ludo Win Cash &nbsp;|&nbsp; Support: +91 8930988948 &nbsp;|&nbsp; 24x7 Live Help &nbsp;|&nbsp;
           💰 Instant Withdrawal Via UPI/Bank &nbsp;|&nbsp; 🎁 Referral Bonus 1% on All Games &nbsp;|&nbsp;
-          🎮 Play Ludo Win Cash &nbsp;|&nbsp; Support: +91 9991068255 &nbsp;|&nbsp; 24x7 Live Help
+          🎮 Play Ludo Win Cash &nbsp;|&nbsp; Support: +91 8930988948 &nbsp;|&nbsp; 24x7 Live Help
         </div>
       </div>
 

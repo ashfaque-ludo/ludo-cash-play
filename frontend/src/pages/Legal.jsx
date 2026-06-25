@@ -13,7 +13,7 @@ Our Mission: To provide a fair, transparent, and entertaining real-money gaming 
 
 Contact:
 Email: support@ludocashplay.in
-WhatsApp: +91 9991068255
+WhatsApp: +91 8930988948
 Available: 24x7 Live Support`,
   },
   terms: {
@@ -100,7 +100,7 @@ NON-REFUNDABLE ITEMS
 • Commission charges (5%) are non-refundable.
 
 HOW TO RAISE A REFUND REQUEST
-• Contact us on WhatsApp: +91 9991068255
+• Contact us on WhatsApp: +91 8930988948
 • Email: support@ludocashplay.in
 • Include: Transaction ID, amount, date
 • Resolution time: 24-48 hours
