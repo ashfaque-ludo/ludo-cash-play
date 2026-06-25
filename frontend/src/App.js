@@ -4,6 +4,7 @@ import { Toaster } from "sonner";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
+import InstallPWA from "@/components/InstallPWA";
 import Header from "@/components/Header";
 import BottomNav from "@/components/BottomNav";
 import Sidebar from "@/components/Sidebar";
@@ -132,6 +133,7 @@ export default function App() {
       <LanguageProvider>
         <AuthProvider>
           <AppLayout />
+          <InstallPWA />
           <Toaster
             richColors
             position="top-right"

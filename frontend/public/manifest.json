@@ -1,26 +1,25 @@
 {
-  "short_name": "Ludo Cash",
-  "name": "Ludo Cash Play — Win Real Money Online",
-  "description": "India's premium real-money Ludo platform. Challenge players ₹50 to ₹1,00,000 VIP tables.",
+  "name": "Ludo Cash Play",
+  "short_name": "LudoCash",
+  "description": "Play Ludo battles and win real cash daily",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#7f1d1d",
+  "orientation": "portrait-primary",
   "icons": [
     {
-      "src": "icon-192.png",
+      "src": "/logo192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "icon-512.png",
+      "src": "/logo512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
     }
-  ],
-  "start_url": "/",
-  "scope": "/",
-  "display": "standalone",
-  "theme_color": "#0A0A0E",
-  "background_color": "#0A0A0E",
-  "orientation": "portrait-primary",
-  "categories": ["games", "entertainment"]
+  ]
 }
