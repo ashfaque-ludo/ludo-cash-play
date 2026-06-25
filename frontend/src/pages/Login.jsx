@@ -63,8 +63,11 @@ export default function Login() {
   const [resendTimer, setResendTimer] = useState(0);
   const [useBackend, setUseBackend] = useState(false);
 
-  // Cleanup on unmount
-  useEffect(() => () => clearRecaptcha(), []);
+  // Pre-initialize reCAPTCHA on page load so it's ready before button click
+  useEffect(() => {
+    if (FIREBASE_READY && auth) getRecaptcha().catch(() => {});
+    return () => clearRecaptcha();
+  }, []);
 
   // Resend countdown
   useEffect(() => {
@@ -87,7 +90,6 @@ export default function Login() {
     // Try Firebase first
     if (FIREBASE_READY && auth) {
       try {
-        clearRecaptcha();
         const verifier = await getRecaptcha();
         _confirmation = await signInWithPhoneNumber(auth, `+91${clean}`, verifier);
         setUseBackend(false);
