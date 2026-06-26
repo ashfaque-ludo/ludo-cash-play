@@ -397,7 +397,7 @@ function MatchesTab({ actor }){
         <Select value={status} onValueChange={setStatus}>
           <SelectTrigger className="ml-auto bg-gray-50 border-gray-300 text-gray-900 w-44" data-testid="match-status-filter"><SelectValue /></SelectTrigger>
           <SelectContent className="bg-white border-gray-200 text-gray-900">
-            {["", "waiting","in_progress","awaiting_review","disputed","ended","cancelled"].map(s=> <SelectItem key={s||"any"} value={s||"any"}>{s || "any"}</SelectItem>)}
+            {["", "waiting","in_progress","awaiting_review","admin_review","disputed","ended","cancelled"].map(s=> <SelectItem key={s||"any"} value={s||"any"}>{s || "any"}</SelectItem>)}
           </SelectContent>
         </Select>
       </CardHeader>
@@ -409,7 +409,12 @@ function MatchesTab({ actor }){
               <TableRow key={m.id} className="border-gray-200" data-testid={`match-row-${m.id}`}>
                 <TableCell>{m.label}</TableCell>
                 <TableCell className="font-bold">{fmtINR(m.stake)}</TableCell>
-                <TableCell className="text-gray-600 text-xs">{(m.players || []).map(p=>p.name).join(" vs ")}</TableCell>
+                <TableCell className="text-gray-600 text-xs">
+                  {(m.players || []).map(p=>p.name).join(" vs ")}
+                  {m.status === "admin_review" && m.cancel_reason && (
+                    <div className="text-amber-600 mt-1">Reason: {m.cancel_reason}</div>
+                  )}
+                </TableCell>
                 <TableCell><Badge variant="outline" className="border-purple-500/30 text-red-700">{m.status}</Badge></TableCell>
                 <TableCell className="text-xs text-gray-400">{new Date(m.created_at).toLocaleString("en-IN")}</TableCell>
                 <TableCell className="space-x-1">
@@ -417,7 +422,7 @@ function MatchesTab({ actor }){
                     <Button key={p.id} size="sm" onClick={()=>decide(m, p.id, false)} variant="outline" className="rounded-full border-emerald-500/30 text-emerald-300" data-testid={`decide-${m.id}-${p.id}`}>{p.name} won</Button>
                   ))}
                   {canDecide && !["ended","cancelled"].includes(m.status) && (
-                    <Button size="sm" onClick={()=>decide(m, null, true)} variant="outline" className="rounded-full border-red-500/30 text-red-300" data-testid={`cancel-match-${m.id}`}>Cancel</Button>
+                    <Button size="sm" onClick={()=>decide(m, null, true)} variant="outline" className="rounded-full border-red-500/30 text-red-300" data-testid={`cancel-match-${m.id}`}>{m.status === "admin_review" ? "Refund Both" : "Cancel"}</Button>
                   )}
                 </TableCell>
               </TableRow>
@@ -1433,7 +1438,7 @@ function SupportMgmtTab() {
 }
 
 function PaymentSettingsTab() {
-  const [form, setForm] = useState({ admin_upi_id: "", admin_upi_name: "", admin_qr_image: "", whatsapp_number: "", support_email: "" });
+  const [form, setForm] = useState({ admin_upi_id: "", admin_upi_name: "", admin_qr_image: "", whatsapp_number: "", support_email: "", support_whatsapp: "" });
   const [commission, setCommission] = useState(5);
   const [announcement, setAnnouncement] = useState("");
   const [busy, setBusy] = useState(false);
@@ -1523,6 +1528,17 @@ function PaymentSettingsTab() {
             <div>
               <Label className="text-xs text-gray-400">Support Email</Label>
               <Input {...f("support_email")} type="email" placeholder="support@ludocashplay.in" className="bg-gray-50 border-gray-300 text-gray-900 mt-1" />
+            </div>
+            <div>
+              <Label className="text-xs text-gray-400">Support WhatsApp Number</Label>
+              <Input
+                value={form.support_whatsapp || ""}
+                onChange={(e) => setForm(prev => ({ ...prev, support_whatsapp: e.target.value.replace(/\D/g, "") }))}
+                placeholder="918930988948"
+                maxLength={12}
+                className="bg-gray-50 border-gray-300 text-gray-900 mt-1"
+              />
+              <p className="text-xs text-gray-500 mt-1">Format: 91XXXXXXXXXX (used on Support page)</p>
             </div>
           </div>
 

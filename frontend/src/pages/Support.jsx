@@ -1,8 +1,8 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { MessageCircle, Mail, ChevronDown, ChevronUp, Phone } from "lucide-react";
 
-const SUPPORT_WHATSAPP = process.env.REACT_APP_SUPPORT_WHATSAPP || "918930988948";
 const SUPPORT_EMAIL = process.env.REACT_APP_SUPPORT_EMAIL || "ludocashplay@gmail.com";
+const BACKEND = process.env.REACT_APP_BACKEND_URL || "";
 
 const FAQS = [
   {
@@ -58,8 +58,17 @@ function FAQItem({ faq }) {
 }
 
 export default function Support() {
+  const [supportWhatsApp, setSupportWhatsApp] = useState("918930988948");
+
+  useEffect(() => {
+    fetch(`${BACKEND}/api/public/payment-info`, { cache: 'no-store' })
+      .then(r => r.json())
+      .then(d => { if (d.support_whatsapp) setSupportWhatsApp(d.support_whatsapp); })
+      .catch(() => {});
+  }, []);
+
   const openWhatsApp = () => {
-    window.open(`https://wa.me/${SUPPORT_WHATSAPP}?text=${encodeURIComponent("Hi, I need help with Ludo Cash Play.")}`, "_blank");
+    window.open(`https://wa.me/${supportWhatsApp}?text=${encodeURIComponent("Hi, I need help with Ludo Cash Play.")}`, "_blank");
   };
 
   const openEmail = () => {
@@ -67,7 +76,7 @@ export default function Support() {
   };
 
   const callSupport = () => {
-    window.location.href = `tel:+91${SUPPORT_WHATSAPP.replace(/^\+91/, "").replace(/^91/, "")}`;
+    window.location.href = `tel:+91${supportWhatsApp.replace(/^\+91/, "").replace(/^91/, "")}`;
   };
 
   return (
@@ -90,7 +99,7 @@ export default function Support() {
           <div className="text-left">
             <p className="font-black text-base">WhatsApp Support</p>
             <p className="text-white/80 text-sm">Fastest response · Usually within 5 mins</p>
-            <p className="text-white/60 text-xs mt-0.5">+91 {SUPPORT_WHATSAPP.slice(-10)}</p>
+            <p className="text-white/60 text-xs mt-0.5">+91 {supportWhatsApp.slice(-10)}</p>
           </div>
         </button>
 

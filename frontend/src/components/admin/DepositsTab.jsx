@@ -7,13 +7,14 @@ const toImgUrl = (u) => !u ? '' : u.startsWith('http') ? u : `${BACKEND}${u}`;
 
 export default function DepositsTab() {
   const [deposits, setDeposits] = useState([]);
+  const [filter, setFilter] = useState('pending');
   const [zoom, setZoom] = useState(null);
   const [loading, setLoading] = useState(true);
   const token = localStorage.getItem('lcp_token');
 
   const load = useCallback(async () => {
     try {
-      const r = await axios.get(`${BACKEND}/api/admin/deposits/pending`, {
+      const r = await axios.get(`${BACKEND}/api/admin/deposits?status=${filter}`, {
         headers: { Authorization: `Bearer ${token}` },
         withCredentials: true,
       });
@@ -23,11 +24,12 @@ export default function DepositsTab() {
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, [token, filter]);
 
   useEffect(() => {
+    setLoading(true);
     load();
-    const i = setInterval(load, 8000);
+    const i = setInterval(load, 10000);
     return () => clearInterval(i);
   }, [load]);
 
@@ -74,7 +76,7 @@ export default function DepositsTab() {
 
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-2xl font-black text-white">
-          💰 Pending Deposits ({deposits.length})
+          💰 Deposits
         </h2>
         <button
           onClick={load}
@@ -84,12 +86,29 @@ export default function DepositsTab() {
         </button>
       </div>
 
+      {/* Filter buttons */}
+      <div className="flex gap-2 mb-4">
+        {['pending', 'approved', 'rejected'].map(f => (
+          <button
+            key={f}
+            onClick={() => setFilter(f)}
+            className={`px-4 py-2 rounded-xl font-bold text-sm capitalize ${
+              filter === f
+                ? 'bg-red-700 text-white'
+                : 'bg-gray-800 text-gray-400'
+            }`}
+          >
+            {f}
+          </button>
+        ))}
+      </div>
+
       {loading && deposits.length === 0 ? (
         <div className="bg-[#1A1A1A] rounded-2xl p-12 text-center text-gray-400">Loading...</div>
       ) : deposits.length === 0 ? (
         <div className="bg-[#1A1A1A] rounded-2xl p-12 text-center border border-white/10">
-          <p className="text-gray-400 text-lg">No pending deposits</p>
-          <p className="text-sm text-gray-500 mt-2">Auto-refreshes every 8 seconds</p>
+          <p className="text-gray-400 text-lg">No {filter} deposits</p>
+          <p className="text-sm text-gray-500 mt-2">Auto-refreshes every 10 seconds</p>
         </div>
       ) : (
         <div className="space-y-3">
@@ -98,9 +117,14 @@ export default function DepositsTab() {
             const userLabel = d.user_label || d.user?.phone || d.user?.email || 'Unknown';
             const userName = d.user_name || d.user?.name || '';
             const createdAt = d.created_at || d.createdAt;
+            const reviewedAt = d.reviewed_at;
 
             return (
-              <div key={d.id || d._id} className="bg-[#1A1A1A] rounded-2xl border-2 border-yellow-500/50 p-4">
+              <div key={d.id || d._id} className={`bg-[#1A1A1A] rounded-2xl border-2 p-4 ${
+                d.status === 'approved' ? 'border-green-500/50' :
+                d.status === 'rejected' ? 'border-red-500/50' :
+                'border-yellow-500/50'
+              }`}>
                 <div className="flex justify-between items-start mb-3">
                   <div>
                     <p className="text-3xl font-black text-green-400">₹{d.amount}</p>
@@ -109,10 +133,27 @@ export default function DepositsTab() {
                     <p className="text-xs text-gray-500 mt-0.5">
                       {createdAt ? new Date(createdAt).toLocaleString('en-IN') : '—'}
                     </p>
+                    {reviewedAt && (
+                      <p className="text-xs text-gray-600 mt-0.5">
+                        {d.status === 'approved' ? 'Approved' : 'Rejected'}: {new Date(reviewedAt).toLocaleString('en-IN')}
+                      </p>
+                    )}
                   </div>
-                  <span className="bg-yellow-500/20 text-yellow-400 px-3 py-1 rounded-full text-xs font-black h-fit">
-                    PENDING
-                  </span>
+                  {d.status === 'approved' && (
+                    <span className="bg-green-500/20 text-green-400 px-3 py-1 rounded-full text-xs font-black h-fit">
+                      APPROVED
+                    </span>
+                  )}
+                  {d.status === 'rejected' && (
+                    <span className="bg-red-500/20 text-red-400 px-3 py-1 rounded-full text-xs font-black h-fit">
+                      REJECTED
+                    </span>
+                  )}
+                  {d.status === 'pending' && (
+                    <span className="bg-yellow-500/20 text-yellow-400 px-3 py-1 rounded-full text-xs font-black h-fit">
+                      PENDING
+                    </span>
+                  )}
                 </div>
 
                 {imgUrl ? (
@@ -134,20 +175,22 @@ export default function DepositsTab() {
                   </div>
                 )}
 
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => approve(d.id || d._id, d.amount)}
-                    className="flex-1 py-3 bg-green-600 hover:bg-green-700 text-white rounded-xl font-black transition-colors"
-                  >
-                    ✓ Approve
-                  </button>
-                  <button
-                    onClick={() => reject(d.id || d._id)}
-                    className="flex-1 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl font-black transition-colors"
-                  >
-                    ✗ Reject
-                  </button>
-                </div>
+                {d.status === 'pending' && (
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => approve(d.id || d._id, d.amount)}
+                      className="flex-1 py-3 bg-green-600 hover:bg-green-700 text-white rounded-xl font-black transition-colors"
+                    >
+                      ✓ Approve
+                    </button>
+                    <button
+                      onClick={() => reject(d.id || d._id)}
+                      className="flex-1 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl font-black transition-colors"
+                    >
+                      ✗ Reject
+                    </button>
+                  </div>
+                )}
               </div>
             );
           })}

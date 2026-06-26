@@ -151,10 +151,11 @@ export default function MatchRoom() {
 
   const cancelMatch = async (reason) => {
     try {
-      await api.post(`/matches/${id}/cancel`, { reason });
-      toast.success('Battle cancelled — stake refunded.');
+      const r = await api.post(`/matches/${id}/cancel`, { reason });
+      toast.success(r.data?.message || 'Battle cancelled.');
       setShowCancel(false);
       await refresh();
+      await fetchMatch();
     } catch (e) {
       toast.error(e.response?.data?.detail || 'Failed');
     }
@@ -259,6 +260,19 @@ export default function MatchRoom() {
             <p className="text-2xl font-black text-green-600">₹{prizeAmount}</p>
             <p className="text-xs text-gray-400">Entry: ₹{stakeAmount} each</p>
           </div>
+
+          {/* Cancel button for creator while waiting for opponent */}
+          {match.status === 'waiting' && isCreator && (
+            <button
+              onClick={() => {
+                if (!window.confirm('Cancel this battle? Your amount will be refunded.')) return;
+                cancelMatch('Cancelled by creator while waiting');
+              }}
+              className="w-full py-3 mt-3 border-2 border-red-500 text-red-600 rounded-xl font-bold"
+            >
+              Cancel Battle
+            </button>
+          )}
         </div>
 
         {/* DIVIDER */}
@@ -427,6 +441,16 @@ export default function MatchRoom() {
             <h3 className="font-bold text-amber-700 mb-1">⚠️ Dispute Under Review</h3>
             <p className="text-sm text-gray-600">
               Both players submitted conflicting results. Admin will decide within 30 minutes.
+            </p>
+          </div>
+        )}
+
+        {/* Admin Review */}
+        {match.status === 'admin_review' && (
+          <div className="bg-white rounded-2xl shadow border-2 border-orange-300 p-5 mb-3">
+            <h3 className="font-bold text-orange-700 mb-1">🔍 Under Admin Review</h3>
+            <p className="text-sm text-gray-600">
+              Cancellation request submitted. Admin will review and decide the outcome. Please wait.
             </p>
           </div>
         )}

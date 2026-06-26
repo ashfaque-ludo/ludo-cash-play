@@ -101,23 +101,25 @@ router.post("/referral-settings", async (req,res)=>{
 
 // Payment settings (UPI, QR, WhatsApp, email)
 router.get("/payment-settings", async (req,res)=>{
-  const [admin_upi_id, admin_upi_name, admin_qr_image, whatsapp_number, support_email, admin_qr_updated_at] = await Promise.all([
+  const [admin_upi_id, admin_upi_name, admin_qr_image, whatsapp_number, support_email, admin_qr_updated_at, support_whatsapp] = await Promise.all([
     Config.get("admin_upi_id", "ludocashplay@upi"),
     Config.get("admin_upi_name", "Ludo Cash Play"),
     Config.get("admin_qr_image", ""),
     Config.get("whatsapp_number", "919090000000"),
     Config.get("support_email", "support@ludocashplay.in"),
     Config.get("admin_qr_updated_at", null),
+    Config.get("support_whatsapp", "918930988948"),
   ]);
-  res.json({ admin_upi_id, admin_upi_name, admin_qr_image, whatsapp_number, support_email, admin_qr_updated_at });
+  res.json({ admin_upi_id, admin_upi_name, admin_qr_image, whatsapp_number, support_email, admin_qr_updated_at, support_whatsapp });
 });
 router.post("/payment-settings", async (req,res)=>{
-  const { admin_upi_id, admin_upi_name, admin_qr_image, whatsapp_number, support_email } = req.body;
+  const { admin_upi_id, admin_upi_name, admin_qr_image, whatsapp_number, support_email, support_whatsapp } = req.body;
   if (admin_upi_id !== undefined) await Config.set("admin_upi_id", admin_upi_id.trim());
   if (admin_upi_name !== undefined) await Config.set("admin_upi_name", admin_upi_name.trim());
   if (admin_qr_image !== undefined) await Config.set("admin_qr_image", admin_qr_image.trim());
   if (whatsapp_number !== undefined) await Config.set("whatsapp_number", String(whatsapp_number).replace(/\D/g,""));
   if (support_email !== undefined) await Config.set("support_email", support_email.trim().toLowerCase());
+  if (support_whatsapp !== undefined) await Config.set("support_whatsapp", String(support_whatsapp).replace(/\D/g,""));
   await logActivity(req,"payment_settings_updated","",{ admin_upi_id, admin_upi_name });
   res.json({ ok:true });
 });

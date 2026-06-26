@@ -139,6 +139,23 @@ const handleCreate = async (req, res) => {
       await User.findByIdAndUpdate(req.user._id, { $inc: { "wallet.deposit": stakeAmount } });
       return res.status(400).json({ detail: createErr.message });
     }
+    // Auto-cancel if no opponent joins in 3 minutes
+    const matchId = match._id;
+    setTimeout(async () => {
+      try {
+        const m = await Match.findById(matchId);
+        if (m && m.status === "waiting") {
+          await User.findByIdAndUpdate(m.players[0].user, { $inc: { "wallet.deposit": m.stake } });
+          m.status = "cancelled";
+          m.cancel_reason = "No opponent joined in 3 minutes";
+          await m.save();
+          console.log(`[AUTO-CANCEL] Match ${matchId} cancelled - no opponent`);
+        }
+      } catch (err) {
+        console.error("Auto-cancel error:", err);
+      }
+    }, 3 * 60 * 1000);
+
     res.status(201).json({ ok: true, match: serializeMatch(match) });
   } catch (e) { res.status(400).json({ detail: e.message }); }
 };
@@ -173,7 +190,7 @@ router.get("/my/list", async (req, res) => {
   } catch (e) { res.status(500).json({ detail: "Server error." }); }
 });
 
-// POST /matches/:id/cancel — cancel with refund
+// POST /matches/:id/cancel
 router.post("/:id/cancel", async (req, res) => {
   if (!req.user) return res.status(401).json({ detail: "Not authenticated." });
   try {
@@ -181,17 +198,48 @@ router.post("/:id/cancel", async (req, res) => {
     if (!match) return res.status(404).json({ detail: "Not found." });
     const isPlayer = match.players.some(p => p.user.toString() === req.user._id.toString());
     if (!isPlayer) return res.status(403).json({ detail: "Not in this match." });
-    if (!["waiting", "in_progress"].includes(match.status)) return res.status(400).json({ detail: "Cannot cancel in current state." });
-    const isCreator = match.players[0]?.user.toString() === req.user._id.toString();
-    if (match.status === "waiting" && !isCreator) return res.status(403).json({ detail: "Only creator can cancel a waiting match." });
-    match.status = "cancelled";
-    match.cancel_reason = req.body.reason || "";
-    match.cancel_note = req.body.note || req.body.reason || "";
-    await match.save();
-    for (const p of match.players) {
-      await User.findByIdAndUpdate(p.user, { $inc: { "wallet.deposit": match.stake } });
+    const uid = req.user._id.toString();
+
+    // Waiting (open) — only creator can cancel, refund creator
+    if (match.status === "waiting") {
+      const isCreator = match.players[0]?.user.toString() === uid;
+      if (!isCreator) return res.status(403).json({ detail: "Only creator can cancel a waiting match." });
+      match.status = "cancelled";
+      match.cancel_reason = req.body.reason || "Cancelled by creator";
+      await match.save();
+      await User.findByIdAndUpdate(match.players[0].user, { $inc: { "wallet.deposit": match.stake } });
+      return res.json({ ok: true, message: "Battle cancelled. Amount refunded." });
     }
-    res.json({ ok: true, match: serializeMatch(match) });
+
+    // In progress or matched — track who cancelled
+    if (["in_progress", "matched"].includes(match.status)) {
+      if (!match.cancel_requests) match.cancel_requests = [];
+      const alreadyCancelled = match.cancel_requests.some(id => id.toString() === uid);
+      if (!alreadyCancelled) match.cancel_requests.push(req.user._id);
+
+      const p1 = match.players[0]?.user.toString();
+      const p2 = match.players[1]?.user.toString();
+      const bothCancelled = p1 && p2 &&
+        match.cancel_requests.some(id => id.toString() === p1) &&
+        match.cancel_requests.some(id => id.toString() === p2);
+
+      if (bothCancelled) {
+        match.status = "cancelled";
+        match.cancel_reason = "Both players cancelled";
+        await match.save();
+        if (match.players[0]) await User.findByIdAndUpdate(match.players[0].user, { $inc: { "wallet.deposit": match.stake } });
+        if (match.players[1]) await User.findByIdAndUpdate(match.players[1].user, { $inc: { "wallet.deposit": match.stake } });
+        return res.json({ ok: true, message: "Both cancelled. Amount refunded to both." });
+      } else {
+        match.status = "admin_review";
+        match.cancel_reason = req.body.reason || "Cancelled by player";
+        match.cancelled_by = req.user._id;
+        await match.save();
+        return res.json({ ok: true, message: "Cancellation submitted. Admin will review." });
+      }
+    }
+
+    return res.status(400).json({ detail: "Cannot cancel at this stage." });
   } catch (e) { res.status(500).json({ detail: "Server error." }); }
 });
 
