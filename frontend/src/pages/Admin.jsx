@@ -129,6 +129,25 @@ function UsersTab({ actor }) {
   };
   useEffect(()=>{ load(); /* eslint-disable-line */ }, []);
 
+  const freezeWallet = async (u) => {
+    const reason = prompt(`Reason for freezing ${u.name || u.phone}'s wallet:`);
+    if (!reason) return;
+    try {
+      await api.post(`/admin/users/${u.id}/freeze-wallet`, { reason });
+      toast.success("Wallet frozen");
+      load();
+    } catch (e) { toast.error(formatApiError(e.response?.data?.detail) || e.message); }
+  };
+
+  const unfreezeWallet = async (u) => {
+    if (!window.confirm(`Unfreeze wallet for ${u.name || u.phone}?`)) return;
+    try {
+      await api.post(`/admin/users/${u.id}/unfreeze-wallet`);
+      toast.success("Wallet unfrozen");
+      load();
+    } catch (e) { toast.error(formatApiError(e.response?.data?.detail) || e.message); }
+  };
+
   return (
     <Card className="bg-white border-gray-200 shadow-sm text-gray-900 mt-5">
       <CardHeader className="flex flex-row gap-2 items-center">
@@ -160,12 +179,20 @@ function UsersTab({ actor }) {
                   <TableCell className="text-gray-400">{u.email}</TableCell>
                   <TableCell><Badge variant="outline" className="border-purple-500/30 text-red-700">{u.role}</Badge></TableCell>
                   <TableCell>{fmtINR(total)}</TableCell>
-                  <TableCell>{u.banned ? <Badge variant="destructive">Banned</Badge> : <Badge variant="outline" className="border-emerald-500/30 text-emerald-300">Active</Badge>}</TableCell>
+                  <TableCell>
+                    {u.banned ? <Badge variant="destructive">Banned</Badge> : <Badge variant="outline" className="border-emerald-500/30 text-emerald-300">Active</Badge>}
+                    {u.wallet_frozen && <Badge className="ml-1 bg-blue-500/20 text-blue-400 border border-blue-500/30 text-[10px]">Frozen</Badge>}
+                  </TableCell>
                   <TableCell className="space-x-1">
                     <Button size="sm" variant="outline" className="rounded-full border-gray-300 bg-gray-100 text-gray-700" onClick={()=>setEditUser(u)} data-testid={`edit-${u.email}`}>Edit</Button>
                     <Button size="sm" variant="outline" className="rounded-full border-gray-300 bg-gray-100 text-gray-700" onClick={()=>setPwUser(u)} data-testid={`pw-${u.email}`}><KeyRound className="w-3 h-3" /></Button>
                     {actor.role === "super_admin" && (
                       <Button size="sm" variant="outline" className="rounded-full border-amber-500/30 bg-amber-500/10 text-amber-300" onClick={()=>setWalletUser(u)} data-testid={`wallet-${u.email}`}><WalletIcon className="w-3 h-3" /></Button>
+                    )}
+                    {u.wallet_frozen ? (
+                      <Button size="sm" variant="outline" className="rounded-full border-emerald-500/30 bg-emerald-500/10 text-emerald-400" onClick={()=>unfreezeWallet(u)}>Unfreeze</Button>
+                    ) : (
+                      <Button size="sm" variant="outline" className="rounded-full border-red-500/30 bg-red-500/10 text-red-400" onClick={()=>freezeWallet(u)}>Freeze</Button>
                     )}
                   </TableCell>
                 </TableRow>

@@ -37,6 +37,28 @@ router.post("/:id/wallet", async (req,res)=>{
     res.json({ok:true,wallet:target.wallet});
   }catch(e){res.status(500).json({detail:"Server error."});}
 });
+router.post("/:id/freeze-wallet", async (req,res)=>{
+  try{
+    const user=await User.findById(req.params.id);
+    if(!user) return res.status(404).json({detail:"User not found."});
+    user.wallet_frozen=true;
+    user.wallet_frozen_reason=req.body.reason||"Frozen by admin";
+    await user.save();
+    await logActivity(req,"wallet_frozen",user.email||user.phone||"",{reason:user.wallet_frozen_reason});
+    res.json({ok:true,message:"Wallet frozen"});
+  }catch(e){res.status(500).json({detail:"Server error."});}
+});
+router.post("/:id/unfreeze-wallet", async (req,res)=>{
+  try{
+    const user=await User.findById(req.params.id);
+    if(!user) return res.status(404).json({detail:"User not found."});
+    user.wallet_frozen=false;
+    user.wallet_frozen_reason="";
+    await user.save();
+    await logActivity(req,"wallet_unfrozen",user.email||user.phone||"",{});
+    res.json({ok:true,message:"Wallet unfrozen"});
+  }catch(e){res.status(500).json({detail:"Server error."});}
+});
 router.post("/:id/reset-password", async (req,res)=>{
   try{
     const {new_password}=req.body;

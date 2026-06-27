@@ -100,6 +100,10 @@ router.get("/tables", async (req, res) => {
 const handleCreate = async (req, res) => {
   if (!req.user) return res.status(401).json({ detail: "Not authenticated." });
   try {
+    const userCheck = await User.findById(req.user._id);
+    if (userCheck && userCheck.wallet_frozen) {
+      return res.status(403).json({ detail: "Your wallet is frozen. Contact support." });
+    }
     const PCT = await getPCT();
     const { stake, custom_stake } = req.body;
     const isCustom = !!custom_stake;

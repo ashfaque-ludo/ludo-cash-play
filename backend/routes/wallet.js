@@ -174,6 +174,10 @@ router.post("/withdraw", async (req, res) => {
 
     const user = await User.findById(req.user._id);
 
+    if (user.wallet_frozen) {
+      return res.status(403).json({ detail: 'Your wallet is frozen. Contact support.' });
+    }
+
     const withdrawable = (user.wallet.winning || 0) + (user.wallet.referral || 0);
     if (withdrawable < amount)
       return res.status(400).json({ detail: `Insufficient balance. Withdrawable: ₹${withdrawable}.` });

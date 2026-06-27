@@ -135,6 +135,17 @@ function BattleHub({ user }) {
     finally { setBusy(false); }
   };
 
+  const cancelMyBattle = async (matchId) => {
+    if (!window.confirm('Cancel? Amount will be refunded.')) return;
+    try {
+      await api.post(`/matches/${matchId}/cancel`, { reason: 'Cancelled by creator' });
+      toast.success('Cancelled. Amount refunded.');
+      load();
+    } catch (e) {
+      toast.error(formatApiError(e.response?.data?.detail) || 'Failed');
+    }
+  };
+
   const openBattles = matches.filter(m => m.status === "waiting");
   const runningBattles = matches.filter(m => user && m.player_ids?.includes(user.id) && ["in_progress","awaiting_review"].includes(m.status));
 
@@ -199,9 +210,17 @@ function BattleHub({ user }) {
                   <div className="text-xs text-gray-400">by {b.creator_name}</div>
                 </div>
                 {b.creator_id === user.id ? (
-                  <span className="px-4 py-2 bg-gray-100 text-gray-500 rounded-xl font-bold text-xs">
-                    Waiting...
-                  </span>
+                  <div className="flex flex-col gap-1.5 items-end">
+                    <span className="px-4 py-2 bg-gray-100 text-gray-500 rounded-xl font-bold text-xs">
+                      Waiting...
+                    </span>
+                    <button
+                      onClick={() => cancelMyBattle(b.id || b._id)}
+                      className="text-red-600 border border-red-400 rounded-lg px-3 py-1 text-xs font-semibold"
+                    >
+                      Cancel
+                    </button>
+                  </div>
                 ) : (
                   <button
                     onClick={() => joinMatch(b.id || b._id)}
