@@ -28,6 +28,7 @@ const schema = new mongoose.Schema({
   cancel_reason:    { type: String, default: "" },
   cancel_requests:  [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
   cancelled_by:     { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
+  admin_resolved:   { type: Boolean, default: false },
   room_code:     { type: String, default: null },
   room_password: { type: String, default: "" },
   started_at:    { type: Date, default: null },

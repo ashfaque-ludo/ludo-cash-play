@@ -385,6 +385,15 @@ function DepositPage({ onBack }) {
         </button>
       </div>
 
+      <div className="bg-yellow-50 border-2 border-yellow-400 rounded-xl p-4">
+        <p className="font-semibold text-sm text-gray-900 mb-2">⚠️ जरूरी जानकारी पढ़ें:</p>
+        <ul className="text-sm text-gray-800 space-y-1">
+          <li>✅ आप जिस नाम से <strong>KYC</strong> कर रखे हैं, उसी नाम से deposit करें।</li>
+          <li>⏱️ QR code generate होने के बाद <strong>3 मिनट के अंदर</strong> payment करें।</li>
+          <li>📱 <strong>₹2000 से ज़्यादा</strong> के लिए दूसरे फ़ोन से scan करें या UPI ID से payment करें।</li>
+          <li>💳 UPI ID से <strong>कितनी भी राशि</strong> payment कर सकते हैं।</li>
+        </ul>
+      </div>
       <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 text-sm text-blue-800">
         ℹ️ Scan admin QR → Pay → Upload screenshot → Admin verifies in 5–30 min
       </div>

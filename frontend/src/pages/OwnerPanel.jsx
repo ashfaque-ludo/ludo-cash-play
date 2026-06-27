@@ -13,6 +13,7 @@ import DepositsTab from "@/components/admin/DepositsTab";
 const TABS = [
   { id: "dashboard", label: "Dashboard", icon: BarChart3 },
   { id: "deposits", label: "💰 Deposits", icon: CreditCard },
+  { id: "matches", label: "⚔️ Matches", icon: Activity },
   { id: "admins", label: "Admin Management", icon: Users },
   { id: "settings", label: "Platform Settings", icon: Settings },
   { id: "payment", label: "Payment QR", icon: CreditCard },
@@ -78,6 +79,7 @@ export default function OwnerPanel() {
         {/* Tab content */}
         {activeTab === "dashboard" && <DashboardTab />}
         {activeTab === "deposits" && <DepositsTab />}
+        {activeTab === "matches" && <OwnerMatchesTab />}
         {activeTab === "admins" && <AdminsTab />}
         {activeTab === "settings" && <SettingsTab />}
         {activeTab === "payment" && <PaymentQRTab />}
@@ -562,6 +564,154 @@ function UsersTab() {
           <span className="px-4 py-2 text-slate-400 text-sm">Page {page}</span>
           <button disabled={page * 50 >= total} onClick={() => setPage(p => p + 1)}
             className="px-4 py-2 rounded-xl bg-slate-700 text-white text-sm disabled:opacity-40">Next</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ─── Matches Tab ─── */
+function OwnerMatchesTab() {
+  const [rows, setRows] = useState([]);
+  const [status, setStatus] = useState("admin_review");
+  const [loading, setLoading] = useState(false);
+  const [zoomedUrl, setZoomedUrl] = useState(null);
+  const BACKEND = process.env.REACT_APP_BACKEND_URL || "";
+  const toAbsUrl = (u) => !u ? "" : (u.startsWith("http") || u.startsWith("data:")) ? u : `${BACKEND}${u}`;
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const r = await api.get(`/admin/matches${status && status !== "any" ? `?status=${status}` : ""}`);
+      setRows(r.data.matches || []);
+    } catch { toast.error("Failed to load matches"); }
+    finally { setLoading(false); }
+  }, [status]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const resolve = async (m, winner) => {
+    const p1name = (m.players || [])[0]?.name || "Player 1";
+    const p2name = (m.players || [])[1]?.name || "Player 2";
+    const labels = { player1: p1name, player2: p2name, both: "Both (Refund)" };
+    if (!window.confirm(`Give to: ${labels[winner]}?`)) return;
+    try {
+      await api.post(`/admin/matches/${m.id}/resolve`, { winner });
+      toast.success("Resolved!");
+      load();
+    } catch (e) { toast.error(formatApiError(e.response?.data?.detail) || e.message); }
+  };
+
+  const decide = async (m, winner_id, cancel) => {
+    try {
+      await api.post(`/admin/matches/${m.id}/decide`, { winner_id, cancel });
+      toast.success("Done");
+      load();
+    } catch (e) { toast.error(formatApiError(e.response?.data?.detail) || e.message); }
+  };
+
+  const FILTERS = ["admin_review", "in_progress", "awaiting_review", "disputed", "ended", "cancelled", "any"];
+
+  return (
+    <div className="space-y-4 mt-2">
+      {zoomedUrl && (
+        <div onClick={() => setZoomedUrl(null)} className="fixed inset-0 bg-black/95 flex items-center justify-center z-50 cursor-zoom-out p-4">
+          <img src={zoomedUrl} alt="Screenshot" className="max-w-[95vw] max-h-[90vh] rounded-xl object-contain" />
+          <button onClick={() => setZoomedUrl(null)} className="fixed top-5 right-5 bg-white/10 rounded-full w-9 h-9 grid place-items-center text-white text-lg">✕</button>
+        </div>
+      )}
+
+      {/* Filters */}
+      <div className="flex gap-1.5 flex-wrap">
+        {FILTERS.map(s => (
+          <button key={s} onClick={() => setStatus(s)}
+            className={`px-3 py-1.5 rounded-full text-xs font-bold capitalize transition-all border ${
+              status === s
+                ? "bg-gradient-to-r from-yellow-500 to-orange-500 text-black border-transparent"
+                : "bg-[#1A1A1A] border-white/10 text-slate-400 hover:text-white"
+            }`}>
+            {s === "admin_review" ? "⚠️ Review" : s}
+          </button>
+        ))}
+        <button onClick={load} className="px-3 py-1.5 rounded-full text-xs font-bold bg-[#1A1A1A] border border-white/10 text-slate-400 hover:text-white">
+          Refresh
+        </button>
+      </div>
+
+      {loading ? <LoadingCard /> : rows.length === 0 ? (
+        <div className="text-center text-slate-500 py-12">No matches found.</div>
+      ) : (
+        <div className="space-y-4">
+          {rows.map(m => {
+            const p1 = (m.players || [])[0];
+            const p2 = (m.players || [])[1];
+            const p1ss = toAbsUrl(p1?.result_screenshot);
+            const p2ss = toAbsUrl(p2?.result_screenshot);
+            const isReview = m.status === "admin_review";
+            return (
+              <div key={m.id} className={`rounded-2xl border p-4 ${isReview ? "border-yellow-500/50 bg-yellow-500/5" : "border-white/10 bg-[#1A1A1A]"}`}>
+                {/* Header */}
+                <div className="flex justify-between items-start flex-wrap gap-2 mb-3">
+                  <div>
+                    <p className="font-black text-lg">{fmtINR(m.stake)} <span className="text-yellow-400">→ {fmtINR(m.prize_pool)}</span></p>
+                    <p className="text-sm text-slate-400">{p1?.name || "P1"} vs {p2?.name || "P2"}</p>
+                    <p className="text-xs text-slate-500">{new Date(m.created_at).toLocaleString("en-IN")}</p>
+                  </div>
+                  <span className={`px-3 py-1 rounded-full text-xs font-black uppercase ${isReview ? "bg-yellow-500/20 text-yellow-400" : "bg-slate-700 text-slate-300"}`}>{m.status}</span>
+                </div>
+
+                {/* Room Code */}
+                <div className="bg-black/30 rounded-xl px-4 py-2 mb-3 flex items-center gap-3">
+                  <span className="text-xs text-slate-500 shrink-0">Room Code:</span>
+                  <span className={`font-black text-xl tracking-widest ${m.room_code ? "text-green-400" : "text-slate-600"}`}>{m.room_code || "Not set"}</span>
+                </div>
+
+                {/* Player results + screenshots */}
+                <div className="grid grid-cols-2 gap-3 mb-3">
+                  {[{ p: p1, ss: p1ss, label: "P1" }, { p: p2, ss: p2ss, label: "P2" }].map(({ p, ss, label }) => (
+                    <div key={label} className="bg-black/20 rounded-xl p-2">
+                      <p className="text-xs text-slate-500 mb-0.5">{label} – {(p?.name || "?").slice(0, 10)}</p>
+                      <p className={`font-bold text-sm ${p?.result_claim === "won" ? "text-green-400" : p?.result_claim === "lost" ? "text-red-400" : "text-slate-500"}`}>
+                        {p?.result_claim || "Pending"}
+                      </p>
+                      {ss && (
+                        <button onClick={() => setZoomedUrl(ss)} className="mt-1.5 block">
+                          <img src={ss} alt={label} className="w-16 h-16 object-cover rounded-lg border border-white/10" onError={e => { e.target.style.display = "none"; }} />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Cancel reason */}
+                {m.cancel_reason && (
+                  <div className="bg-orange-500/10 border border-orange-500/20 rounded-lg px-3 py-2 mb-3">
+                    <p className="text-xs text-orange-400">Reason: {m.cancel_reason}</p>
+                  </div>
+                )}
+
+                {/* Action buttons */}
+                {!["ended", "cancelled"].includes(m.status) && (
+                  <div className="flex gap-2 flex-wrap">
+                    {isReview ? (
+                      <>
+                        <button onClick={() => resolve(m, "player1")} className="px-4 py-2 rounded-xl bg-blue-600 text-white font-bold text-sm">Give P1</button>
+                        <button onClick={() => resolve(m, "player2")} className="px-4 py-2 rounded-xl bg-purple-600 text-white font-bold text-sm">Give P2</button>
+                        <button onClick={() => resolve(m, "both")} className="px-4 py-2 rounded-xl bg-green-700 text-white font-bold text-sm">Refund Both</button>
+                      </>
+                    ) : (
+                      <>
+                        {(m.players || []).map(p => (
+                          <button key={p.id} onClick={() => decide(m, p.id, false)} className="px-4 py-2 rounded-xl bg-[#C62828] text-white font-bold text-sm">{p.name} won</button>
+                        ))}
+                        <button onClick={() => decide(m, null, true)} className="px-4 py-2 rounded-xl bg-slate-600 text-white font-bold text-sm">Cancel</button>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
     </div>

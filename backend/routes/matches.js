@@ -104,6 +104,15 @@ const handleCreate = async (req, res) => {
     if (userCheck && userCheck.wallet_frozen) {
       return res.status(403).json({ detail: "Your wallet is frozen. Contact support." });
     }
+    const openCount = await Match.countDocuments({
+      "players.0.user": req.user._id,
+      status: "waiting",
+    });
+    if (openCount >= 2) {
+      return res.status(400).json({
+        detail: "आप एक समय में अधिकतम 2 battle create कर सकते हैं।",
+      });
+    }
     const PCT = await getPCT();
     const { stake, custom_stake } = req.body;
     const isCustom = !!custom_stake;

@@ -293,10 +293,15 @@ export default function MatchRoom() {
 
                 <button
                   onClick={() => {
-                    window.location.href = 'ludoking://';
-                    setTimeout(() => {
-                      window.open('https://play.google.com/store/apps/details?id=com.ludo.king', '_blank');
-                    }, 1500);
+                    const isAndroid = /Android/.test(navigator.userAgent);
+                    if (isAndroid) {
+                      window.location.href = 'intent://ludoking.com/#Intent;scheme=https;package=com.ludo.king;end';
+                      setTimeout(() => {
+                        window.open('https://play.google.com/store/apps/details?id=com.ludo.king', '_blank');
+                      }, 2000);
+                    } else {
+                      window.open('https://ludoking.com', '_blank');
+                    }
                   }}
                   className="w-full py-3 mb-2 bg-gradient-to-r from-green-700 to-green-900 text-white rounded-xl font-bold text-base shadow flex items-center justify-center gap-2"
                 >
@@ -360,10 +365,15 @@ export default function MatchRoom() {
             {/* Play button — opens Ludo King for both players */}
             <button
               onClick={() => {
-                window.location.href = 'ludoking://';
-                setTimeout(() => {
-                  window.open('https://play.google.com/store/apps/details?id=com.ludo.king', '_blank');
-                }, 1500);
+                const isAndroid = /Android/.test(navigator.userAgent);
+                if (isAndroid) {
+                  window.location.href = 'intent://ludoking.com/#Intent;scheme=https;package=com.ludo.king;end';
+                  setTimeout(() => {
+                    window.open('https://play.google.com/store/apps/details?id=com.ludo.king', '_blank');
+                  }, 2000);
+                } else {
+                  window.open('https://ludoking.com', '_blank');
+                }
               }}
               className="w-full py-3 bg-gradient-to-r from-red-700 to-black text-white rounded-xl font-bold mb-3"
             >
