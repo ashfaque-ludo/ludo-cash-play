@@ -27,7 +27,7 @@ const getStats = async (req, res) => {
 
     res.json({
       code: user.referral_code,
-      referral_link: `https://ludocashplay.in/login/${user.referral_code}`,
+      referral_link: `https://myakadda.com/login/${user.referral_code}`,
       total_referrals: refs.length,
       referred_count: refs.length,
       total_earned,

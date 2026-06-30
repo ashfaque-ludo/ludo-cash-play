@@ -33,6 +33,8 @@ const ALLOWED_ORIGINS = [
   "https://ludo-cash-play-frontend-ashfaque-s-projects1.vercel.app",
   "https://ludocashplay.in",
   "https://www.ludocashplay.in",
+  "https://myakadda.com",
+  "https://www.myakadda.com",
   "http://localhost:3000",
   "http://localhost:3001",
 ];

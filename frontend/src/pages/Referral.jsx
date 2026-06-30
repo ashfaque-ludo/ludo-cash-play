@@ -24,7 +24,7 @@ export default function Referral() {
   if (!user || user === false) return null;
 
   const code = stats?.code || user?.referral_code || "";
-  const shareUrl = `https://ludocashplay.in/login/${code}`;
+  const shareUrl = `${window.location.origin}/login/${code}`;
   const shareMessage = `🎮 Play Ludo and Win Cash Daily!\n⚡ 24x7 Live Support\n💰 Commission Charge 5%\n🎁 Referral Bonus 1% on All Games\n⚡ Instant Withdrawal Via UPI/Bank\n${shareUrl}\n\nRegister Now, My refer code is ${code}`;
 
   const copyCode = () => {
