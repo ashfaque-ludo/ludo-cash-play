@@ -12,7 +12,7 @@ We are a registered gaming company operating under the laws of India. Skill-base
 Our Mission: To provide a fair, transparent, and entertaining real-money gaming experience to players across India.
 
 Contact:
-Email: support@ludocashplay.in
+Email: support@myakadda.com
 WhatsApp: +91 8930988948
 Available: 24x7 Live Support`,
   },
@@ -81,7 +81,7 @@ COOKIES
 • No third-party tracking cookies are used.
 
 CONTACT
-For privacy concerns: support@ludocashplay.in`,
+For privacy concerns: support@myakadda.com`,
   },
   refund: {
     title: "Refund Policy",
@@ -101,7 +101,7 @@ NON-REFUNDABLE ITEMS
 
 HOW TO RAISE A REFUND REQUEST
 • Contact us on WhatsApp: +91 8930988948
-• Email: support@ludocashplay.in
+• Email: support@myakadda.com
 • Include: Transaction ID, amount, date
 • Resolution time: 24-48 hours
 

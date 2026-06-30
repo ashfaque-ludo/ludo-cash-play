@@ -838,7 +838,7 @@ function PaymentQRTab() {
           { key: "admin_upi_id", label: "UPI ID", placeholder: "yourname@upi" },
           { key: "admin_upi_name", label: "Merchant Name", placeholder: "Ludo Cash Play" },
           { key: "whatsapp_number", label: "WhatsApp (with country code)", placeholder: "919876543210" },
-          { key: "support_email", label: "Support Email", placeholder: "support@ludocashplay.in" },
+          { key: "support_email", label: "Support Email", placeholder: "support@myakadda.com" },
         ].map(({ key, label, placeholder }) => (
           <div key={key}>
             <label className="text-xs text-slate-400 block mb-1">{label}</label>

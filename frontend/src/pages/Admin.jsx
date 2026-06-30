@@ -1629,7 +1629,7 @@ function PaymentSettingsTab() {
             </div>
             <div>
               <Label className="text-xs text-gray-400">Support Email</Label>
-              <Input {...f("support_email")} type="email" placeholder="support@ludocashplay.in" className="bg-gray-50 border-gray-300 text-gray-900 mt-1" />
+              <Input {...f("support_email")} type="email" placeholder="support@myakadda.com" className="bg-gray-50 border-gray-300 text-gray-900 mt-1" />
             </div>
             <div>
               <Label className="text-xs text-gray-400">Support WhatsApp Number</Label>

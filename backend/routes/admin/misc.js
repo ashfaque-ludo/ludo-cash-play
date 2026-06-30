@@ -106,7 +106,7 @@ router.get("/payment-settings", async (req,res)=>{
     Config.get("admin_upi_name", "Ludo Cash Play"),
     Config.get("admin_qr_image", ""),
     Config.get("whatsapp_number", "919090000000"),
-    Config.get("support_email", "support@ludocashplay.in"),
+    Config.get("support_email", "support@myakadda.com"),
     Config.get("admin_qr_updated_at", null),
     Config.get("support_whatsapp", "918930988948"),
   ]);
