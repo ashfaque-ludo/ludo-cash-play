@@ -31,8 +31,6 @@ app.set("trust proxy",1);
 const ALLOWED_ORIGINS = [
   "https://ludo-cash-play-frontend.vercel.app",
   "https://ludo-cash-play-frontend-ashfaque-s-projects1.vercel.app",
-  "https://ludocashplay.in",
-  "https://www.ludocashplay.in",
   "https://myakadda.com",
   "https://www.myakadda.com",
   "http://localhost:3000",
