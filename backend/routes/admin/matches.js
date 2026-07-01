@@ -3,6 +3,7 @@ const Match=require("../../models/Match");
 const User=require("../../models/User");
 const Transaction=require("../../models/Transaction");
 const {logActivity}=require("../../middleware/activityLogger");
+const {payReferralBonus}=require("../../utils/referral");
 
 // GET /api/admin/matches?status=...
 // status=pending → shows admin_review + awaiting_review + disputed together
@@ -37,9 +38,10 @@ router.post("/:id/decide", async (req,res)=>{
       match.decided_by=req.user._id; match.decided_at=new Date(); match.admin_resolved=true;
       await match.save();
       await User.findByIdAndUpdate(ws.user,{$inc:{"wallet.winning":match.prize_pool}});
-      // Record transactions so history is populated
       await Transaction.create({user:ws.user,user_phone:"",type:"match_win",amount:match.prize_pool,status:"completed",description:`Won ₹${match.prize_pool} battle (admin approved)`,meta:{match:match._id,stake:match.stake}}).catch(()=>{});
       if(ls) await Transaction.create({user:ls.user,user_phone:"",type:"match_loss",amount:-match.stake,status:"completed",description:`Lost ₹${match.stake} battle`,meta:{match:match._id,stake:match.stake}}).catch(()=>{});
+      await payReferralBonus(ws.user,match.stake,match._id);
+      if(ls) await payReferralBonus(ls.user,match.stake,match._id);
       await logActivity(req,"match_decided",match._id.toString(),{winner:ws.email,prize:match.prize_pool});
     }
     res.json({ok:true});
@@ -63,6 +65,8 @@ router.post("/:id/resolve", async (req,res)=>{
       await User.findByIdAndUpdate(p.user,{$inc:{"wallet.winning":match.prize_pool}});
       await Transaction.create({user:p.user,user_phone:"",type:"match_win",amount:match.prize_pool,status:"completed",description:`Won ₹${match.prize_pool} battle (admin resolved)`,meta:{match:match._id,stake:match.stake}}).catch(()=>{});
       if(l) await Transaction.create({user:l.user,user_phone:"",type:"match_loss",amount:-match.stake,status:"completed",description:`Lost ₹${match.stake} battle`,meta:{match:match._id,stake:match.stake}}).catch(()=>{});
+      await payReferralBonus(p.user,match.stake,match._id);
+      if(l) await payReferralBonus(l.user,match.stake,match._id);
       await logActivity(req,"match_resolved_p1",match._id.toString(),{prize:match.prize_pool});
     } else if(winner==="player2"){
       const p=match.players[1];
@@ -74,6 +78,8 @@ router.post("/:id/resolve", async (req,res)=>{
       await User.findByIdAndUpdate(p.user,{$inc:{"wallet.winning":match.prize_pool}});
       await Transaction.create({user:p.user,user_phone:"",type:"match_win",amount:match.prize_pool,status:"completed",description:`Won ₹${match.prize_pool} battle (admin resolved)`,meta:{match:match._id,stake:match.stake}}).catch(()=>{});
       if(l) await Transaction.create({user:l.user,user_phone:"",type:"match_loss",amount:-match.stake,status:"completed",description:`Lost ₹${match.stake} battle`,meta:{match:match._id,stake:match.stake}}).catch(()=>{});
+      await payReferralBonus(p.user,match.stake,match._id);
+      if(l) await payReferralBonus(l.user,match.stake,match._id);
       await logActivity(req,"match_resolved_p2",match._id.toString(),{prize:match.prize_pool});
     } else if(winner==="both"){
       match.status="cancelled"; match.decided_by=req.user._id; match.decided_at=new Date(); match.admin_resolved=true;

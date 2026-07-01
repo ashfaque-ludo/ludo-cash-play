@@ -413,7 +413,11 @@ export default function MatchRoom() {
                 <p className={`text-2xl font-black ${myResult.result === 'won' ? 'text-green-600' : 'text-red-600'}`}>
                   {myResult.result === 'won' ? '🏆 WON' : '💔 LOST'}
                 </p>
-                <p className="text-xs text-gray-400 mt-2">Waiting for opponent's result...</p>
+                <p className="text-xs text-gray-400 mt-2">
+                  {Object.keys(match.results || {}).length >= 2
+                    ? 'Both results received — admin will verify and credit the winner.'
+                    : 'Waiting for opponent\'s result...'}
+                </p>
               </div>
             )}
           </div>
@@ -445,12 +449,33 @@ export default function MatchRoom() {
           </div>
         )}
 
+        {/* Awaiting review — one or both submitted, admin will decide */}
+        {match.status === 'awaiting_review' && (
+          <div className="bg-white rounded-2xl shadow border-2 border-blue-300 p-5 mb-3">
+            {Object.keys(match.results || {}).length >= 2 ? (
+              <>
+                <h3 className="font-bold text-blue-700 mb-1">⏳ Admin Reviewing Results</h3>
+                <p className="text-sm text-gray-600">
+                  Both results received. Admin will verify the screenshots and credit the winner within 30 minutes. Your entry fee is held safely.
+                </p>
+              </>
+            ) : (
+              <>
+                <h3 className="font-bold text-blue-700 mb-1">⏳ Waiting for Opponent</h3>
+                <p className="text-sm text-gray-600">
+                  Your result was submitted. Waiting for your opponent to submit their result.
+                </p>
+              </>
+            )}
+          </div>
+        )}
+
         {/* Disputed */}
         {match.status === 'disputed' && (
           <div className="bg-white rounded-2xl shadow border-2 border-amber-300 p-5 mb-3">
             <h3 className="font-bold text-amber-700 mb-1">⚠️ Dispute Under Review</h3>
             <p className="text-sm text-gray-600">
-              Both players submitted conflicting results. Admin will decide within 30 minutes.
+              Both players submitted conflicting results. Admin will review the screenshots and decide within 30 minutes. Entry fee is held safely.
             </p>
           </div>
         )}

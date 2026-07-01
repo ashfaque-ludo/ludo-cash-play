@@ -208,6 +208,27 @@ router.post("/:id/join", async (req, res) => {
       meta: { match: match._id, stake: match.stake },
     }).catch(() => {});
 
+    // Auto-cancel if both players never submit a result within 2 hours (match never played)
+    const startedId = match._id;
+    setTimeout(async () => {
+      try {
+        const m = await Match.findById(startedId);
+        if (!m || m.status !== "in_progress") return;
+        const anyResult = m.players.some(p => p.result_claim != null);
+        if (!anyResult) {
+          m.status = "cancelled";
+          m.cancel_reason = "Auto-cancelled: no result submitted within 2 hours";
+          await m.save();
+          for (const p of m.players) {
+            await User.findByIdAndUpdate(p.user, { $inc: { "wallet.deposit": m.stake } });
+          }
+          console.log(`[AUTO-CANCEL] Match ${startedId} refunded after 2h inactivity`);
+        }
+      } catch (err) {
+        console.error("2h auto-cancel error:", err.message);
+      }
+    }, 2 * 60 * 60 * 1000);
+
     res.json({ ok: true, match: serializeMatch(match) });
   } catch (e) { res.status(400).json({ detail: e.message }); }
 });
@@ -295,13 +316,33 @@ router.post("/:id/submit-result", async (req, res) => {
     if (idx === -1) return res.status(403).json({ detail: "Not a player." });
 
     if (result === "cancel") {
-      match.status = "cancelled";
-      match.cancel_note = note || "";
-      await match.save();
-      for (const p of match.players) {
-        await User.findByIdAndUpdate(p.user, { $inc: { "wallet.deposit": match.stake } });
+      // Track who wants to cancel — need BOTH players to agree for immediate refund
+      if (!match.cancel_requests) match.cancel_requests = [];
+      const uid = req.user._id.toString();
+      if (!match.cancel_requests.some(id => id.toString() === uid)) {
+        match.cancel_requests.push(req.user._id);
       }
-      return res.json({ ok: true, auto_resolved: true, cancelled: true, match: serializeMatch(match) });
+      const p1id = match.players[0]?.user.toString();
+      const p2id = match.players[1]?.user.toString();
+      const bothWantCancel = p1id && p2id &&
+        match.cancel_requests.some(id => id.toString() === p1id) &&
+        match.cancel_requests.some(id => id.toString() === p2id);
+      if (bothWantCancel) {
+        match.status = "cancelled";
+        match.cancel_note = note || "";
+        await match.save();
+        for (const p of match.players) {
+          await User.findByIdAndUpdate(p.user, { $inc: { "wallet.deposit": match.stake } });
+        }
+        return res.json({ ok: true, auto_resolved: true, cancelled: true, match: serializeMatch(match) });
+      } else {
+        // One player wants to cancel — admin decides
+        match.status = "admin_review";
+        match.cancel_note = note || "";
+        match.cancelled_by = req.user._id;
+        await match.save();
+        return res.json({ ok: true, auto_resolved: false, cancelled: false, status: "admin_review", match: serializeMatch(match) });
+      }
     }
 
     match.players[idx].result_screenshot = screenshotData;
@@ -312,38 +353,12 @@ router.post("/:id/submit-result", async (req, res) => {
     if (both) {
       const allWin = match.players.every(p => p.claimed_win === true);
       const allLose = match.players.every(p => p.claimed_win === false);
-      if (allWin || allLose) {
-        match.status = "disputed";
-        await match.save();
-        return res.json({ ok: true, auto_resolved: false, status: "disputed", match: serializeMatch(match) });
-      }
-      const w = match.players.find(p => p.claimed_win === true);
-      const l = match.players.find(p => p.claimed_win === false);
-      match.winner = w.user;
-      match.status = "ended";
-      match.ended_at = new Date();
+      // Both submitted — ALWAYS require admin approval. Never auto-credit.
+      // disputed = both claim same outcome (admin must investigate screenshots)
+      // awaiting_review = one won + one lost (admin confirms before crediting winner)
+      match.status = (allWin || allLose) ? "disputed" : "awaiting_review";
       await match.save();
-      await User.findByIdAndUpdate(w.user, { $inc: { "wallet.winning": match.prize_pool } });
-
-      // Record match transactions
-      await Transaction.create({
-        user: w.user, user_phone: "", type: "match_win", amount: match.prize_pool,
-        status: "completed", description: `Won ₹${match.prize_pool} battle`,
-        meta: { match: match._id, stake: match.stake },
-      });
-      if (l) {
-        await Transaction.create({
-          user: l.user, user_phone: "", type: "match_loss", amount: -match.stake,
-          status: "completed", description: `Lost ₹${match.stake} battle`,
-          meta: { match: match._id, stake: match.stake },
-        });
-      }
-
-      // Pay 1% referral bonus to both players' referrers
-      await payReferralBonus(w.user, match.stake, match._id);
-      if (l) await payReferralBonus(l.user, match.stake, match._id);
-
-      return res.json({ ok: true, auto_resolved: true, winner_id: w.user.toString(), match: serializeMatch(match) });
+      return res.json({ ok: true, auto_resolved: false, status: match.status, match: serializeMatch(match) });
     }
 
     match.status = "awaiting_review";

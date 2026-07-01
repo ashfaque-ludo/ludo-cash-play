@@ -111,7 +111,26 @@ app.use((err,req,res,next)=>{ console.error("[Error]",err.message,err.stack); re
 process.on("unhandledRejection",(reason)=>console.error("[UnhandledRejection]",reason));
 process.on("uncaughtException",(err)=>console.error("[UncaughtException]",err.message,err.stack));
 
+async function cancelStuckMatches(){
+  try{
+    const Match=require("./models/Match");
+    const User=require("./models/User");
+    const twoHoursAgo=new Date(Date.now()-2*60*60*1000);
+    const stuck=await Match.find({status:"in_progress",started_at:{$lt:twoHoursAgo}});
+    const toCancel=stuck.filter(m=>!m.players.some(p=>p.result_claim!=null));
+    for(const m of toCancel){
+      m.status="cancelled";
+      m.cancel_reason="Auto-cancelled on startup: match inactive for 2+ hours";
+      await m.save();
+      for(const p of m.players) await User.findByIdAndUpdate(p.user,{$inc:{"wallet.deposit":m.stake}});
+      console.log(`[STARTUP-CANCEL] Match ${m._id} auto-cancelled and refunded`);
+    }
+    if(toCancel.length) console.log(`[STARTUP] Cancelled ${toCancel.length} stuck match(es)`);
+  }catch(err){console.error("Startup cleanup error:",err.message);}
+}
+
 connectDB().then(async ()=>{
+  await cancelStuckMatches();
   await require("./models/StakeTable").seedDefaults();
   const PORT=process.env.PORT||5000;
   app.listen(PORT,()=>console.log(`\n🎲  MyAkadda backend → http://localhost:${PORT}\n`));

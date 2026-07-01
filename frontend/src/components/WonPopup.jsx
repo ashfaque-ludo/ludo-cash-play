@@ -29,7 +29,7 @@ export default function WonPopup({ open, onClose, matchId, prize, onResult }) {
         result: "won",
         screenshot_b64: preview,
       });
-      toast.success(r.data.auto_resolved ? `You won! ₹${prize} credited 🏆` : "Result submitted — awaiting verification.");
+      toast.success("Result submitted! Admin will verify and credit your prize shortly.");
       onResult?.(r.data);
       onClose();
     } catch (e) {
