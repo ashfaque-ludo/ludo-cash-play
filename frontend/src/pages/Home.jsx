@@ -592,7 +592,7 @@ function MarketingHome() {
           </div>
           <Accordion type="single" collapsible className="mt-10" data-testid="faq-list">
             {[
-              {q:"Is Ludo Cash Play legal in India?", a:"Ludo is recognized as a game of skill by multiple Indian high court rulings. However, real-money play is restricted in Andhra Pradesh, Assam, Nagaland, Odisha, Sikkim, Telangana and Tamil Nadu."},
+              {q:"Is MyAkadda legal in India?", a:"Ludo is recognized as a game of skill by multiple Indian high court rulings. However, real-money play is restricted in Andhra Pradesh, Assam, Nagaland, Odisha, Sikkim, Telangana and Tamil Nadu."},
               {q:"How does winner verification work?", a:"After your match on Ludo King, both players submit their result with a screenshot. If results match, prizes are credited instantly. Conflicts are reviewed by admin within 30 minutes."},
               {q:"How fast are withdrawals?", a:"Standard withdrawals are processed within 30 minutes. VIP players get priority within 5–10 minutes. Minimum withdrawal is ₹100."},
               {q:"What is the platform commission?", a:"We charge a flat 5% commission on the total prize pool. Everything else is paid out to the winner."},

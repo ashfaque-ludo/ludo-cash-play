@@ -836,7 +836,7 @@ function PaymentQRTab() {
         <h3 className="text-lg font-bold text-yellow-400">UPI & Contact Settings</h3>
         {[
           { key: "admin_upi_id", label: "UPI ID", placeholder: "yourname@upi" },
-          { key: "admin_upi_name", label: "Merchant Name", placeholder: "Ludo Cash Play" },
+          { key: "admin_upi_name", label: "Merchant Name", placeholder: "MyAkadda" },
           { key: "whatsapp_number", label: "WhatsApp (with country code)", placeholder: "919876543210" },
           { key: "support_email", label: "Support Email", placeholder: "support@myakadda.com" },
         ].map(({ key, label, placeholder }) => (

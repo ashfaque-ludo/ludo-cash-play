@@ -32,7 +32,7 @@ const InstallPWA = () => {
     <div className="fixed bottom-20 left-3 right-3 z-50 bg-gradient-to-r from-red-700 to-black text-white rounded-2xl p-4 shadow-2xl flex items-center gap-3">
       <span className="text-2xl">🎮</span>
       <div className="flex-1">
-        <p className="font-bold text-sm">Install Ludo Cash Play</p>
+        <p className="font-bold text-sm">Install MyAkadda</p>
         <p className="text-xs text-white/70">Play faster from home screen</p>
       </div>
       <button

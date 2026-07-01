@@ -279,7 +279,7 @@ async def lifespan(app: FastAPI):
         memdir = Path("/app/memory")
         memdir.mkdir(parents=True, exist_ok=True)
         (memdir / "test_credentials.md").write_text(
-            f"""# Ludo Cash Play — Test Credentials
+            f"""# MyAkadda — Test Credentials
 
 ## Master Super Admin (permanent, cannot be removed)
 - Email: `{MASTER_EMAIL}`
@@ -331,7 +331,7 @@ async def seed_master():
             updates["password_hash"] = hash_pw(MASTER_PASSWORD)
         await db.users.update_one({"email": MASTER_EMAIL}, {"$set": updates})
 
-app = FastAPI(lifespan=lifespan, title="Ludo Cash Play API")
+app = FastAPI(lifespan=lifespan, title="MyAkadda API")
 
 api = APIRouter(prefix="/api")
 
@@ -1153,4 +1153,4 @@ logger = logging.getLogger(__name__)
 
 @api.get("/")
 async def root():
-    return {"app": "Ludo Cash Play API", "status": "ok"}
+    return {"app": "MyAkadda API", "status": "ok"}

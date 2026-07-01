@@ -68,11 +68,11 @@ export default function Support() {
   }, []);
 
   const openWhatsApp = () => {
-    window.open(`https://wa.me/${supportWhatsApp}?text=${encodeURIComponent("Hi, I need help with Ludo Cash Play.")}`, "_blank");
+    window.open(`https://wa.me/${supportWhatsApp}?text=${encodeURIComponent("Hi, I need help with MyAkadda.")}`, "_blank");
   };
 
   const openEmail = () => {
-    window.location.href = `mailto:${SUPPORT_EMAIL}?subject=Support Request - Ludo Cash Play`;
+    window.location.href = `mailto:${SUPPORT_EMAIL}?subject=Support Request - MyAkadda`;
   };
 
   const callSupport = () => {

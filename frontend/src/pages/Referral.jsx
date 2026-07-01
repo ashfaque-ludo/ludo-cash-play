@@ -43,7 +43,7 @@ export default function Referral() {
 
   const nativeShare = async () => {
     if (navigator.share) {
-      try { await navigator.share({ title: "Ludo Cash Play", text: shareMessage, url: shareUrl }); return; }
+      try { await navigator.share({ title: "MyAkadda", text: shareMessage, url: shareUrl }); return; }
       catch {}
     }
     copyLink();

@@ -5,7 +5,7 @@ const SECTIONS = {
   about: {
     title: "About Us",
     icon: "🎲",
-    content: `Ludo Cash Play is a skill-based online gaming platform where players compete in Ludo battles to win real money.
+    content: `MyAkadda is a skill-based online gaming platform where players compete in Ludo battles to win real money.
 
 We are a registered gaming company operating under the laws of India. Skill-based gaming is legal in India as confirmed by multiple High Court rulings.
 
@@ -30,7 +30,7 @@ Available: 24x7 Live Support`,
 • False KYC information will result in permanent account ban.
 
 3. GAMEPLAY RULES
-• Ludo Cash Play is a skill-based game.
+• MyAkadda is a skill-based game.
 • Cheating, collusion, or use of bots will result in permanent ban and forfeiture of balance.
 • Share the room code honestly with your opponent.
 • Submit genuine match screenshots.
@@ -137,7 +137,7 @@ export default function Legal() {
         <div className="bg-gradient-to-r from-red-800 to-black p-4 text-white">
           <span className="text-3xl">{section.icon}</span>
           <h1 className="text-xl font-black mt-1">{section.title}</h1>
-          <p className="text-xs text-white/60 mt-0.5">Ludo Cash Play · Last updated: June 2026</p>
+          <p className="text-xs text-white/60 mt-0.5">MyAkadda · Last updated: June 2026</p>
         </div>
         <div className="p-5">
           <pre className="text-sm text-gray-700 whitespace-pre-wrap font-sans leading-relaxed">

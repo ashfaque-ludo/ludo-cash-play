@@ -111,5 +111,5 @@ app.use((err,req,res,next)=>res.status(500).json({detail:err.message||"Server er
 connectDB().then(async ()=>{
   await require("./models/StakeTable").seedDefaults();
   const PORT=process.env.PORT||5000;
-  app.listen(PORT,()=>console.log(`\n🎲  Ludo Cash Play backend → http://localhost:${PORT}\n`));
+  app.listen(PORT,()=>console.log(`\n🎲  MyAkadda backend → http://localhost:${PORT}\n`));
 });

@@ -1621,7 +1621,7 @@ function PaymentSettingsTab() {
             </div>
             <div>
               <Label className="text-xs text-gray-400">Merchant Name</Label>
-              <Input {...f("admin_upi_name")} placeholder="Ludo Cash Play" className="bg-gray-50 border-gray-300 text-gray-900 mt-1" />
+              <Input {...f("admin_upi_name")} placeholder="MyAkadda" className="bg-gray-50 border-gray-300 text-gray-900 mt-1" />
             </div>
             <div>
               <Label className="text-xs text-gray-400">WhatsApp Number (with country code)</Label>

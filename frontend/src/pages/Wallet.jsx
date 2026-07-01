@@ -123,7 +123,7 @@ function DepositPage({ onBack }) {
   };
 
   const upiId = payInfo?.admin_upi_id || "";
-  const merchantName = payInfo?.admin_upi_name || "Ludo Cash Play";
+  const merchantName = payInfo?.admin_upi_name || "MyAkadda";
 
   const buildUpiUrl = (scheme = "upi") => {
     const p = new URLSearchParams({ pa: upiId, pn: merchantName, am: String(amt), cu: "INR", tn: `Deposit-${Date.now()}` });

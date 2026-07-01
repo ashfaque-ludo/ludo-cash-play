@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ludo-cash-play-v2';
+const CACHE_NAME = 'myakadda-v1';
 const STATIC_ASSETS = [
   '/',
   '/manifest.json',

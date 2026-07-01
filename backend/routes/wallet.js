@@ -11,8 +11,8 @@ const Promo = require("../models/Promo");
 const { validators, handleValidation } = require("../middleware/validators");
 
 // Admin UPI (falls back to env or default)
-const ADMIN_UPI = process.env.ADMIN_UPI_ID || "ludocashplay@upi";
-const ADMIN_UPI_NAME = process.env.ADMIN_UPI_NAME || "Ludo Cash Play";
+const ADMIN_UPI = process.env.ADMIN_UPI_ID || "myakadda@upi";
+const ADMIN_UPI_NAME = process.env.ADMIN_UPI_NAME || "MyAkadda";
 
 // ── Deposit screenshot upload (multer — legacy) ───────────────────────────────
 const depositDir = path.join(__dirname, "../uploads/deposits");

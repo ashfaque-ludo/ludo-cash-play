@@ -15,7 +15,7 @@ export default function WhatsAppButton() {
   }, []);
 
   const openWhatsApp = () => {
-    const msg = "Hi! I need help with Ludo Cash Play.";
+    const msg = "Hi! I need help with MyAkadda.";
     window.open(`https://wa.me/${supportNumber}?text=${encodeURIComponent(msg)}`, "_blank");
   };
 

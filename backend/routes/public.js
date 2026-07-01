@@ -50,8 +50,8 @@ router.get('/payment-info', async (req, res) => {
     res.set('Expires', '0');
     _cache.delete('payment_info'); // bust any in-memory cache
     const [admin_upi_id, admin_upi_name, admin_qr_image, whatsapp_number, support_email, announcement, support_whatsapp] = await Promise.all([
-      Config.get('admin_upi_id', 'ludocashplay@upi'),
-      Config.get('admin_upi_name', 'Ludo Cash Play'),
+      Config.get('admin_upi_id', 'myakadda@upi'),
+      Config.get('admin_upi_name', 'MyAkadda'),
       Config.get('admin_qr_image', ''),
       Config.get('whatsapp_number', '919090000000'),
       Config.get('support_email', 'support@myakadda.com'),

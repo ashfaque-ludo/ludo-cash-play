@@ -139,7 +139,7 @@ export default function Login() {
         setLoading(false);
         if (!r.ok) { setError(r.error || "Login failed"); return; }
         if (storedRef) localStorage.removeItem("referral_code");
-        toast.success("Welcome to Ludo Cash Play!");
+        toast.success("Welcome to MyAkadda!");
         nav(redirectPath(r.user, from), { replace: true });
       } catch (err) {
         setLoading(false);
@@ -157,7 +157,7 @@ export default function Login() {
     setLoading(false);
     if (!r.ok) { setError(r.error || "Invalid OTP"); return; }
     if (storedRef) localStorage.removeItem("referral_code");
-    toast.success("Welcome to Ludo Cash Play!");
+    toast.success("Welcome to MyAkadda!");
     nav(redirectPath(r.user, from), { replace: true });
   };
 
@@ -178,7 +178,7 @@ export default function Login() {
             <div className="w-16 h-16 mx-auto mb-3 rounded-2xl bg-gradient-to-br from-red-700 to-black flex items-center justify-center shadow-lg">
               <span className="text-3xl">🎲</span>
             </div>
-            <h1 className="text-2xl font-black text-gray-900">Ludo Cash Play</h1>
+            <h1 className="text-2xl font-black text-gray-900">MyAkadda</h1>
             <p className="text-sm text-gray-500 mt-1">Play. Win. Earn Real Money.</p>
           </div>
 

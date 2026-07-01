@@ -58,7 +58,7 @@ export default function Footer() {
         </div>
       </div>
       <div className="text-center text-slate-500 text-xs py-4 border-t border-white/5">
-        © {new Date().getFullYear()} Ludo Cash Play. All rights reserved.
+        © {new Date().getFullYear()} MyAkadda. All rights reserved.
       </div>
     </footer>
   );

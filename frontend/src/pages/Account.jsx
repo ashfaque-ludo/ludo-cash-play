@@ -156,7 +156,7 @@ export default function Account() {
           >
             <LogOut className="w-4 h-4" /> Sign Out
           </button>
-          <p className="text-center text-xs text-gray-400 mt-3">Ludo Cash Play v2.0 · Skill gaming platform</p>
+          <p className="text-center text-xs text-gray-400 mt-3">MyAkadda v2.0 · Skill gaming platform</p>
         </div>
       </div>
     </div>
