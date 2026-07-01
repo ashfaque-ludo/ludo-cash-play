@@ -15,7 +15,7 @@ export default function Footer() {
             India's premium real-money Ludo challenge platform. Play against real players across stake tables from ₹50 to ₹1,00,000 VIP rooms.
           </p>
           <div className="flex items-center gap-3 mt-5">
-            <a href="https://t.me/ludocashplay" target="_blank" rel="noreferrer" data-testid="footer-telegram"
+            <a href="https://t.me/myakadda" target="_blank" rel="noreferrer" data-testid="footer-telegram"
                className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass text-white text-sm hover:bg-white/10">
               <Send className="w-4 h-4" /> Telegram
             </a>

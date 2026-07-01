@@ -1,4 +1,4 @@
-const CACHE_NAME = 'myakadda-v1';
+const CACHE_NAME = 'myakadda-v2';
 const STATIC_ASSETS = [
   '/',
   '/manifest.json',

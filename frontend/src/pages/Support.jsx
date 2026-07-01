@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { MessageCircle, Mail, ChevronDown, ChevronUp, Phone } from "lucide-react";
 
-const SUPPORT_EMAIL = process.env.REACT_APP_SUPPORT_EMAIL || "ludocashplay@gmail.com";
+const SUPPORT_EMAIL = process.env.REACT_APP_SUPPORT_EMAIL || "support@myakadda.com";
 const BACKEND = process.env.REACT_APP_BACKEND_URL || "";
 
 const FAQS = [

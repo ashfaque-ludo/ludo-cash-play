@@ -5,7 +5,7 @@ import { api, fmtINR } from "@/lib/api";
 import { toast } from "sonner";
 import { CheckCircle, Loader2, Copy, Check } from "lucide-react";
 
-const ADMIN_UPI = process.env.REACT_APP_ADMIN_UPI || "ludocashplay@upi";
+const ADMIN_UPI = process.env.REACT_APP_ADMIN_UPI || "myakadda@upi";
 const QUICK_AMOUNTS = [100, 250, 500, 2000];
 
 // ── Redeem Referral Modal ─────────────────────────────────────────────────────
