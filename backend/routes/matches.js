@@ -208,7 +208,8 @@ router.post("/:id/join", async (req, res) => {
       meta: { match: match._id, stake: match.stake },
     }).catch(() => {});
 
-    // Auto-cancel if both players never submit a result within 2 hours (match never played)
+    // No result after 2h → move to admin_review so admin can decide.
+    // Never auto-cancel or auto-settle: all match outcomes require explicit admin action.
     const startedId = match._id;
     setTimeout(async () => {
       try {
@@ -216,16 +217,13 @@ router.post("/:id/join", async (req, res) => {
         if (!m || m.status !== "in_progress") return;
         const anyResult = m.players.some(p => p.result_claim != null);
         if (!anyResult) {
-          m.status = "cancelled";
-          m.cancel_reason = "Auto-cancelled: no result submitted within 2 hours";
+          m.status = "admin_review";
+          m.cancel_reason = "No result submitted within 2 hours — awaiting admin decision";
           await m.save();
-          for (const p of m.players) {
-            await User.findByIdAndUpdate(p.user, { $inc: { "wallet.deposit": m.stake } });
-          }
-          console.log(`[AUTO-CANCEL] Match ${startedId} refunded after 2h inactivity`);
+          console.log(`[ADMIN-REVIEW] Match ${startedId} moved to admin_review after 2h`);
         }
       } catch (err) {
-        console.error("2h auto-cancel error:", err.message);
+        console.error("2h admin-review error:", err.message);
       }
     }, 2 * 60 * 60 * 1000);
 
