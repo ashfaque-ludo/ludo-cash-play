@@ -36,7 +36,7 @@ export default function Admin() {
             <div className="text-xs uppercase tracking-[0.25em] text-red-700 font-bold flex items-center gap-2"><ShieldCheck className="w-3.5 h-3.5" /> {user.is_master_owner ? "MASTER OWNER" : role.replace("_"," ").toUpperCase()}</div>
             <h1 className="text-3xl sm:text-4xl font-extrabold mt-1"><span className="text-red-700">Admin</span> Panel</h1>
           </div>
-          <Badge variant="outline" className="border-red-200 text-red-700 bg-red-50">{user.email}</Badge>
+          <Badge variant="outline" className="border-red-200 text-red-700 bg-red-50">{user.email || user.phone}</Badge>
         </div>
 
         <Tabs defaultValue="analytics" className="mt-6">
@@ -153,7 +153,7 @@ function UsersTab({ actor }) {
       <CardHeader className="flex flex-row gap-2 items-center">
         <CardTitle>Users</CardTitle>
         <div className="ml-auto flex gap-2">
-          <Input placeholder="search email / name" value={q} onChange={e=>setQ(e.target.value)} className="bg-gray-50 border-gray-300 text-gray-900 w-56" data-testid="user-search" />
+          <Input placeholder="search name / email / phone" value={q} onChange={e=>setQ(e.target.value)} className="bg-gray-50 border-gray-300 text-gray-900 w-56" data-testid="user-search" />
           <Button onClick={load} className="rounded-full bg-gradient-to-r from-red-700 to-black text-white" data-testid="user-search-btn">Search</Button>
         </div>
       </CardHeader>
@@ -162,7 +162,11 @@ function UsersTab({ actor }) {
           <TableHeader>
             <TableRow className="border-gray-200">
               <TableHead className="text-gray-400">Name</TableHead>
+              <TableHead className="text-gray-400">Phone</TableHead>
               <TableHead className="text-gray-400">Email</TableHead>
+              <TableHead className="text-gray-400">User ID</TableHead>
+              <TableHead className="text-gray-400">Referral</TableHead>
+              <TableHead className="text-gray-400">Joined</TableHead>
               <TableHead className="text-gray-400">Role</TableHead>
               <TableHead className="text-gray-400">Wallet</TableHead>
               <TableHead className="text-gray-400">Status</TableHead>
@@ -173,10 +177,15 @@ function UsersTab({ actor }) {
             {rows.map(u => {
               const w = u.wallet || {deposit:0,winning:0,bonus:0};
               const total = (w.deposit||0)+(w.winning||0)+(w.bonus||0);
+              const joined = u.createdAt ? new Date(u.createdAt).toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"}) : "—";
               return (
-                <TableRow key={u.id} className="border-gray-200" data-testid={`user-row-${u.email}`}>
-                  <TableCell className="font-medium">{u.name} {u.is_master_owner && <Badge className="ml-1 bg-amber-500 text-black text-[10px]"><Lock className="w-3 h-3 mr-0.5" />MASTER</Badge>}</TableCell>
-                  <TableCell className="text-gray-400">{u.email}</TableCell>
+                <TableRow key={u.id} className="border-gray-200" data-testid={`user-row-${u.email||u.phone}`}>
+                  <TableCell className="font-medium">{u.name || "—"} {u.is_master_owner && <Badge className="ml-1 bg-amber-500 text-black text-[10px]"><Lock className="w-3 h-3 mr-0.5" />MASTER</Badge>}</TableCell>
+                  <TableCell className="text-gray-700 font-mono text-xs">{u.phone || "—"}</TableCell>
+                  <TableCell className="text-gray-400 text-xs">{u.email || "—"}</TableCell>
+                  <TableCell className="text-gray-400 font-mono text-[10px]">{(u.id||"").slice(-8)}</TableCell>
+                  <TableCell className="text-gray-700 font-mono text-xs font-bold">{u.referral_code || "—"}</TableCell>
+                  <TableCell className="text-gray-400 text-xs whitespace-nowrap">{joined}</TableCell>
                   <TableCell><Badge variant="outline" className="border-purple-500/30 text-red-700">{u.role}</Badge></TableCell>
                   <TableCell>{fmtINR(total)}</TableCell>
                   <TableCell>
@@ -184,10 +193,10 @@ function UsersTab({ actor }) {
                     {u.wallet_frozen && <Badge className="ml-1 bg-blue-500/20 text-blue-400 border border-blue-500/30 text-[10px]">Frozen</Badge>}
                   </TableCell>
                   <TableCell className="space-x-1">
-                    <Button size="sm" variant="outline" className="rounded-full border-gray-300 bg-gray-100 text-gray-700" onClick={()=>setEditUser(u)} data-testid={`edit-${u.email}`}>Edit</Button>
-                    <Button size="sm" variant="outline" className="rounded-full border-gray-300 bg-gray-100 text-gray-700" onClick={()=>setPwUser(u)} data-testid={`pw-${u.email}`}><KeyRound className="w-3 h-3" /></Button>
+                    <Button size="sm" variant="outline" className="rounded-full border-gray-300 bg-gray-100 text-gray-700" onClick={()=>setEditUser(u)} data-testid={`edit-${u.email||u.phone}`}>Edit</Button>
+                    <Button size="sm" variant="outline" className="rounded-full border-gray-300 bg-gray-100 text-gray-700" onClick={()=>setPwUser(u)} data-testid={`pw-${u.email||u.phone}`}><KeyRound className="w-3 h-3" /></Button>
                     {actor.role === "super_admin" && (
-                      <Button size="sm" variant="outline" className="rounded-full border-amber-500/30 bg-amber-500/10 text-amber-300" onClick={()=>setWalletUser(u)} data-testid={`wallet-${u.email}`}><WalletIcon className="w-3 h-3" /></Button>
+                      <Button size="sm" variant="outline" className="rounded-full border-amber-500/30 bg-amber-500/10 text-amber-300" onClick={()=>setWalletUser(u)} data-testid={`wallet-${u.email||u.phone}`}><WalletIcon className="w-3 h-3" /></Button>
                     )}
                     {u.wallet_frozen ? (
                       <Button size="sm" variant="outline" className="rounded-full border-emerald-500/30 bg-emerald-500/10 text-emerald-400" onClick={()=>unfreezeWallet(u)}>Unfreeze</Button>

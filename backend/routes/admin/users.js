@@ -2,10 +2,12 @@ const router=require("express").Router();
 const User=require("../../models/User");
 const {logActivity}=require("../../middleware/activityLogger");
 router.get("/", async (req,res)=>{
-  const {q,limit=100}=req.query;
-  const filter=q?{$or:[{email:{$regex:q,$options:"i"}},{name:{$regex:q,$options:"i"}}]}:{};
-  const users=await User.find(filter).sort({createdAt:-1}).limit(Number(limit)).select("-password");
-  res.json({users:users.map(u=>({...u.toPublic(),id:u._id.toString()}))});
+  try{
+    const {q,limit=100}=req.query;
+    const filter=q?{$or:[{email:{$regex:q,$options:"i"}},{name:{$regex:q,$options:"i"}},{phone:{$regex:q,$options:"i"}}]}:{};
+    const users=await User.find(filter).sort({createdAt:-1}).limit(Number(limit)).select("-password");
+    res.json({users:users.map(u=>({...u.toPublic(),id:u._id.toString()}))});
+  }catch(e){res.status(500).json({detail:"Server error."});}
 });
 router.patch("/:id", async (req,res)=>{
   try{

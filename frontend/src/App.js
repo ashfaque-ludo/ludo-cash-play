@@ -5,6 +5,7 @@ import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import InstallPWA from "@/components/InstallPWA";
+import ErrorBoundary from "@/components/ErrorBoundary";
 import Header from "@/components/Header";
 import BottomNav from "@/components/BottomNav";
 import Sidebar from "@/components/Sidebar";
@@ -132,17 +133,19 @@ export default function App() {
     <BrowserRouter>
       <LanguageProvider>
         <AuthProvider>
-          <AppLayout />
-          <InstallPWA />
-          <Toaster
-            richColors
-            position="top-right"
-            toastOptions={{
-              style: { fontFamily: "system-ui, sans-serif", fontSize: "14px" },
-              duration: 3500,
-            }}
-            closeButton
-          />
+          <ErrorBoundary>
+            <AppLayout />
+            <InstallPWA />
+            <Toaster
+              richColors
+              position="top-right"
+              toastOptions={{
+                style: { fontFamily: "system-ui, sans-serif", fontSize: "14px" },
+                duration: 3500,
+              }}
+              closeButton
+            />
+          </ErrorBoundary>
         </AuthProvider>
       </LanguageProvider>
     </BrowserRouter>

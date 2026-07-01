@@ -106,7 +106,10 @@ const ownerOnly=require("./middleware/ownerOnly");
 app.use("/api/owner",[auth,ownerOnly],require("./routes/owner"));
 
 app.use((req,res)=>res.status(404).json({detail:`Not found: ${req.method} ${req.path}`}));
-app.use((err,req,res,next)=>res.status(500).json({detail:err.message||"Server error."}));
+app.use((err,req,res,next)=>{ console.error("[Error]",err.message,err.stack); res.status(500).json({detail:err.message||"Server error."}); });
+
+process.on("unhandledRejection",(reason)=>console.error("[UnhandledRejection]",reason));
+process.on("uncaughtException",(err)=>console.error("[UncaughtException]",err.message,err.stack));
 
 connectDB().then(async ()=>{
   await require("./models/StakeTable").seedDefaults();

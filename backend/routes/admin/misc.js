@@ -15,13 +15,7 @@ const qrDir=path.join(__dirname,"../../uploads/qr_codes");
 if(!fs.existsSync(qrDir)) fs.mkdirSync(qrDir,{recursive:true});
 
 const qrUpload=multer({
-  storage:multer.diskStorage({
-    destination:(req,file,cb)=>cb(null,qrDir),
-    filename:(req,file,cb)=>{
-      const ext=path.extname(file.originalname).toLowerCase();
-      cb(null,`qr_${Date.now()}${ext}`);
-    },
-  }),
+  storage:multer.memoryStorage(),
   limits:{fileSize:2*1024*1024},
   fileFilter:(req,file,cb)=>{
     const ok=[".jpg",".jpeg",".png",".webp"];
@@ -124,23 +118,16 @@ router.post("/payment-settings", async (req,res)=>{
   res.json({ ok:true });
 });
 
-// QR image file upload
+// QR image file upload — stored as base64 data URL in MongoDB so it survives server restarts
 router.post("/payment-settings/upload-qr", qrUpload.single("qr_image"), async (req,res)=>{
   try {
     if(!req.file) return res.status(400).json({detail:"No file uploaded."});
-    // Delete old locally-stored QR if present
-    const oldUrl=await Config.get("admin_qr_image","");
-    if(oldUrl && oldUrl.includes("/uploads/qr_codes/")){
-      const oldFile=path.join(qrDir,path.basename(oldUrl.split("/uploads/qr_codes/")[1]||""));
-      if(fs.existsSync(oldFile)) fs.unlinkSync(oldFile);
-    }
-    const backendUrl=process.env.BACKEND_URL||`${req.protocol}://${req.get("host")}`;
-    const fileUrl=`${backendUrl}/uploads/qr_codes/${req.file.filename}`;
+    const base64=`data:${req.file.mimetype};base64,${req.file.buffer.toString("base64")}`;
     const ts=new Date().toISOString();
-    await Config.set("admin_qr_image",fileUrl);
+    await Config.set("admin_qr_image",base64);
     await Config.set("admin_qr_updated_at",ts);
-    await logActivity(req,"payment_qr_uploaded",req.file.filename,{});
-    res.json({ok:true,url:fileUrl,updated_at:ts});
+    await logActivity(req,"payment_qr_uploaded","base64",{size:req.file.size});
+    res.json({ok:true,url:base64,updated_at:ts});
   }catch(err){ res.status(500).json({detail:err.message||"Upload failed."}); }
 });
 

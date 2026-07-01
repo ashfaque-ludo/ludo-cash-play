@@ -277,10 +277,9 @@ function DepositPage({ onBack }) {
           <div className="flex flex-col items-center">
             <div className="bg-white border-4 border-red-200 rounded-2xl p-2 shadow-sm inline-block">
               <img
-                src={`${payInfo.admin_qr_image}?t=${fetchTime}`}
+                src={payInfo.admin_qr_image}
                 alt="Pay via UPI"
                 className="w-56 h-56 object-contain"
-                onError={e => { e.target.style.display = "none"; }}
               />
             </div>
             <p className="text-sm font-bold text-gray-800 mt-2">Scan with any UPI app · Pay ₹{amt}</p>
