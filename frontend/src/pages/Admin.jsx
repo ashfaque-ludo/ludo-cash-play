@@ -410,7 +410,7 @@ function WithdrawalsTab(){
 
 function MatchesTab({ actor }){
   const [rows, setRows] = useState([]);
-  const [status, setStatus] = useState("admin_review");
+  const [status, setStatus] = useState("pending");
   const [zoomedUrl, setZoomedUrl] = useState(null);
   const BACKEND = process.env.REACT_APP_BACKEND_URL || "";
   const toAbsUrl = (u) => !u ? "" : (u.startsWith("http") || u.startsWith("data:")) ? u : `${BACKEND}${u}`;
@@ -444,11 +444,11 @@ function MatchesTab({ actor }){
         <CardHeader className="flex flex-row items-center flex-wrap gap-2">
           <CardTitle>Matches</CardTitle>
           <div className="ml-auto flex gap-1.5 flex-wrap">
-            {["admin_review","in_progress","awaiting_review","disputed","ended","cancelled","any"].map(s => (
+            {["pending","admin_review","in_progress","awaiting_review","disputed","ended","cancelled","any"].map(s => (
               <Button key={s} size="sm" onClick={() => setStatus(s)} variant="outline"
                 className={`rounded-full capitalize border-gray-300 text-xs ${status === s ? "bg-gradient-to-r from-red-700 to-black border-red-700 text-white" : "bg-gray-100 text-gray-600"}`}
                 data-testid={`match-filter-${s}`}>
-                {s === "admin_review" ? "⚠️ Review" : s}
+                {s === "pending" ? "🔔 Pending" : s === "admin_review" ? "⚠️ Review" : s}
               </Button>
             ))}
             <Button size="sm" onClick={load} variant="outline" className="rounded-full border-gray-300 bg-gray-100 text-gray-600">Refresh</Button>
@@ -464,7 +464,7 @@ function MatchesTab({ actor }){
                 const p2 = (m.players || [])[1];
                 const p1ss = toAbsUrl(p1?.result_screenshot);
                 const p2ss = toAbsUrl(p2?.result_screenshot);
-                const isReview = m.status === "admin_review";
+                const isReview = ["admin_review","awaiting_review","disputed"].includes(m.status);
                 return (
                   <div key={m.id} className={`rounded-2xl border-2 p-4 ${isReview ? "border-yellow-400 bg-yellow-50" : "border-gray-200 bg-white"}`} data-testid={`match-row-${m.id}`}>
                     {/* Header row */}

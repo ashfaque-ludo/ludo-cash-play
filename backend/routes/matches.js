@@ -152,6 +152,15 @@ const handleCreate = async (req, res) => {
       await User.findByIdAndUpdate(req.user._id, { $inc: { "wallet.deposit": stakeAmount } });
       return res.status(400).json({ detail: createErr.message });
     }
+
+    // Record entry fee deduction so it appears in Game History
+    await Transaction.create({
+      user: req.user._id, user_phone: req.user.phone || "",
+      type: "match_entry", amount: stakeAmount, status: "completed",
+      description: `Battle entry ₹${stakeAmount}`,
+      meta: { match: match._id, stake: stakeAmount },
+    }).catch(() => {});
+
     // Auto-cancel if no opponent joins in 3 minutes
     const matchId = match._id;
     setTimeout(async () => {
@@ -190,6 +199,15 @@ router.post("/:id/join", async (req, res) => {
     match.status = "in_progress";
     match.started_at = new Date();
     await match.save();
+
+    // Record entry fee deduction so it appears in Game History
+    await Transaction.create({
+      user: req.user._id, user_phone: req.user.phone || "",
+      type: "match_entry", amount: match.stake, status: "completed",
+      description: `Battle entry ₹${match.stake}`,
+      meta: { match: match._id, stake: match.stake },
+    }).catch(() => {});
+
     res.json({ ok: true, match: serializeMatch(match) });
   } catch (e) { res.status(400).json({ detail: e.message }); }
 });
