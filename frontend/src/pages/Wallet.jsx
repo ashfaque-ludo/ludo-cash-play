@@ -137,7 +137,11 @@ function DepositPage({ onBack }) {
   };
 
   const handleGPay = () => {
-    const upiUrl = `tez://upi/pay?pa=${upiId}&pn=${encodeURIComponent(merchantName)}&am=${amt}&cu=INR`;
+    // tez:// is Android-only (Google Tez). iOS GPay uses the standard upi:// scheme.
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    const upiUrl = isIOS
+      ? `upi://pay?pa=${upiId}&pn=${encodeURIComponent(merchantName)}&am=${amt}&cu=INR&tn=Deposit`
+      : `tez://upi/pay?pa=${upiId}&pn=${encodeURIComponent(merchantName)}&am=${amt}&cu=INR`;
     window.location.href = upiUrl;
     setTimeout(() => { window.location.href = 'https://pay.google.com'; }, 1500);
   };

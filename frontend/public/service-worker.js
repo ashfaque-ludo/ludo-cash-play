@@ -1,5 +1,5 @@
-const CACHE_NAME = 'myakadda-v2';
-const STATIC_ASSETS = [
+const CACHE_NAME = 'myakadda-v3';
+const STATIC_PRECACHE = [
   '/',
   '/manifest.json',
 ];
@@ -7,7 +7,7 @@ const STATIC_ASSETS = [
 self.addEventListener('install', (e) => {
   self.skipWaiting();
   e.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_ASSETS)).catch(() => {})
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_PRECACHE)).catch(() => {})
   );
 });
 
@@ -19,16 +19,34 @@ self.addEventListener('activate', (e) => {
   );
 });
 
-// Network-first strategy — always try network, fall back to cache for navigation only
 self.addEventListener('fetch', (e) => {
   const url = new URL(e.request.url);
 
-  // Skip non-GET, cross-origin API calls, and chrome-extension requests
+  // Never intercept non-GET or cross-origin requests
   if (e.request.method !== 'GET') return;
   if (url.origin !== self.location.origin) return;
+
+  // Never intercept API calls — always fresh from server
   if (url.pathname.startsWith('/api/')) return;
 
-  // For navigation requests, serve from network with cache fallback
+  // Static assets (JS/CSS/fonts/images under /static/) — cache-first.
+  // CRA gives these content-hashed filenames so they can be cached indefinitely.
+  if (url.pathname.startsWith('/static/')) {
+    e.respondWith(
+      caches.match(e.request).then((cached) => {
+        if (cached) return cached;
+        return fetch(e.request).then((res) => {
+          if (res.ok) {
+            caches.open(CACHE_NAME).then((cache) => cache.put(e.request, res.clone()));
+          }
+          return res;
+        });
+      })
+    );
+    return;
+  }
+
+  // Navigation requests (HTML) — network-first, cache as fallback
   if (e.request.mode === 'navigate') {
     e.respondWith(
       fetch(e.request)
@@ -44,6 +62,6 @@ self.addEventListener('fetch', (e) => {
     return;
   }
 
-  // For other same-origin requests, network-first
+  // Everything else — network-first, cache as offline fallback
   e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
 });

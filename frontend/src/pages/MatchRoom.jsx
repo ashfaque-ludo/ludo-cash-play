@@ -91,10 +91,14 @@ export default function MatchRoom() {
   const [showLost, setShowLost] = useState(false);
   const [showCancel, setShowCancel] = useState(false);
 
+  const statusRef = React.useRef(null);
+
   const fetchMatch = async () => {
     try {
       const r = await api.get(`/matches/${id}`);
-      setMatch(r.data.match || r.data);
+      const m = r.data.match || r.data;
+      setMatch(m);
+      statusRef.current = m?.status;
     } catch (err) {
       console.error('[MatchRoom] fetch error:', err);
     }
@@ -102,7 +106,11 @@ export default function MatchRoom() {
 
   useEffect(() => {
     fetchMatch();
-    const i = setInterval(fetchMatch, 3000);
+    const i = setInterval(() => {
+      // Stop polling once match is in a terminal state — no more changes possible
+      if (['ended', 'cancelled'].includes(statusRef.current)) { clearInterval(i); return; }
+      fetchMatch();
+    }, 3000);
     return () => clearInterval(i);
   }, [id]); // eslint-disable-line
 

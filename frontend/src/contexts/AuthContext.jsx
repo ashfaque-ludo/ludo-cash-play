@@ -19,10 +19,21 @@ export function AuthProvider({ children }) {
   }, []);
 
   useEffect(() => {
+    const INTERVAL = 10000; // 10s — was 5s; 2x fewer calls, wallet still updates promptly
+    const timer = { id: null };
+    const start = () => { clearInterval(timer.id); timer.id = setInterval(refresh, INTERVAL); };
+    const stop  = () => clearInterval(timer.id);
+
     refresh();
-    // Poll balance every 5 seconds for realtime wallet updates
-    const poll = setInterval(refresh, 5000);
-    return () => clearInterval(poll);
+    start();
+
+    // Pause when tab is hidden; resume + immediately refresh when visible
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') { refresh(); start(); } else { stop(); }
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+
+    return () => { stop(); document.removeEventListener('visibilitychange', onVisibility); };
   }, [refresh]);
 
   const login = async (identifier, password, isPhone = false) => {
