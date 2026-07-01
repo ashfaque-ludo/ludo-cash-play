@@ -95,12 +95,15 @@ function AnalyticsTab() {
     {l:"Total users", v:a.users, c:"text-red-700"},
     {l:"Admin staff", v:a.admins, c:"text-amber-300"},
     {l:"Active matches", v:a.active_matches, c:"text-blue-300"},
-    {l:"Completed", v:a.completed_matches, c:"text-emerald-400"},
+    {l:"Completed matches", v:a.completed_matches, c:"text-emerald-400"},
     {l:"Pending deposits", v:a.pending_deposits, c:"text-amber-300"},
     {l:"Pending withdrawals", v:a.pending_withdrawals, c:"text-amber-300"},
     {l:"Total deposit (₹)", v:fmtINR(a.total_deposit), c:"text-blue-300"},
     {l:"Total withdraw (₹)", v:fmtINR(a.total_withdraw), c:"text-red-300"},
-    {l:"Commission earned", v:fmtINR(a.platform_commission_earned), c:"text-emerald-400"},
+    {l:"Total entry volume (₹)", v:fmtINR(a.total_entry_volume), c:"text-blue-300"},
+    {l:"Commission (all time)", v:fmtINR(a.platform_commission_earned), c:"text-emerald-400"},
+    {l:"Commission (this month)", v:fmtINR(a.month_commission), c:"text-emerald-400"},
+    {l:"Commission (today)", v:fmtINR(a.today_commission), c:"text-emerald-400"},
   ];
   return (
     <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-5">

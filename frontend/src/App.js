@@ -12,8 +12,7 @@ import Sidebar from "@/components/Sidebar";
 import Footer from "@/components/Footer";
 import "./i18n"; // init i18next
 
-// Critical path: loaded eagerly
-import Home from "@/pages/Home";
+// Eagerly loaded: Login needed immediately on auth redirect
 import Login from "@/pages/Login";
 
 // Inline wrapper: stores referral code then renders Login
@@ -28,6 +27,7 @@ function LoginWithRef() {
 }
 
 // Lazy-loaded routes
+const Home           = lazy(() => import("@/pages/Home"));
 const Register       = lazy(() => import("@/pages/Register"));
 const Dashboard      = lazy(() => import("@/pages/Dashboard"));
 const MatchLobby     = lazy(() => import("@/pages/MatchLobby"));

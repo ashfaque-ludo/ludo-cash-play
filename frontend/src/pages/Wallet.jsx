@@ -131,16 +131,20 @@ function DepositPage({ onBack }) {
   };
 
   const handlePhonePe = () => {
-    const upiUrl = `phonepe://pay?pa=${upiId}&pn=${encodeURIComponent(merchantName)}&am=${amt}&cu=INR`;
-    window.location.href = upiUrl;
-    setTimeout(() => { window.location.href = 'https://phon.pe/'; }, 1500);
+    // phonepe://pay? is the same format as paytmmp://pay? (which works perfectly).
+    // No setTimeout fallback: https://phon.pe/ is PhonePe's web payment domain and
+    // iOS opens it via Universal Link in gallery-QR mode (not direct UPI mode),
+    // causing the "Rs 2000 gallery QR" notice. Removing it matches how Paytm behaves.
+    window.location.href = `phonepe://pay?pa=${upiId}&pn=${encodeURIComponent(merchantName)}&am=${amt}&cu=INR`;
   };
 
   const handleGPay = () => {
-    // tez:// is Android-only (Google Tez). iOS GPay uses the standard upi:// scheme.
+    // tez:// is Android-only (Google Tez). iOS Google Pay registers gpay://.
+    // upi:// also fails on iOS: Paytm/PhonePe register only their own schemes,
+    // not upi://, so Safari has no handler and shows "invalid address".
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
     const upiUrl = isIOS
-      ? `upi://pay?pa=${upiId}&pn=${encodeURIComponent(merchantName)}&am=${amt}&cu=INR&tn=Deposit`
+      ? `gpay://upi/pay?pa=${upiId}&pn=${encodeURIComponent(merchantName)}&am=${amt}&cu=INR&tn=Deposit`
       : `tez://upi/pay?pa=${upiId}&pn=${encodeURIComponent(merchantName)}&am=${amt}&cu=INR`;
     window.location.href = upiUrl;
     setTimeout(() => { window.location.href = 'https://pay.google.com'; }, 1500);
