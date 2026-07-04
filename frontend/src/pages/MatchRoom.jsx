@@ -8,6 +8,55 @@ import CancelBattlePopup from "@/components/CancelBattlePopup";
 import WonPopup from "@/components/WonPopup";
 import LostPopup from "@/components/LostPopup";
 
+// ── Open the installed Ludo King app directly, store fallback only if absent ──
+// ludoking.com has no registered Android App Link (no assetlinks.json) or iOS
+// Universal Link (no apple-app-site-association), so a plain https:// link
+// can never auto-open the app — it just loads their marketing site.
+const LUDO_KING_PACKAGE = "com.ludo.king";
+const LUDO_KING_PLAY_STORE = `https://play.google.com/store/apps/details?id=${LUDO_KING_PACKAGE}`;
+const LUDO_KING_APP_STORE = "https://apps.apple.com/app/id993090598";
+const LUDO_KING_IOS_SCHEME = "ludoking://";
+
+function openLudoKing() {
+  const ua = navigator.userAgent || "";
+  const isAndroid = /Android/.test(ua);
+  const isIOS = /iPhone|iPad|iPod/.test(ua);
+
+  if (isAndroid) {
+    // Ask Android to launch com.ludo.king's own launcher activity directly —
+    // this works even without Ludo King declaring any deep-link intent
+    // filter, since MAIN/LAUNCHER resolution is independent of URL scheme
+    // matching. Chrome falls back to the Play Store natively if the app
+    // isn't installed — no JS timer that fires the store unconditionally.
+    const fallback = encodeURIComponent(LUDO_KING_PLAY_STORE);
+    window.location.href =
+      `intent://launch#Intent;scheme=https;package=${LUDO_KING_PACKAGE};action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;S.browser_fallback_url=${fallback};end`;
+    return;
+  }
+
+  if (isIOS) {
+    // Try the app's URL scheme in the same tab (no window.open — that was
+    // popping the marketing site as "extra stuff"). iOS silently ignores an
+    // unregistered scheme, so only redirect to the App Store if the page is
+    // still visible after a short wait (nothing intercepted the navigation).
+    const fallbackTimer = setTimeout(() => {
+      if (document.visibilityState !== "hidden") {
+        window.location.href = LUDO_KING_APP_STORE;
+      }
+    }, 1500);
+    const cancelFallback = () => {
+      clearTimeout(fallbackTimer);
+      document.removeEventListener("visibilitychange", cancelFallback);
+    };
+    document.addEventListener("visibilitychange", cancelFallback);
+    window.location.href = LUDO_KING_IOS_SCHEME;
+    return;
+  }
+
+  // Desktop / other — no app to open, just show the game's site.
+  window.open("https://ludoking.com", "_blank", "noopener,noreferrer");
+}
+
 // Opponent waiting component — 3-min countdown, auto-cancel at 0
 function WaitingForCode({ matchId, onCancel }) {
   const [timeLeft, setTimeLeft] = useState(180);
@@ -323,17 +372,7 @@ export default function MatchRoom() {
                 <p className="text-xs text-center text-gray-500 mb-3">Set room code before time runs out</p>
 
                 <button
-                  onClick={() => {
-                    const isAndroid = /Android/.test(navigator.userAgent);
-                    if (isAndroid) {
-                      window.location.href = 'intent://ludoking.com/#Intent;scheme=https;package=com.ludo.king;end';
-                      setTimeout(() => {
-                        window.open('https://play.google.com/store/apps/details?id=com.ludo.king', '_blank');
-                      }, 2000);
-                    } else {
-                      window.open('https://ludoking.com', '_blank');
-                    }
-                  }}
+                  onClick={openLudoKing}
                   className="w-full py-3 mb-2 bg-gradient-to-r from-green-700 to-green-900 text-white rounded-xl font-bold text-base shadow flex items-center justify-center gap-2"
                 >
                   🎮 Open Ludo King App
@@ -395,17 +434,7 @@ export default function MatchRoom() {
 
             {/* Play button — opens Ludo King for both players */}
             <button
-              onClick={() => {
-                const isAndroid = /Android/.test(navigator.userAgent);
-                if (isAndroid) {
-                  window.location.href = 'intent://ludoking.com/#Intent;scheme=https;package=com.ludo.king;end';
-                  setTimeout(() => {
-                    window.open('https://play.google.com/store/apps/details?id=com.ludo.king', '_blank');
-                  }, 2000);
-                } else {
-                  window.open('https://ludoking.com', '_blank');
-                }
-              }}
+              onClick={openLudoKing}
               className="w-full py-3 bg-gradient-to-r from-red-700 to-black text-white rounded-xl font-bold mb-3"
             >
               🎮 Play in Ludo King
