@@ -65,12 +65,23 @@ function BattleHub({ user }) {
   const [matches, setMatches] = useState([]);
   const [spectate, setSpectate] = useState([]);
   const [banner, setBanner] = useState("");
+  const [promoBanners, setPromoBanners] = useState([]);
   const [amount, setAmount] = useState("");
   const [busy, setBusy] = useState(false);
   const prevStatusRef = useRef({});
 
   useEffect(() => {
     api.get("/public/battle-banner").then(r => setBanner(r.data.text || "")).catch(() => {});
+  }, []);
+
+  // Admin Panel → Banner Management — active banners (Title/Subtitle/Image/Link/colors)
+  useEffect(() => {
+    const loadBanners = () => {
+      api.get("/public/banners").then(r => setPromoBanners(r.data.banners || [])).catch(() => {});
+    };
+    loadBanners();
+    const iv = setInterval(loadBanners, 30000);
+    return () => clearInterval(iv);
   }, []);
 
   const loadSpectate = async () => {
@@ -186,6 +197,34 @@ function BattleHub({ user }) {
           <span className="text-xs text-gray-400">+Add</span>
         </Link>
       </div>
+
+      {/* Admin Panel → Banner Management — active promo banners */}
+      {promoBanners.length > 0 && (
+        <div className="mx-3 mt-3 space-y-3">
+          {promoBanners.map(b => {
+            const content = (
+              <div
+                className="rounded-2xl overflow-hidden shadow p-4 flex items-center gap-3 text-white"
+                style={{ background: `linear-gradient(135deg, ${b.bg_from || "#581c87"}, ${b.bg_to || "#1e3a8a"})` }}
+              >
+                {b.image_url && (
+                  <img src={b.image_url} alt={b.title} className="w-14 h-14 rounded-xl object-cover shrink-0 bg-white/10" />
+                )}
+                <div className="min-w-0">
+                  <div className="font-bold text-base truncate">{b.title}</div>
+                  {b.subtitle && <div className="text-sm text-white/80 truncate">{b.subtitle}</div>}
+                </div>
+              </div>
+            );
+            if (!b.link) return <div key={b.id}>{content}</div>;
+            return /^https?:\/\//i.test(b.link) ? (
+              <a key={b.id} href={b.link} target="_blank" rel="noopener noreferrer">{content}</a>
+            ) : (
+              <Link key={b.id} to={b.link}>{content}</Link>
+            );
+          })}
+        </div>
+      )}
 
       {/* Admin-editable notice banner (Admin Panel → Settings → Battle Banner) */}
       {banner && (
