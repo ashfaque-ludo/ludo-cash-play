@@ -157,4 +157,16 @@ router.post("/announcement", async (req,res)=>{
   res.json({ ok:true });
 });
 
+// Create Battle banner (shown above "Create Battle" on the home screen)
+router.get("/battle-banner", async (req,res)=>{
+  const text = await Config.get("battle_banner_text", "");
+  res.json({ text });
+});
+router.post("/battle-banner", async (req,res)=>{
+  const { text } = req.body;
+  await Config.set("battle_banner_text", text || "");
+  await logActivity(req,"battle_banner_updated","",{ text });
+  res.json({ ok:true });
+});
+
 module.exports=router;

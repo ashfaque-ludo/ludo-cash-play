@@ -6,6 +6,26 @@ const StakeTable = require("../models/StakeTable");
 const Config = require("../models/Config");
 const { payReferralBonus } = require("../utils/referral");
 
+// Auto-settle: credit winner immediately when claims agree (one won + one lost).
+// Mirrors the crediting logic used by admin decide/resolve — kept in sync manually.
+async function autoSettleAgreed(match, winnerPlayer, loserPlayer) {
+  match.winner = winnerPlayer.user;
+  match.status = "ended";
+  match.ended_at = new Date();
+  await match.save();
+  await User.findByIdAndUpdate(winnerPlayer.user, { $inc: { "wallet.winning": match.prize_pool } });
+  await Transaction.create({
+    user: winnerPlayer.user, user_phone: "", type: "match_win", amount: match.prize_pool, status: "completed",
+    description: `Won ₹${match.prize_pool} battle`, meta: { match: match._id, stake: match.stake },
+  }).catch(() => {});
+  await Transaction.create({
+    user: loserPlayer.user, user_phone: "", type: "match_loss", amount: -match.stake, status: "completed",
+    description: `Lost ₹${match.stake} battle`, meta: { match: match._id, stake: match.stake },
+  }).catch(() => {});
+  await payReferralBonus(winnerPlayer.user, match.stake, match._id);
+  await payReferralBonus(loserPlayer.user, match.stake, match._id);
+}
+
 async function getPCT() {
   try {
     const v = await Config.get("commission_pct", null);
@@ -55,6 +75,16 @@ function serializeMatch(m) {
   };
 }
 
+// Strip fields non-players shouldn't see (room code/password, screenshots, emails)
+function redactForSpectator(serialized) {
+  const s = { ...serialized };
+  delete s.room_code;
+  delete s.room_password;
+  delete s.results;
+  s.players = (s.players || []).map(p => ({ name: p.name, id: p.id || p.user }));
+  return s;
+}
+
 // GET /matches — all waiting + user's active matches (public; richer when logged in)
 router.get("/", async (req, res) => {
   try {
@@ -71,6 +101,17 @@ router.get("/", async (req, res) => {
     const map = {};
     for (const m of [...open, ...mine]) map[m._id.toString()] = m;
     res.json({ matches: Object.values(map).map(m => serializeMatch(m)) });
+  } catch (e) { res.status(500).json({ detail: "Server error." }); }
+});
+
+// GET /matches/running — public spectator list of all in-progress battles.
+// Visible to every user, but redacted (no room code/password) — only the
+// two actual players can open/act on a match (enforced in join/submit-result/cancel).
+router.get("/running", async (req, res) => {
+  try {
+    const running = await Match.find({ status: { $in: ["in_progress", "awaiting_review", "disputed"] } })
+      .sort({ createdAt: -1 }).limit(50).lean();
+    res.json({ matches: running.map(m => redactForSpectator(serializeMatch(m))) });
   } catch (e) { res.status(500).json({ detail: "Server error." }); }
 });
 
@@ -279,13 +320,38 @@ router.post("/:id/cancel", async (req, res) => {
         await match.save();
         if (match.players[0]) await User.findByIdAndUpdate(match.players[0].user, { $inc: { "wallet.deposit": match.stake } });
         if (match.players[1]) await User.findByIdAndUpdate(match.players[1].user, { $inc: { "wallet.deposit": match.stake } });
-        return res.json({ ok: true, message: "Both cancelled. Amount refunded to both." });
+        return res.json({ ok: true, auto_resolved: true, message: "Both cancelled. Amount refunded to both." });
       } else {
-        match.status = "admin_review";
+        // Only one player wants to cancel so far — keep status as-is (in_progress)
+        // so the other player can still agree and trigger the auto-refund above.
+        // Bug fix: previously this flipped status to admin_review immediately,
+        // which blocked the second player's cancel request from ever being
+        // recorded (the endpoint only accepts in_progress/matched matches),
+        // so "both cancel" could never actually fire.
         match.cancel_reason = req.body.reason || "Cancelled by player";
         match.cancelled_by = req.user._id;
         await match.save();
-        return res.json({ ok: true, message: "Cancellation submitted. Admin will review." });
+
+        // Grace period: if the opponent hasn't also cancelled within 10 minutes,
+        // escalate to admin so the request doesn't hang forever.
+        const matchId = match._id;
+        setTimeout(async () => {
+          try {
+            const m = await Match.findById(matchId);
+            if (!m || m.status !== "in_progress") return;
+            const a = m.players[0]?.user.toString();
+            const b = m.players[1]?.user.toString();
+            const stillBoth = a && b &&
+              m.cancel_requests?.some(id => id.toString() === a) &&
+              m.cancel_requests?.some(id => id.toString() === b);
+            if (stillBoth) return; // already resolved by the both-agree path
+            m.status = "admin_review";
+            await m.save();
+            console.log(`[CANCEL-TIMEOUT] Match ${matchId} moved to admin_review — opponent didn't confirm cancel`);
+          } catch (err) { console.error("Cancel grace-period error:", err.message); }
+        }, 10 * 60 * 1000);
+
+        return res.json({ ok: true, auto_resolved: false, message: "Cancellation requested. If your opponent also cancels, it refunds automatically. Otherwise admin will review shortly." });
       }
     }
 
@@ -294,11 +360,15 @@ router.post("/:id/cancel", async (req, res) => {
 });
 
 // GET /matches/:id — single match, returned directly (no wrapper)
+// Spectators (logged in or not) get a redacted view — no room code/password,
+// no result screenshots — so they can't join or act on someone else's match.
 router.get("/:id", async (req, res) => {
   try {
     const match = await Match.findById(req.params.id);
     if (!match) return res.status(404).json({ detail: "Match not found." });
-    res.json(serializeMatch(match));
+    const isPlayer = req.user && match.players.some(p => p.user.toString() === req.user._id.toString());
+    const serialized = serializeMatch(match);
+    res.json(isPlayer ? serialized : redactForSpectator(serialized));
   } catch (e) { res.status(404).json({ detail: "Not found." }); }
 });
 
@@ -334,12 +404,27 @@ router.post("/:id/submit-result", async (req, res) => {
         }
         return res.json({ ok: true, auto_resolved: true, cancelled: true, match: serializeMatch(match) });
       } else {
-        // One player wants to cancel — admin decides
-        match.status = "admin_review";
+        // Only one player wants to cancel so far — keep status in_progress (don't
+        // escalate yet) so the other player can still agree and auto-refund.
         match.cancel_note = note || "";
         match.cancelled_by = req.user._id;
         await match.save();
-        return res.json({ ok: true, auto_resolved: false, cancelled: false, status: "admin_review", match: serializeMatch(match) });
+        const matchId = match._id;
+        setTimeout(async () => {
+          try {
+            const m = await Match.findById(matchId);
+            if (!m || m.status !== "in_progress") return;
+            const a = m.players[0]?.user.toString();
+            const b = m.players[1]?.user.toString();
+            const stillBoth = a && b &&
+              m.cancel_requests?.some(id => id.toString() === a) &&
+              m.cancel_requests?.some(id => id.toString() === b);
+            if (stillBoth) return;
+            m.status = "admin_review";
+            await m.save();
+          } catch (err) { console.error("Cancel grace-period error:", err.message); }
+        }, 10 * 60 * 1000);
+        return res.json({ ok: true, auto_resolved: false, cancelled: false, status: "in_progress", match: serializeMatch(match) });
       }
     }
 
@@ -351,10 +436,17 @@ router.post("/:id/submit-result", async (req, res) => {
     if (both) {
       const allWin = match.players.every(p => p.claimed_win === true);
       const allLose = match.players.every(p => p.claimed_win === false);
-      // Both submitted — ALWAYS require admin approval. Never auto-credit.
-      // disputed = both claim same outcome (admin must investigate screenshots)
-      // awaiting_review = one won + one lost (admin confirms before crediting winner)
-      match.status = (allWin || allLose) ? "disputed" : "awaiting_review";
+      if (!allWin && !allLose) {
+        // Results agree: one player says won, the other says lost — settle
+        // automatically and credit the winner immediately, no admin needed.
+        const winnerP = match.players.find(p => p.claimed_win === true);
+        const loserP = match.players.find(p => p.claimed_win === false);
+        await autoSettleAgreed(match, winnerP, loserP);
+        return res.json({ ok: true, auto_resolved: true, status: "ended", match: serializeMatch(match) });
+      }
+      // Both claim the same outcome (both "won" or both "lost") — genuine
+      // dispute, admin must investigate the screenshots.
+      match.status = "disputed";
       await match.save();
       return res.json({ ok: true, auto_resolved: false, status: match.status, match: serializeMatch(match) });
     }

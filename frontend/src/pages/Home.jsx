@@ -63,9 +63,28 @@ function BattleHub({ user }) {
   const nav = useNavigate();
   const { refresh } = useAuth();
   const [matches, setMatches] = useState([]);
+  const [spectate, setSpectate] = useState([]);
+  const [banner, setBanner] = useState("");
   const [amount, setAmount] = useState("");
   const [busy, setBusy] = useState(false);
   const prevStatusRef = useRef({});
+
+  useEffect(() => {
+    api.get("/public/battle-banner").then(r => setBanner(r.data.text || "")).catch(() => {});
+  }, []);
+
+  const loadSpectate = async () => {
+    try {
+      const r = await api.get("/matches/running");
+      setSpectate(r.data.matches || []);
+    } catch {}
+  };
+
+  useEffect(() => {
+    loadSpectate();
+    const iv = setInterval(loadSpectate, 8000);
+    return () => clearInterval(iv);
+  }, []);
 
   const total = useMemo(() => {
     if (!user || user === false) return 0;
@@ -168,6 +187,13 @@ function BattleHub({ user }) {
         </Link>
       </div>
 
+      {/* Admin-editable notice banner (Admin Panel → Settings → Battle Banner) */}
+      {banner && (
+        <div className="mx-3 mt-3 rounded-2xl bg-amber-100 border-2 border-amber-400 p-3">
+          <p className="text-xs font-semibold text-amber-900 text-center leading-5">{banner}</p>
+        </div>
+      )}
+
       {/* Create Battle */}
       <div className="bg-white rounded-2xl shadow border-2 border-gray-200 m-3 p-4">
         <h2 className="font-bold text-lg text-gray-900 mb-3">Create Battle</h2>
@@ -257,6 +283,33 @@ function BattleHub({ user }) {
                   </span>
                 </div>
               </Link>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* All Running Battles — visible to everyone, spectate-only (not clickable) */}
+      <div className="px-3 mt-4">
+        <h3 className="font-bold text-gray-900 mb-3 px-1">All Running Battles</h3>
+        {spectate.filter(b => !runningBattles.some(r => (r.id || r._id) === b.id)).length === 0 ? (
+          <div className="bg-white rounded-2xl p-8 text-center text-gray-500">
+            No battles in progress right now
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {spectate.filter(b => !runningBattles.some(r => (r.id || r._id) === b.id)).map(b => (
+              <div key={b.id} className="bg-gray-50 rounded-2xl border-2 border-gray-200 p-4 opacity-90">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="font-bold text-gray-900">{b.label || fmtINR(b.stake)}</div>
+                    <div className="text-sm text-gray-500">Prize: <span className="text-green-600 font-bold">{fmtINR(b.prize)}</span></div>
+                    <div className="text-xs text-gray-400">{(b.players || []).map(p => p.name).filter(Boolean).join(" vs ") || "Players in match"}</div>
+                  </div>
+                  <span className="text-xs bg-gray-200 text-gray-600 px-2 py-1 rounded-full font-semibold">
+                    Spectate only
+                  </span>
+                </div>
+              </div>
             ))}
           </div>
         )}
@@ -594,7 +647,7 @@ function MarketingHome() {
             {[
               {q:"Is MyAkadda legal in India?", a:"Ludo is recognized as a game of skill by multiple Indian high court rulings. However, real-money play is restricted in Andhra Pradesh, Assam, Nagaland, Odisha, Sikkim, Telangana and Tamil Nadu."},
               {q:"How does winner verification work?", a:"After your match on Ludo King, both players submit their result with a screenshot. If results match, prizes are credited instantly. Conflicts are reviewed by admin within 30 minutes."},
-              {q:"How fast are withdrawals?", a:"Standard withdrawals are processed within 30 minutes. VIP players get priority within 5–10 minutes. Minimum withdrawal is ₹100."},
+              {q:"How fast are withdrawals?", a:"Standard withdrawals are processed within 30 minutes. VIP players get priority within 5–10 minutes. Minimum withdrawal is ₹500 and requires completed KYC verification."},
               {q:"What is the platform commission?", a:"We charge a flat 5% commission on the total prize pool. Everything else is paid out to the winner."},
               {q:"Is my money safe?", a:"All transactions use bank-grade encryption. We never store card details on our servers."},
             ].map((f,i)=>(

@@ -43,6 +43,15 @@ router.get('/banners', withCache('banners', 30000, async () => {
   return { banners: banners.map(b => ({ ...b.toObject(), id: b._id.toString() })) };
 }));
 
+router.get('/battle-banner', async (req, res) => {
+  try {
+    const text = await Config.get('battle_banner_text', '');
+    res.json({ text });
+  } catch (e) {
+    res.json({ text: '' });
+  }
+});
+
 router.get('/payment-info', async (req, res) => {
   try {
     res.set('Cache-Control', 'no-store, no-cache, must-revalidate');

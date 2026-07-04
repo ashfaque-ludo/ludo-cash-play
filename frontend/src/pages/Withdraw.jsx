@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback } from "react";
+import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { api, fmtINR } from "@/lib/api";
 import { toast } from "sonner";
@@ -20,6 +21,7 @@ export default function Withdraw() {
   const [holder, setHolder] = useState("");
   const [loading, setLoading] = useState(false);
   const [history, setHistory] = useState([]);
+  const [kycStatus, setKycStatus] = useState(null);
 
   const loadHistory = useCallback(async () => {
     try {
@@ -29,13 +31,17 @@ export default function Withdraw() {
   }, []);
 
   useEffect(() => { loadHistory(); }, [loadHistory]);
+  useEffect(() => {
+    api.get("/kyc/status").then(r => setKycStatus(r.data.status)).catch(() => {});
+  }, []);
 
   const w = user?.wallet || {};
   const withdrawable = (w.winning || 0) + (w.referral || 0);
+  const kycApproved = kycStatus === "approved";
 
   const handleWithdraw = async () => {
     const amt = parseFloat(amount);
-    if (!amt || amt < 100) return toast.error("Minimum withdrawal ₹100");
+    if (!amt || amt < 500) return toast.error("Minimum withdrawal ₹500");
     if (amt > 50000) return toast.error("Maximum withdrawal ₹50,000");
     if (amt > withdrawable) return toast.error(`Insufficient balance. Withdrawable: ₹${withdrawable}`);
     if (method === "upi" && !upiId.trim()) return toast.error("Enter your UPI ID");
@@ -76,7 +82,23 @@ export default function Withdraw() {
         </p>
       </div>
 
-      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4 space-y-4 mb-4">
+      {kycStatus !== null && !kycApproved && (
+        <div className="bg-amber-50 border-2 border-amber-400 rounded-2xl p-4 mb-4 text-center">
+          <p className="font-bold text-amber-800 mb-1">KYC Required</p>
+          <p className="text-sm text-amber-700 mb-3">
+            {kycStatus === "pending"
+              ? "Your KYC is under review. You can withdraw once it's approved."
+              : "Complete KYC verification before withdrawing."}
+          </p>
+          {kycStatus !== "pending" && (
+            <Link to="/kyc" className="inline-block px-5 py-2.5 rounded-xl bg-amber-600 text-white font-bold text-sm">
+              Complete KYC
+            </Link>
+          )}
+        </div>
+      )}
+
+      <div className={`bg-white rounded-2xl border border-gray-200 shadow-sm p-4 space-y-4 mb-4 ${!kycApproved ? "opacity-50 pointer-events-none" : ""}`}>
         {/* Amount */}
         <div>
           <label className="text-xs font-bold text-gray-600 uppercase tracking-wide block mb-1.5">
@@ -86,7 +108,7 @@ export default function Withdraw() {
             <span className="text-gray-500 font-bold mr-1 text-lg">₹</span>
             <input type="text" inputMode="numeric" value={amount}
               onChange={e => setAmount(e.target.value.replace(/\D/g,""))}
-              placeholder="Min ₹100, Max ₹50,000"
+              placeholder="Min ₹500, Max ₹50,000"
               className="flex-1 bg-transparent py-3 outline-none text-gray-900 text-lg" />
           </div>
         </div>
@@ -140,7 +162,7 @@ export default function Withdraw() {
           </div>
         )}
 
-        <button onClick={handleWithdraw} disabled={loading}
+        <button onClick={handleWithdraw} disabled={loading || !kycApproved}
           className="w-full h-12 rounded-xl bg-gradient-to-r from-red-700 to-black text-white font-black disabled:opacity-50 hover:opacity-90 transition-all">
           {loading ? "Processing…" : "Withdraw"}
         </button>

@@ -19,6 +19,7 @@ const STATUS_CONFIG = {
 export default function RunningBattles() {
   const { user } = useAuth();
   const [matches, setMatches] = useState([]);
+  const [spectate, setSpectate] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
@@ -32,11 +33,20 @@ export default function RunningBattles() {
     finally { setLoading(false); }
   }, []);
 
+  const loadSpectate = useCallback(async () => {
+    try {
+      const { data } = await api.get("/matches/running");
+      setSpectate(data.matches || []);
+    } catch {}
+  }, []);
+
   useEffect(() => {
     load();
+    loadSpectate();
     const iv = setInterval(load, 8000);
-    return () => clearInterval(iv);
-  }, [load]);
+    const iv2 = setInterval(loadSpectate, 8000);
+    return () => { clearInterval(iv); clearInterval(iv2); };
+  }, [load, loadSpectate]);
 
   if (!user) return null;
 
@@ -125,6 +135,33 @@ export default function RunningBattles() {
             })}
           </div>
         )}
+
+        {/* All running battles — visible to everyone, spectate-only */}
+        <div className="mt-8">
+          <h3 className="font-bold text-lg mb-3">All Running Battles</h3>
+          {spectate.filter(b => !matches.some(m => m.id === b.id)).length === 0 ? (
+            <div className="text-slate-500 text-sm">No other battles in progress right now.</div>
+          ) : (
+            <div className="space-y-3">
+              {spectate.filter(b => !matches.some(m => m.id === b.id)).map(b => (
+                <Card key={b.id} className="glass border-white/10 text-white opacity-80">
+                  <CardContent className="p-4 flex items-center justify-between">
+                    <div>
+                      <div className="font-bold">{b.label}</div>
+                      <div className="text-sm text-slate-400">
+                        Entry: {fmtINR(b.stake)} · Prize: {fmtINR(b.prize || b.prize_pool)}
+                      </div>
+                      <div className="text-xs text-slate-500 mt-0.5">
+                        {(b.players || []).map(p => p.name).filter(Boolean).join(" vs ") || "Players in match"}
+                      </div>
+                    </div>
+                    <Badge variant="outline" className="text-xs border-slate-500/30 text-slate-300">Spectate only</Badge>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </div>
 
         {/* Recent ended matches */}
         <RecentHistory />

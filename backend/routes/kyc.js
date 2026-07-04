@@ -102,29 +102,21 @@ router.post("/verify-aadhaar-otp", async (req, res) => {
 
     aadhaarOtpStore.delete(key);
 
-    // Mark user as KYC verified
+    // OTP only confirms the Aadhaar number is reachable — it is NOT a
+    // substitute for admin review. Withdrawals require kyc_status "approved",
+    // which is only ever set by an admin (routes/admin/kyc.js) after they've
+    // reviewed the uploaded ID photos from POST /kyc/submit.
     await User.findByIdAndUpdate(req.user._id, {
-      kyc_verified: true,
-      kyc_status: "approved",
       aadhaar_last_4: record.aadhaar.slice(-4),
-      kyc_verified_at: new Date(),
     });
 
-    // Also upsert KYC record
     await KYC.findOneAndUpdate(
       { user: req.user._id },
-      {
-        $set: {
-          aadhaar_number: record.aadhaar,
-          status: "approved",
-          reviewed_at: new Date(),
-          admin_note: "Auto-verified via Aadhaar OTP",
-        },
-      },
+      { $set: { aadhaar_number: record.aadhaar } },
       { upsert: true }
     );
 
-    res.json({ ok: true, message: "KYC verified successfully!" });
+    res.json({ ok: true, message: "Aadhaar number confirmed. Please upload your ID documents for admin verification." });
   } catch (e) {
     res.status(500).json({ detail: e.message || "Server error." });
   }

@@ -169,13 +169,17 @@ router.post("/deposit-screenshot", depositUpload.single("screenshot"), async (re
 router.post("/withdraw", async (req, res) => {
   try {
     const { amount, method = "upi", upi_id, account_number, ifsc, account_holder } = req.body;
-    if (!amount || amount < 100)  return res.status(400).json({ detail: "Minimum withdrawal ₹100." });
+    if (!amount || amount < 500)  return res.status(400).json({ detail: "Minimum withdrawal ₹500." });
     if (amount > 50000)            return res.status(400).json({ detail: "Maximum withdrawal ₹50,000." });
 
     const user = await User.findById(req.user._id);
 
     if (user.wallet_frozen) {
       return res.status(403).json({ detail: 'Your wallet is frozen. Contact support.' });
+    }
+
+    if (user.kyc_status !== "approved") {
+      return res.status(403).json({ detail: "Complete KYC verification before withdrawing.", kyc_required: true });
     }
 
     const withdrawable = (user.wallet.winning || 0) + (user.wallet.referral || 0);

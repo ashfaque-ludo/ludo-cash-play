@@ -19,6 +19,41 @@ router.get("/", async (req,res)=>{
   res.json({matches:matches.map(m=>({...m.toObject(),id:m._id.toString(),created_at:m.createdAt}))});
 });
 
+// POST /api/admin/matches/clear-my-history — wipe the CURRENT admin's own game
+// history (Transaction entries only). Always scoped to req.user._id, so it can
+// never touch another user's data — real players' history is untouched.
+router.post("/clear-my-history", async (req,res)=>{
+  try{
+    const r = await Transaction.deleteMany({ user: req.user._id, type: { $in: ["match_entry","match_win","match_loss"] } });
+    await logActivity(req,"admin_own_history_cleared","",{deleted:r.deletedCount});
+    res.json({ ok:true, deleted:r.deletedCount });
+  }catch(e){ res.status(500).json({detail:"Server error."}); }
+});
+
+// PATCH /api/admin/matches/:id — correct a match record (label/stake/status/note only;
+// does not move money — use decide/resolve for crediting/refunding).
+router.patch("/:id", async (req,res)=>{
+  try{
+    const allowed=["label","stake","status","cancel_reason"];
+    const update={};
+    for(const k of allowed) if(req.body[k]!==undefined) update[k]=req.body[k];
+    const match=await Match.findByIdAndUpdate(req.params.id,{$set:update},{new:true,runValidators:true});
+    if(!match) return res.status(404).json({detail:"Not found."});
+    await logActivity(req,"match_edited",match._id.toString(),update);
+    res.json({ok:true,match:{...match.toObject(),id:match._id.toString()}});
+  }catch(e){ res.status(400).json({detail:e.message||"Invalid update."}); }
+});
+
+// DELETE /api/admin/matches/:id — permanently remove a match record.
+router.delete("/:id", async (req,res)=>{
+  try{
+    const match=await Match.findByIdAndDelete(req.params.id);
+    if(!match) return res.status(404).json({detail:"Not found."});
+    await logActivity(req,"match_deleted",req.params.id,{stake:match.stake});
+    res.json({ok:true});
+  }catch(e){ res.status(500).json({detail:"Server error."}); }
+});
+
 // POST /api/admin/matches/:id/decide  (used for awaiting_review matches)
 router.post("/:id/decide", async (req,res)=>{
   try{

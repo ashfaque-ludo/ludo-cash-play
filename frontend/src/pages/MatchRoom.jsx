@@ -188,6 +188,29 @@ export default function MatchRoom() {
   const myId = user?._id || user?.id;
   const p1Id = match.player1?._id || match.player1?.id || match.players?.[0]?.id;
   const isCreator = myId?.toString() === p1Id?.toString() || match.creator_id === user?.id;
+  const isParticipant = !!myId && (match.player_ids || []).some(pid => pid?.toString() === myId?.toString());
+
+  // Spectator guard — running battles are visible to everyone in lists, but only
+  // the two actual players may open/act inside the match room.
+  if (!isParticipant) {
+    return (
+      <div className="min-h-screen bg-[#f5f5f5] pb-24">
+        <div className="bg-white border-b border-gray-200 px-3 py-3 flex items-center justify-between">
+          <button onClick={() => navigate(-1)} className="flex items-center gap-1 text-gray-700 font-semibold">
+            <ArrowLeft className="w-5 h-5" />
+            <span className="text-sm">Back</span>
+          </button>
+        </div>
+        <div className="max-w-md mx-auto px-3 mt-6">
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 text-center">
+            <h3 className="font-bold text-gray-900 text-lg mb-1">{match.label || 'Battle'}</h3>
+            <p className="text-sm text-gray-500 mb-4">Entry: ₹{match.stake} · Prize: ₹{match.prize || match.prize_pool}</p>
+            <p className="text-sm text-gray-500">This battle is between other players. You can watch it in the Running Battles list, but you can't open or join it.</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const hasRoomCode = !!match.room_code;
   const isActive = ['in_progress', 'awaiting_review', 'disputed', 'matched'].includes(match.status);

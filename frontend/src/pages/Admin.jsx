@@ -424,6 +424,9 @@ function MatchesTab({ actor }){
   const [rows, setRows] = useState([]);
   const [status, setStatus] = useState("pending");
   const [zoomedUrl, setZoomedUrl] = useState(null);
+  const [editMatch, setEditMatch] = useState(null);
+  const [editForm, setEditForm] = useState({ label: "", stake: "", status: "", cancel_reason: "" });
+  const [clearing, setClearing] = useState(false);
   const BACKEND = process.env.REACT_APP_BACKEND_URL || "";
   const toAbsUrl = (u) => !u ? "" : (u.startsWith("http") || u.startsWith("data:")) ? u : `${BACKEND}${u}`;
 
@@ -443,8 +446,78 @@ function MatchesTab({ actor }){
     catch (e) { toast.error(formatApiError(e.response?.data?.detail) || e.message); }
   };
 
+  const openEdit = (m) => {
+    setEditMatch(m);
+    setEditForm({ label: m.label || "", stake: m.stake || "", status: m.status || "", cancel_reason: m.cancel_reason || "" });
+  };
+
+  const saveEdit = async () => {
+    try {
+      await api.patch(`/admin/matches/${editMatch.id}`, {
+        label: editForm.label, stake: Number(editForm.stake), status: editForm.status, cancel_reason: editForm.cancel_reason,
+      });
+      toast.success("Match record updated");
+      setEditMatch(null);
+      load();
+    } catch (e) { toast.error(formatApiError(e.response?.data?.detail) || e.message); }
+  };
+
+  const deleteMatch = async (m) => {
+    if (!window.confirm("Permanently delete this match record? This does not move any money — only removes the history entry.")) return;
+    try { await api.delete(`/admin/matches/${m.id}`); toast.success("Match record deleted"); load(); }
+    catch (e) { toast.error(formatApiError(e.response?.data?.detail) || e.message); }
+  };
+
+  const clearMyHistory = async () => {
+    if (!window.confirm("Clear YOUR OWN game history? This only removes your account's match transactions — no other user is affected.")) return;
+    setClearing(true);
+    try {
+      const { data } = await api.post("/admin/matches/clear-my-history");
+      toast.success(`Cleared ${data.deleted} of your own history entries`);
+    } catch (e) { toast.error(formatApiError(e.response?.data?.detail) || e.message); }
+    finally { setClearing(false); }
+  };
+
   return (
     <div className="mt-5 space-y-4">
+      {actor.is_master_owner && (
+        <div className="flex justify-end">
+          <Button size="sm" variant="outline" disabled={clearing} onClick={clearMyHistory}
+            className="rounded-full border-red-300 text-red-700 bg-red-50">
+            {clearing ? "Clearing…" : "Clear My Game History"}
+          </Button>
+        </div>
+      )}
+
+      {editMatch && (
+        <div onClick={() => setEditMatch(null)} className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+          <div onClick={e => e.stopPropagation()} className="bg-white rounded-2xl p-5 w-full max-w-sm space-y-3">
+            <h3 className="font-bold text-gray-900">Edit Match Record</h3>
+            <div>
+              <Label className="text-xs text-gray-400">Label</Label>
+              <Input value={editForm.label} onChange={e => setEditForm(f => ({ ...f, label: e.target.value }))} className="mt-1" />
+            </div>
+            <div>
+              <Label className="text-xs text-gray-400">Stake</Label>
+              <Input type="number" value={editForm.stake} onChange={e => setEditForm(f => ({ ...f, stake: e.target.value }))} className="mt-1" />
+            </div>
+            <div>
+              <Label className="text-xs text-gray-400">Status</Label>
+              <Input value={editForm.status} onChange={e => setEditForm(f => ({ ...f, status: e.target.value }))} className="mt-1" />
+            </div>
+            <div>
+              <Label className="text-xs text-gray-400">Cancel/Note</Label>
+              <Input value={editForm.cancel_reason} onChange={e => setEditForm(f => ({ ...f, cancel_reason: e.target.value }))} className="mt-1" />
+            </div>
+            <p className="text-xs text-gray-400">Note: editing status/stake here does not move wallet money — use the action buttons for crediting/refunding.</p>
+            <div className="flex gap-2">
+              <Button variant="outline" className="flex-1 rounded-full" onClick={() => setEditMatch(null)}>Cancel</Button>
+              <Button className="flex-1 rounded-full bg-gradient-to-r from-red-700 to-black text-white" onClick={saveEdit}>Save</Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {zoomedUrl && (
         <div onClick={() => setZoomedUrl(null)} className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 cursor-zoom-out p-4">
           <img src={zoomedUrl} alt="Screenshot" className="max-w-[95vw] max-h-[90vh] rounded-xl object-contain" />
@@ -536,6 +609,14 @@ function MatchesTab({ actor }){
                             <Button size="sm" onClick={() => decide(m, null, true)} variant="outline" className="rounded-full border-red-500/30 text-red-600" data-testid={`cancel-match-${m.id}`}>Cancel</Button>
                           </>
                         )}
+                      </div>
+                    )}
+
+                    {/* Edit / Delete — correct or remove history records */}
+                    {canDecide && (
+                      <div className="flex gap-2 flex-wrap mt-2 pt-2 border-t border-gray-100">
+                        <Button size="sm" variant="outline" onClick={() => openEdit(m)} className="rounded-full border-gray-300 text-gray-600">Edit</Button>
+                        <Button size="sm" variant="outline" onClick={() => deleteMatch(m)} className="rounded-full border-red-300 text-red-600">Delete</Button>
                       </div>
                     )}
                   </div>
@@ -1555,6 +1636,7 @@ function PaymentSettingsTab() {
   const [form, setForm] = useState({ admin_upi_id: "", admin_upi_name: "", admin_qr_image: "", whatsapp_number: "", support_email: "", support_whatsapp: "" });
   const [commission, setCommission] = useState(5);
   const [announcement, setAnnouncement] = useState("");
+  const [battleBanner, setBattleBanner] = useState("");
   const [busy, setBusy] = useState(false);
   const [qrUpdatedAt, setQrUpdatedAt] = useState(null);
   const [qrUploading, setQrUploading] = useState(false);
@@ -1562,15 +1644,17 @@ function PaymentSettingsTab() {
 
   const load = useCallback(async () => {
     try {
-      const [p, c, a] = await Promise.all([
+      const [p, c, a, bb] = await Promise.all([
         api.get("/admin/payment-settings"),
         api.get("/admin/commission-settings"),
         api.get("/admin/announcement"),
+        api.get("/admin/battle-banner"),
       ]);
       setForm(p.data);
       setQrUpdatedAt(p.data.admin_qr_updated_at || null);
       setCommission(c.data.commission_pct);
       setAnnouncement(a.data.announcement || "");
+      setBattleBanner(bb.data.text || "");
     } catch {}
   }, []);
   useEffect(() => { load(); }, [load]);
@@ -1590,6 +1674,12 @@ function PaymentSettingsTab() {
   const saveAnnouncement = async () => {
     setBusy(true);
     try { await api.post("/admin/announcement", { text: announcement }); toast.success("Announcement updated"); }
+    catch (e) { toast.error(formatApiError(e.response?.data?.detail) || e.message); }
+    finally { setBusy(false); }
+  };
+  const saveBattleBanner = async () => {
+    setBusy(true);
+    try { await api.post("/admin/battle-banner", { text: battleBanner }); toast.success("Battle banner updated"); }
     catch (e) { toast.error(formatApiError(e.response?.data?.detail) || e.message); }
     finally { setBusy(false); }
   };
@@ -1719,6 +1809,20 @@ function PaymentSettingsTab() {
             <p className="text-xs text-gray-500 mt-1">Leave blank to hide the bar.</p>
           </div>
           <Button disabled={busy} onClick={saveAnnouncement} className="rounded-full bg-emerald-600 text-white">Save Announcement</Button>
+        </CardContent>
+      </Card>
+
+      <Card className="bg-white border-gray-200 shadow-sm text-gray-900">
+        <CardHeader><CardTitle>Create Battle Banner</CardTitle></CardHeader>
+        <CardContent className="space-y-4">
+          <div>
+            <Label className="text-xs text-gray-400">Notice shown above "Create Battle" on the home screen</Label>
+            <Textarea value={battleBanner} onChange={e => setBattleBanner(e.target.value)}
+              placeholder="If anyone submits a fake 'I Won' screenshot, their wallet balance will be set to 0 and their account will be banned."
+              className="bg-gray-50 border-gray-300 text-gray-900 mt-1 resize-none" rows={2} />
+            <p className="text-xs text-gray-500 mt-1">Leave blank to hide the banner.</p>
+          </div>
+          <Button disabled={busy} onClick={saveBattleBanner} className="rounded-full bg-amber-600 text-white">Save Battle Banner</Button>
         </CardContent>
       </Card>
     </div>

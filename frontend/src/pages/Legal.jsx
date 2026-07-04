@@ -37,7 +37,7 @@ Available: 24x7 Live Support`,
 
 4. DEPOSITS & WITHDRAWALS
 • Minimum deposit: ₹10
-• Minimum withdrawal: ₹100
+• Minimum withdrawal: ₹500 (KYC verification required)
 • Maximum withdrawal: ₹50,000 per day
 • Withdrawals are processed to UPI/Bank only.
 
