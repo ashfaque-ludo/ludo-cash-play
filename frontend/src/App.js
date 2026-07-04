@@ -1,5 +1,5 @@
 import React, { useState, Suspense, lazy, useEffect } from "react";
-import { BrowserRouter, Routes, Route, Navigate, useParams } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useParams, useLocation } from "react-router-dom";
 import { Toaster } from "sonner";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { LanguageProvider } from "@/contexts/LanguageContext";
@@ -67,9 +67,54 @@ function PageLoader() {
   );
 }
 
+const STAFF_ROLES = ["support_agent", "staff_manager", "admin", "super_admin"];
+const BACKEND = process.env.REACT_APP_BACKEND_URL || "";
+
+function MaintenanceScreen({ message }) {
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-amber-50 to-white flex items-center justify-center px-6 text-center">
+      <div className="max-w-md">
+        <div className="text-5xl mb-4">🛠️</div>
+        <h1 className="text-2xl font-black text-gray-900 mb-2">Site Under Maintenance</h1>
+        <p className="text-gray-600">
+          {message || "We're making some improvements. Please check back shortly."}
+        </p>
+      </div>
+    </div>
+  );
+}
 
 function AppLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [maintenance, setMaintenance] = useState({ enabled: false, message: "" });
+  const { user, ready } = useAuth();
+  const location = useLocation();
+
+  useEffect(() => {
+    const load = () => {
+      fetch(`${BACKEND}/api/public/config`)
+        .then(r => r.json())
+        .then(d => { if (d?.maintenance) setMaintenance(d.maintenance); })
+        .catch(() => {});
+    };
+    load();
+    const iv = setInterval(load, 30000);
+    return () => clearInterval(iv);
+  }, []);
+
+  const isStaff = !!(user && user !== false && (user.is_master_owner || STAFF_ROLES.includes(user.role)));
+  // Always let /login through — an admin who's logged out (new device,
+  // cleared cookies) must still be able to reach the login form to prove
+  // they're staff, otherwise maintenance mode would lock admins out entirely.
+  const isLoginRoute = location.pathname.startsWith("/login");
+
+  // Only gate on maintenance mode being on — don't block normal (maintenance
+  // off) traffic behind the auth-ready check, that's the overwhelmingly
+  // common case and shouldn't show an extra loading flash for everyone.
+  if (maintenance.enabled && !isLoginRoute) {
+    if (!ready) return <PageLoader />;
+    if (!isStaff) return <MaintenanceScreen message={maintenance.message} />;
+  }
 
   return (
     <>

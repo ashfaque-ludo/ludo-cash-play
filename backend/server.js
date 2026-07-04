@@ -130,8 +130,23 @@ async function reviewStuckMatches(){
   }catch(err){console.error("Startup review error:",err.message);}
 }
 
+// One-time: set the support number to 7206638948. Guarded by a flag so it
+// only runs once ever and never overrides a value the admin sets afterward.
+async function migrateSupportNumber(){
+  try{
+    const Config=require("./models/Config");
+    const done=await Config.get("support_number_migrated_v1",false);
+    if(!done){
+      await Config.set("whatsapp_number","917206638948");
+      await Config.set("support_number_migrated_v1",true);
+      console.log("[MIGRATION] support number set to 917206638948");
+    }
+  }catch(err){console.error("Support number migration error:",err.message);}
+}
+
 connectDB().then(async ()=>{
   await reviewStuckMatches();
+  await migrateSupportNumber();
   await require("./models/StakeTable").seedDefaults();
   const PORT=process.env.PORT||5000;
   app.listen(PORT,()=>console.log(`\n🎲  MyAkadda backend → http://localhost:${PORT}\n`));

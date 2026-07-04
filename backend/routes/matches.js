@@ -304,49 +304,54 @@ router.post("/:id/cancel", async (req, res) => {
 
     // In progress or matched — track who cancelled
     if (["in_progress", "matched"].includes(match.status)) {
-      if (!match.cancel_requests) match.cancel_requests = [];
-      const alreadyCancelled = match.cancel_requests.some(id => id.toString() === uid);
-      if (!alreadyCancelled) match.cancel_requests.push(req.user._id);
+      // Atomic $addToSet — the previous version read the match, mutated
+      // cancel_requests in JS, then called .save(). When both players tapped
+      // Cancel within the same window, the two reads/writes raced: whichever
+      // save() landed last silently overwrote the other player's entry, so
+      // cancel_requests never actually held both IDs and "both cancelled"
+      // was never true. This was the real reason auto-refund didn't fire.
+      const updated = await Match.findByIdAndUpdate(
+        req.params.id,
+        {
+          $addToSet: { cancel_requests: req.user._id },
+          $set: { cancel_reason: req.body.reason || "Cancelled by player", cancelled_by: req.user._id },
+        },
+        { new: true }
+      );
 
-      const p1 = match.players[0]?.user.toString();
-      const p2 = match.players[1]?.user.toString();
+      const p1 = updated.players[0]?.user.toString();
+      const p2 = updated.players[1]?.user.toString();
       const bothCancelled = p1 && p2 &&
-        match.cancel_requests.some(id => id.toString() === p1) &&
-        match.cancel_requests.some(id => id.toString() === p2);
+        updated.cancel_requests.some(id => id.toString() === p1) &&
+        updated.cancel_requests.some(id => id.toString() === p2);
 
       if (bothCancelled) {
-        match.status = "cancelled";
-        match.cancel_reason = "Both players cancelled";
-        await match.save();
-        if (match.players[0]) await User.findByIdAndUpdate(match.players[0].user, { $inc: { "wallet.deposit": match.stake } });
-        if (match.players[1]) await User.findByIdAndUpdate(match.players[1].user, { $inc: { "wallet.deposit": match.stake } });
+        // Compare-and-swap on status: if both cancel requests land in the
+        // same instant, both requests would see bothCancelled=true — only
+        // let the one that actually flips status "in_progress" -> "cancelled"
+        // perform the refund, so money is never credited twice.
+        const settled = await Match.findOneAndUpdate(
+          { _id: req.params.id, status: "in_progress" },
+          { $set: { status: "cancelled", cancel_reason: "Both players cancelled" } },
+          { new: true }
+        );
+        if (settled) {
+          if (settled.players[0]) await User.findByIdAndUpdate(settled.players[0].user, { $inc: { "wallet.deposit": settled.stake } });
+          if (settled.players[1]) await User.findByIdAndUpdate(settled.players[1].user, { $inc: { "wallet.deposit": settled.stake } });
+        }
         return res.json({ ok: true, auto_resolved: true, message: "Both cancelled. Amount refunded to both." });
       } else {
         // Only one player wants to cancel so far — keep status as-is (in_progress)
         // so the other player can still agree and trigger the auto-refund above.
-        // Bug fix: previously this flipped status to admin_review immediately,
-        // which blocked the second player's cancel request from ever being
-        // recorded (the endpoint only accepts in_progress/matched matches),
-        // so "both cancel" could never actually fire.
-        match.cancel_reason = req.body.reason || "Cancelled by player";
-        match.cancelled_by = req.user._id;
-        await match.save();
-
         // Grace period: if the opponent hasn't also cancelled within 10 minutes,
         // escalate to admin so the request doesn't hang forever.
-        const matchId = match._id;
+        const matchId = req.params.id;
         setTimeout(async () => {
           try {
-            const m = await Match.findById(matchId);
-            if (!m || m.status !== "in_progress") return;
-            const a = m.players[0]?.user.toString();
-            const b = m.players[1]?.user.toString();
-            const stillBoth = a && b &&
-              m.cancel_requests?.some(id => id.toString() === a) &&
-              m.cancel_requests?.some(id => id.toString() === b);
-            if (stillBoth) return; // already resolved by the both-agree path
-            m.status = "admin_review";
-            await m.save();
+            await Match.findOneAndUpdate(
+              { _id: matchId, status: "in_progress" },
+              { $set: { status: "admin_review", cancel_reason: "No mutual cancellation within 10 minutes — awaiting admin decision" } }
+            );
             console.log(`[CANCEL-TIMEOUT] Match ${matchId} moved to admin_review — opponent didn't confirm cancel`);
           } catch (err) { console.error("Cancel grace-period error:", err.message); }
         }, 10 * 60 * 1000);
@@ -384,32 +389,36 @@ router.post("/:id/submit-result", async (req, res) => {
     if (idx === -1) return res.status(403).json({ detail: "Not a player." });
 
     if (result === "cancel") {
-      // Track who wants to cancel — need BOTH players to agree for immediate refund
-      if (!match.cancel_requests) match.cancel_requests = [];
+      // Atomic $addToSet — see /:id/cancel for why a read-modify-.save() here
+      // would race and silently drop one player's cancel request.
       const uid = req.user._id.toString();
-      if (!match.cancel_requests.some(id => id.toString() === uid)) {
-        match.cancel_requests.push(req.user._id);
-      }
-      const p1id = match.players[0]?.user.toString();
-      const p2id = match.players[1]?.user.toString();
+      const updated = await Match.findByIdAndUpdate(
+        req.params.id,
+        { $addToSet: { cancel_requests: req.user._id }, $set: { cancel_note: note || "", cancelled_by: req.user._id } },
+        { new: true }
+      );
+      const p1id = updated.players[0]?.user.toString();
+      const p2id = updated.players[1]?.user.toString();
       const bothWantCancel = p1id && p2id &&
-        match.cancel_requests.some(id => id.toString() === p1id) &&
-        match.cancel_requests.some(id => id.toString() === p2id);
+        updated.cancel_requests.some(id => id.toString() === p1id) &&
+        updated.cancel_requests.some(id => id.toString() === p2id);
       if (bothWantCancel) {
-        match.status = "cancelled";
-        match.cancel_note = note || "";
-        await match.save();
-        for (const p of match.players) {
-          await User.findByIdAndUpdate(p.user, { $inc: { "wallet.deposit": match.stake } });
+        // Compare-and-swap so concurrent requests can't double-refund.
+        const settled = await Match.findOneAndUpdate(
+          { _id: req.params.id, status: "in_progress" },
+          { $set: { status: "cancelled" } },
+          { new: true }
+        );
+        if (settled) {
+          for (const p of settled.players) {
+            await User.findByIdAndUpdate(p.user, { $inc: { "wallet.deposit": settled.stake } });
+          }
         }
-        return res.json({ ok: true, auto_resolved: true, cancelled: true, match: serializeMatch(match) });
+        return res.json({ ok: true, auto_resolved: true, cancelled: true, match: serializeMatch(settled || updated) });
       } else {
         // Only one player wants to cancel so far — keep status in_progress (don't
         // escalate yet) so the other player can still agree and auto-refund.
-        match.cancel_note = note || "";
-        match.cancelled_by = req.user._id;
-        await match.save();
-        const matchId = match._id;
+        const matchId = req.params.id;
         setTimeout(async () => {
           try {
             const m = await Match.findById(matchId);

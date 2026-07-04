@@ -1,8 +1,19 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Dice5, AlertTriangle, MessageCircle, Send } from "lucide-react";
 
+const BACKEND = process.env.REACT_APP_BACKEND_URL || "";
+
 export default function Footer() {
+  const [supportNumber, setSupportNumber] = useState("917206638948");
+
+  useEffect(() => {
+    fetch(`${BACKEND}/api/public/payment-info`)
+      .then(r => r.json())
+      .then(data => { if (data?.whatsapp_number) setSupportNumber(data.whatsapp_number); })
+      .catch(() => {});
+  }, []);
+
   return (
     <footer className="relative mt-24 border-t border-white/10 bg-[#070709]" data-testid="site-footer">
       <div className="max-w-7xl mx-auto px-6 lg:px-12 py-12 grid md:grid-cols-4 gap-8">
@@ -19,7 +30,7 @@ export default function Footer() {
                className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass text-white text-sm hover:bg-white/10">
               <Send className="w-4 h-4" /> Telegram
             </a>
-            <a href="https://wa.me/918930988948" target="_blank" rel="noreferrer" data-testid="footer-whatsapp"
+            <a href={`https://wa.me/${supportNumber}`} target="_blank" rel="noreferrer" data-testid="footer-whatsapp"
                className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass text-white text-sm hover:bg-white/10">
               <MessageCircle className="w-4 h-4" /> WhatsApp
             </a>

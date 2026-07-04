@@ -9,7 +9,7 @@ export default function AnnouncementBar() {
     fetch(`${BACKEND}/api/public/payment-info`)
       .then(r => r.json())
       .then(data => {
-        const num = data?.whatsapp_number || "8930988948";
+        const num = data?.whatsapp_number || "7206638948";
         setNotice(`🎮 Play Ludo Win Cash | Support: ${num} | 24x7 Live Help | Commission: 5% | Referral Bonus: 1%`);
       })
       .catch(() => {

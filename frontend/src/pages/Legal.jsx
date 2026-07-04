@@ -1,5 +1,7 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+
+const BACKEND = process.env.REACT_APP_BACKEND_URL || "";
 
 const SECTIONS = {
   about: {
@@ -112,8 +114,17 @@ DISPUTES
 
 export default function Legal() {
   const [active, setActive] = useState("about");
+  const [supportNumber, setSupportNumber] = useState("7206638948");
   const nav = useNavigate();
   const section = SECTIONS[active];
+  const content = section.content.replace(/8930988948/g, supportNumber);
+
+  useEffect(() => {
+    fetch(`${BACKEND}/api/public/payment-info`)
+      .then(r => r.json())
+      .then(d => { if (d?.whatsapp_number) setSupportNumber(d.whatsapp_number.replace(/^91/, "").slice(-10)); })
+      .catch(() => {});
+  }, []);
 
   return (
     <div className="min-h-screen bg-gray-50 pt-20 pb-24 px-3">
@@ -141,7 +152,7 @@ export default function Legal() {
         </div>
         <div className="p-5">
           <pre className="text-sm text-gray-700 whitespace-pre-wrap font-sans leading-relaxed">
-            {section.content}
+            {content}
           </pre>
         </div>
       </div>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
@@ -62,6 +62,12 @@ export default function Login() {
   const [error, setError] = useState("");
   const [resendTimer, setResendTimer] = useState(0);
   const [useBackend, setUseBackend] = useState(false);
+  // Synchronous (non-state) guard against double-submit — setLoading(true) is
+  // async, so two rapid taps/re-renders could both pass the `loading` check
+  // before either had updated. This ref blocks the second call in the same
+  // tick and is the actual reason repeated OTP requests were slipping
+  // through and tripping Firebase's "too many requests" rate limit.
+  const sendingRef = useRef(false);
 
   // Pre-initialize reCAPTCHA on page load so it's ready before button click
   useEffect(() => {
@@ -80,11 +86,16 @@ export default function Login() {
   const handleSendOtp = async (e) => {
     e?.preventDefault();
     setError("");
+
+    // Block duplicate/rapid taps synchronously — see sendingRef comment above.
+    if (sendingRef.current || loading || resendTimer > 0) return;
+
     const clean = phone.replace(/\D/g, "");
     if (!/^[6-9]\d{9}$/.test(clean)) {
       setError("Enter a valid 10-digit Indian phone number");
       return;
     }
+    sendingRef.current = true;
     setLoading(true);
 
     // Try Firebase first
@@ -97,6 +108,13 @@ export default function Login() {
         setStep("otp");
         setResendTimer(60);
         setLoading(false);
+        sendingRef.current = false;
+        // The invisible reCAPTCHA widget is single-use — reusing an already
+        // "solved" widget for the next resend/attempt is what triggers
+        // Firebase's abuse detection ("too many requests"). Clear it now and
+        // let it lazily re-render fresh in the background for next time.
+        clearRecaptcha();
+        getRecaptcha().catch(() => {});
         return;
       } catch (fbErr) {
         clearRecaptcha();
@@ -108,6 +126,7 @@ export default function Login() {
     // Backend SMS fallback
     const r = await sendOtp(clean);
     setLoading(false);
+    sendingRef.current = false;
     if (!r.ok) { setError(r.error || "Failed to send OTP"); return; }
     setUseBackend(true);
     if (r.dev_otp) toast.success(`OTP: ${r.dev_otp}`, { duration: 15000 });

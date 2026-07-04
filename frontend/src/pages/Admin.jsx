@@ -1633,7 +1633,7 @@ function SupportMgmtTab() {
 }
 
 function PaymentSettingsTab() {
-  const [form, setForm] = useState({ admin_upi_id: "", admin_upi_name: "", admin_qr_image: "", whatsapp_number: "", support_email: "", support_whatsapp: "" });
+  const [form, setForm] = useState({ admin_upi_id: "", admin_upi_name: "", admin_qr_image: "", whatsapp_number: "", support_email: "" });
   const [commission, setCommission] = useState(5);
   const [announcement, setAnnouncement] = useState("");
   const [battleBanner, setBattleBanner] = useState("");
@@ -1726,23 +1726,19 @@ function PaymentSettingsTab() {
               <Input {...f("admin_upi_name")} placeholder="MyAkadda" className="bg-gray-50 border-gray-300 text-gray-900 mt-1" />
             </div>
             <div>
-              <Label className="text-xs text-gray-400">WhatsApp Number (with country code)</Label>
-              <Input {...f("whatsapp_number")} placeholder="919090000000" className="bg-gray-50 border-gray-300 text-gray-900 mt-1" />
+              <Label className="text-xs text-gray-400">Support Number (WhatsApp)</Label>
+              <Input
+                value={form.whatsapp_number || ""}
+                onChange={(e) => setForm(prev => ({ ...prev, whatsapp_number: e.target.value.replace(/\D/g, "") }))}
+                placeholder="917206638948"
+                maxLength={12}
+                className="bg-gray-50 border-gray-300 text-gray-900 mt-1"
+              />
+              <p className="text-xs text-gray-500 mt-1">Format: 91XXXXXXXXXX — used site-wide (WhatsApp floating button, Support page, footer, notices)</p>
             </div>
             <div>
               <Label className="text-xs text-gray-400">Support Email</Label>
               <Input {...f("support_email")} type="email" placeholder="support@myakadda.com" className="bg-gray-50 border-gray-300 text-gray-900 mt-1" />
-            </div>
-            <div>
-              <Label className="text-xs text-gray-400">Support WhatsApp Number</Label>
-              <Input
-                value={form.support_whatsapp || ""}
-                onChange={(e) => setForm(prev => ({ ...prev, support_whatsapp: e.target.value.replace(/\D/g, "") }))}
-                placeholder="918930988948"
-                maxLength={12}
-                className="bg-gray-50 border-gray-300 text-gray-900 mt-1"
-              />
-              <p className="text-xs text-gray-500 mt-1">Format: 91XXXXXXXXXX (used on Support page)</p>
             </div>
           </div>
 

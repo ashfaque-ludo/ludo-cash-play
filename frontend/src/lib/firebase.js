@@ -1,5 +1,5 @@
 import { initializeApp, getApps } from "firebase/app";
-import { getAuth } from "firebase/auth";
+import { getAuth, setPersistence, browserLocalPersistence } from "firebase/auth";
 
 export const FIREBASE_READY = !!(
   process.env.REACT_APP_FIREBASE_API_KEY &&
@@ -21,5 +21,9 @@ if (FIREBASE_READY && getApps().length === 0) {
 } else if (FIREBASE_READY && getApps().length > 0) {
   auth = getAuth(getApps()[0]);
 }
+
+// Persist the Firebase phone-auth session across reloads/app reopens
+// (this is the SDK default on web, but set explicitly to be sure).
+if (auth) setPersistence(auth, browserLocalPersistence).catch(() => {});
 
 export { auth };

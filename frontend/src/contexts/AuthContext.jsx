@@ -11,8 +11,19 @@ export function AuthProvider({ children }) {
     try {
       const { data } = await api.get("/auth/me");
       setUser(data);
-    } catch {
-      setUser(false);
+    } catch (err) {
+      // Only a real 401/403 means the session is genuinely invalid. Any other
+      // failure (network blip, timeout, 5xx, backend cold start) used to
+      // force setUser(false) too, which bounced a perfectly valid, logged-in
+      // user to /login on every transient hiccup from the 10s poll — this
+      // was the actual cause of "getting logged out repeatedly". Now those
+      // failures just leave the previous state alone and retry next poll.
+      const status = err?.response?.status;
+      if (status === 401 || status === 403 || !localStorage.getItem("lcp_token")) {
+        setUser(false);
+      } else {
+        setUser(prev => (prev === null ? null : prev));
+      }
     } finally {
       setReady(true);
     }

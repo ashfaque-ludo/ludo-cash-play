@@ -58,12 +58,12 @@ function FAQItem({ faq }) {
 }
 
 export default function Support() {
-  const [supportWhatsApp, setSupportWhatsApp] = useState("918930988948");
+  const [supportWhatsApp, setSupportWhatsApp] = useState("917206638948");
 
   useEffect(() => {
     fetch(`${BACKEND}/api/public/payment-info`, { cache: 'no-store' })
       .then(r => r.json())
-      .then(d => { if (d.support_whatsapp) setSupportWhatsApp(d.support_whatsapp); })
+      .then(d => { if (d.whatsapp_number) setSupportWhatsApp(d.whatsapp_number); })
       .catch(() => {});
   }, []);
 

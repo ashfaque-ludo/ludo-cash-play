@@ -77,6 +77,13 @@ export default function Dashboard() {
   const [creating, setCreating] = useState(false);
   const [joining, setJoining] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [supportNumber, setSupportNumber] = useState("7206638948");
+
+  useEffect(() => {
+    api.get("/public/payment-info")
+      .then(r => { if (r.data?.whatsapp_number) setSupportNumber(r.data.whatsapp_number.replace(/^91/, "").slice(-10)); })
+      .catch(() => {});
+  }, []);
 
   const loadBattles = useCallback(async () => {
     try {
@@ -147,9 +154,9 @@ export default function Dashboard() {
       <AnnouncementBar />
       <div className="bg-yellow-400 text-black text-xs font-semibold py-1.5 px-4 overflow-hidden">
         <div className="animate-marquee whitespace-nowrap">
-          🎮 Play Ludo Win Cash &nbsp;|&nbsp; Support: +91 8930988948 &nbsp;|&nbsp; 24x7 Live Help &nbsp;|&nbsp;
+          🎮 Play Ludo Win Cash &nbsp;|&nbsp; Support: +91 {supportNumber} &nbsp;|&nbsp; 24x7 Live Help &nbsp;|&nbsp;
           💰 Instant Withdrawal Via UPI/Bank &nbsp;|&nbsp; 🎁 Referral Bonus 1% on All Games &nbsp;|&nbsp;
-          🎮 Play Ludo Win Cash &nbsp;|&nbsp; Support: +91 8930988948 &nbsp;|&nbsp; 24x7 Live Help
+          🎮 Play Ludo Win Cash &nbsp;|&nbsp; Support: +91 {supportNumber} &nbsp;|&nbsp; 24x7 Live Help
         </div>
       </div>
 

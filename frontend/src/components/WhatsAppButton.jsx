@@ -4,7 +4,7 @@ import { X } from "lucide-react";
 const BACKEND = process.env.REACT_APP_BACKEND_URL || "";
 
 export default function WhatsAppButton() {
-  const [supportNumber, setSupportNumber] = useState("917378045227");
+  const [supportNumber, setSupportNumber] = useState("917206638948");
   const [show, setShow] = useState(false);
 
   useEffect(() => {
