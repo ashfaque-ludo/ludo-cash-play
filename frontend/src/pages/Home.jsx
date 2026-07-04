@@ -204,15 +204,15 @@ function BattleHub({ user }) {
           {promoBanners.map(b => {
             const content = (
               <div
-                className="rounded-2xl overflow-hidden shadow p-4 flex items-center gap-3 text-white"
+                className="rounded-2xl shadow p-4 flex items-start gap-3 text-white"
                 style={{ background: `linear-gradient(135deg, ${b.bg_from || "#581c87"}, ${b.bg_to || "#1e3a8a"})` }}
               >
                 {b.image_url && (
                   <img src={b.image_url} alt={b.title} className="w-14 h-14 rounded-xl object-cover shrink-0 bg-white/10" />
                 )}
                 <div className="min-w-0">
-                  <div className="font-bold text-base truncate">{b.title}</div>
-                  {b.subtitle && <div className="text-sm text-white/80 truncate">{b.subtitle}</div>}
+                  <div className="font-bold text-base break-words">{b.title}</div>
+                  {b.subtitle && <div className="text-sm text-white/80 mt-0.5 break-words whitespace-pre-line">{b.subtitle}</div>}
                 </div>
               </div>
             );

@@ -8,6 +8,13 @@
     color-scheme: dark;
 }
 
+/* Hide the floating "protected by reCAPTCHA" badge that Firebase's invisible
+   reCAPTCHA (Login.jsx) injects into document.body — the widget itself still
+   runs and OTP verification still works, only the visual badge is hidden. */
+.grecaptcha-badge {
+    visibility: hidden !important;
+}
+
 body {
     margin: 0;
     font-family: 'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;
