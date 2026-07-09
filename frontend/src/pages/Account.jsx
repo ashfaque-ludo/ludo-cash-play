@@ -10,6 +10,7 @@ import {
   HelpCircle, Dice5,
 } from "lucide-react";
 import { toast } from "sonner";
+import InstallAppButton from "@/components/InstallAppButton";
 
 export default function Account() {
   const { user, logout } = useAuth();
@@ -147,6 +148,11 @@ export default function Account() {
           { to: "/legal", icon: Shield, label: "Responsible Gaming", iconBg: "bg-gray-100 text-gray-700" },
           { to: "/legal", icon: CreditCard, label: "Refund Policy", iconBg: "bg-gray-100 text-gray-700" },
         ]} />
+
+        {/* Install App */}
+        <div className="pt-1">
+          <InstallAppButton />
+        </div>
 
         {/* Logout */}
         <div className="pb-4 pt-1">
