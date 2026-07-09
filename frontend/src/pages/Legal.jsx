@@ -7,16 +7,23 @@ const SECTIONS = {
   about: {
     title: "About Us",
     icon: "🎲",
-    content: `MyAkadda is a skill-based online gaming platform where players compete in Ludo battles to win real money.
+    content: `About MyAkadda
 
-We are a registered gaming company operating under the laws of India. Skill-based gaming is legal in India as confirmed by multiple High Court rulings.
+MyAkadda is an online platform where users can play Ludo-based games with friends and other players.
 
-Our Mission: To provide a fair, transparent, and entertaining real-money gaming experience to players across India.
+How it works:
+- Create or join a game room
+- Play your match in the Ludo King app using the shared room code
+- Submit your result after the match
 
-Contact:
-Email: support@myakadda.com
+Our platform focuses on providing a smooth, fair, and easy-to-use experience for Ludo players.
+
+Support:
 WhatsApp: +91 8930988948
-Available: 24x7 Live Support`,
+Email: support@myakadda.com
+
+MyAkadda
+Website: https://myakadda.com`,
   },
   terms: {
     title: "Terms & Conditions",
