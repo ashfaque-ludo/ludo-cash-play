@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { api, fmtINR } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
-import { Copy, Share2, MessageCircle, Users, IndianRupee, RefreshCw } from "lucide-react";
+import { Copy, Share2, MessageCircle, Users, Wallet, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import AnnouncementBar from "@/components/AnnouncementBar";
 
@@ -92,7 +92,7 @@ export default function Referral() {
           <p className="text-xs text-gray-500">Total Referrals</p>
         </div>
         <div className="bg-white rounded-2xl p-4 border border-gray-200 shadow-sm">
-          <IndianRupee className="w-6 h-6 text-green-500 mb-1" />
+          <Wallet className="w-6 h-6 text-green-500 mb-1" />
           <p className="text-2xl font-bold text-gray-900">{loading ? "—" : fmtINR(stats?.total_earned || 0)}</p>
           <p className="text-xs text-gray-500">Total Earned</p>
         </div>

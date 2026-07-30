@@ -11,10 +11,10 @@ const validators = {
     .isNumeric().withMessage("OTP must be numeric"),
 
   amount: body("amount")
-    .isFloat({ min: 10, max: 1000000 }).withMessage("Amount must be ₹10–₹10,00,000"),
+    .isFloat({ min: 10, max: 1000000 }).withMessage("Amount must be 10–10,00,000"),
 
   withdrawAmount: body("amount")
-    .isFloat({ min: 100, max: 1000000 }).withMessage("Minimum withdrawal ₹100"),
+    .isFloat({ min: 100, max: 1000000 }).withMessage("Minimum withdrawal 100"),
 
   upiId: body("upi_id")
     .optional()

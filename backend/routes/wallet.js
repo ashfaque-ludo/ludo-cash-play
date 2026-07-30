@@ -44,8 +44,8 @@ router.get("/", async (req, res) => {
 router.post("/create-payment-order", async (req, res) => {
   try {
     const amount = parseFloat(req.body.amount);
-    if (!amount || amount < 10)   return res.status(400).json({ detail: "Minimum deposit is ₹10." });
-    if (amount > 60000)            return res.status(400).json({ detail: "Maximum deposit is ₹60,000." });
+    if (!amount || amount < 10)   return res.status(400).json({ detail: "Minimum deposit is 10." });
+    if (amount > 60000)            return res.status(400).json({ detail: "Maximum deposit is 60,000." });
 
     const txnId = uuidv4().replace(/-/g, "").slice(0, 20).toUpperCase();
     const upiUrl = `upi://pay?pa=${ADMIN_UPI}&pn=${encodeURIComponent(ADMIN_UPI_NAME)}&am=${amount}&tn=${txnId}&cu=INR`;
@@ -145,7 +145,7 @@ router.post("/deposit-screenshot", depositUpload.single("screenshot"), async (re
     if (!req.file) return res.status(400).json({ detail: "Screenshot required." });
     const amt = parseFloat(req.body.amount);
     if (!amt || amt < 10 || amt > 100000)
-      return res.status(400).json({ detail: "Amount must be ₹10–₹1,00,000." });
+      return res.status(400).json({ detail: "Amount must be 10–1,00,000." });
 
     const screenshot_url = `/uploads/deposits/${req.file.filename}`;
     const u = req.user;
@@ -169,8 +169,8 @@ router.post("/deposit-screenshot", depositUpload.single("screenshot"), async (re
 router.post("/withdraw", async (req, res) => {
   try {
     const { amount, method = "upi", upi_id, account_number, ifsc, account_holder } = req.body;
-    if (!amount || amount < 500)  return res.status(400).json({ detail: "Minimum withdrawal ₹500." });
-    if (amount > 50000)            return res.status(400).json({ detail: "Maximum withdrawal ₹50,000." });
+    if (!amount || amount < 500)  return res.status(400).json({ detail: "Minimum withdrawal 500." });
+    if (amount > 50000)            return res.status(400).json({ detail: "Maximum withdrawal 50,000." });
 
     const user = await User.findById(req.user._id);
 
@@ -184,7 +184,7 @@ router.post("/withdraw", async (req, res) => {
 
     const withdrawable = (user.wallet.winning || 0) + (user.wallet.referral || 0);
     if (withdrawable < amount)
-      return res.status(400).json({ detail: `Insufficient balance. Withdrawable: ₹${withdrawable}.` });
+      return res.status(400).json({ detail: `Insufficient balance. Withdrawable: ${withdrawable}.` });
 
     if (method === "upi" && !upi_id?.trim())
       return res.status(400).json({ detail: "UPI ID required." });
@@ -227,8 +227,8 @@ router.post("/redeem-referral", async (req, res) => {
     const user = await User.findById(req.user._id);
     const refBal = user.wallet.referral || 0;
     const redeem = amount ? Math.min(parseFloat(amount), refBal) : refBal;
-    if (redeem < 1) return res.status(400).json({ detail: "Minimum redeem is ₹1." });
-    if (redeem < 50) return res.status(400).json({ detail: "Minimum redeem is ₹50." });
+    if (redeem < 1) return res.status(400).json({ detail: "Minimum redeem is 1." });
+    if (redeem < 50) return res.status(400).json({ detail: "Minimum redeem is 50." });
 
     user.wallet.referral -= redeem;
     if (target === "deposit") user.wallet.deposit = (user.wallet.deposit || 0) + redeem;
@@ -238,9 +238,9 @@ router.post("/redeem-referral", async (req, res) => {
     await Transaction.create({
       user: user._id, user_phone: user.phone || "",
       type: "bonus", amount: redeem, status: "completed",
-      description: `Referral ₹${redeem} moved to ${target} wallet`,
+      description: `Referral ${redeem} moved to ${target} wallet`,
     });
-    res.json({ ok: true, moved: redeem, target, message: `₹${redeem} moved to your ${target} wallet!` });
+    res.json({ ok: true, moved: redeem, target, message: `${redeem} moved to your ${target} wallet!` });
   } catch (e) {
     res.status(500).json({ detail: "Server error." });
   }

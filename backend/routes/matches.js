@@ -16,11 +16,11 @@ async function autoSettleAgreed(match, winnerPlayer, loserPlayer) {
   await User.findByIdAndUpdate(winnerPlayer.user, { $inc: { "wallet.winning": match.prize_pool } });
   await Transaction.create({
     user: winnerPlayer.user, user_phone: "", type: "match_win", amount: match.prize_pool, status: "completed",
-    description: `Won ₹${match.prize_pool} battle`, meta: { match: match._id, stake: match.stake },
+    description: `Won ${match.prize_pool} battle`, meta: { match: match._id, stake: match.stake },
   }).catch(() => {});
   await Transaction.create({
     user: loserPlayer.user, user_phone: "", type: "match_loss", amount: -match.stake, status: "completed",
-    description: `Lost ₹${match.stake} battle`, meta: { match: match._id, stake: match.stake },
+    description: `Lost ${match.stake} battle`, meta: { match: match._id, stake: match.stake },
   }).catch(() => {});
   await payReferralBonus(winnerPlayer.user, match.stake, match._id);
   await payReferralBonus(loserPlayer.user, match.stake, match._id);
@@ -162,10 +162,10 @@ const handleCreate = async (req, res) => {
     let label, tier;
     if (isCustom) {
       if (!Number.isInteger(stakeAmount) || stakeAmount % 10 !== 0)
-        return res.status(400).json({ detail: "Custom stake must be a whole number and multiple of ₹10." });
+        return res.status(400).json({ detail: "Custom stake must be a whole number and multiple of 10." });
       if (stakeAmount < 10 || stakeAmount > 50000)
-        return res.status(400).json({ detail: "Custom stake must be between ₹10 and ₹50,000." });
-      label = `Custom ₹${stakeAmount}`;
+        return res.status(400).json({ detail: "Custom stake must be between 10 and 50,000." });
+      label = `Custom ${stakeAmount}`;
       tier = "custom";
     } else {
       const table = await StakeTable.findOne({ stake: stakeAmount, active: true });
@@ -198,7 +198,7 @@ const handleCreate = async (req, res) => {
     await Transaction.create({
       user: req.user._id, user_phone: req.user.phone || "",
       type: "match_entry", amount: stakeAmount, status: "completed",
-      description: `Battle entry ₹${stakeAmount}`,
+      description: `Battle entry ${stakeAmount}`,
       meta: { match: match._id, stake: stakeAmount },
     }).catch(() => {});
 
@@ -245,7 +245,7 @@ router.post("/:id/join", async (req, res) => {
     await Transaction.create({
       user: req.user._id, user_phone: req.user.phone || "",
       type: "match_entry", amount: match.stake, status: "completed",
-      description: `Battle entry ₹${match.stake}`,
+      description: `Battle entry ${match.stake}`,
       meta: { match: match._id, stake: match.stake },
     }).catch(() => {});
 

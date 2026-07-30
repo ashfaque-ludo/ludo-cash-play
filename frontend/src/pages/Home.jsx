@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/accordion";
 import {
   Dice5, Trophy, Crown, Zap, ShieldCheck, Smartphone, Download,
-  ArrowRight, IndianRupee, Users, Sparkles, ChevronRight, Star, Award,
+  ArrowRight, Wallet, Users, Sparkles, ChevronRight, Star, Award,
   Play, Swords, PenLine, ChevronDown, RefreshCw,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -658,7 +658,7 @@ function MarketingHome() {
           </div>
           <div className="mt-12 grid md:grid-cols-4 gap-5">
             {[
-              { i: IndianRupee, t: "Add money", d: "Add 50+ via UPI / card." },
+              { i: Wallet, t: "Add money", d: "Add 50+ via UPI / card." },
               { i: Dice5, t: "Pick a table", d: "Choose stake from 50 to 50K." },
               { i: Smartphone, t: "Play on Ludo King", d: "Use room code with opponent." },
               { i: Trophy, t: "Win & withdraw", d: "Upload screenshot. Instant UPI payout." },
