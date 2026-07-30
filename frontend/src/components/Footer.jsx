@@ -20,7 +20,7 @@ export default function Footer() {
         <div className="md:col-span-2">
           <div className="flex items-center gap-2">
             <Dice5 className="w-6 h-6 text-[#C62828]" />
-            <div className="text-white font-extrabold text-lg">LUDO <span className="grad-text">CASH PLAY</span></div>
+            <div className="text-white font-extrabold text-lg">LUDO <span className="grad-text">COINS PLAY</span></div>
           </div>
           <p className="text-slate-400 text-sm mt-3 max-w-md">
             India's premium real-money Ludo challenge platform. Play against real players across stake tables from ₹50 to ₹1,00,000 VIP rooms.

@@ -63,7 +63,7 @@ export default function Header({ onMenuOpen }) {
           </div>
           <div className="leading-none">
             <div className="text-white font-extrabold text-base tracking-tight whitespace-nowrap">
-              LUDO <span className="grad-text">CASH</span>
+              LUDO <span className="grad-text">COINS</span>
             </div>
           </div>
         </Link>

@@ -66,7 +66,7 @@ export default function Sidebar({ open, onClose }) {
         <div className="flex items-center justify-between px-4 py-4 border-b border-white/10">
           <div className="flex items-center gap-2">
             <Dice5 className="w-5 h-5 text-purple-400" />
-            <div className="text-white font-extrabold text-sm">LUDO <span className="grad-text">CASH PLAY</span></div>
+            <div className="text-white font-extrabold text-sm">LUDO <span className="grad-text">COINS PLAY</span></div>
           </div>
           <button onClick={onClose} className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-white/10">
             <X className="w-5 h-5" />

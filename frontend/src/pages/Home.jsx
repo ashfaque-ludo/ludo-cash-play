@@ -429,7 +429,7 @@ function MarketingHome() {
             <Sparkles className="w-3.5 h-3.5" /> India's #1 Real-Money Ludo Arena
           </div>
           <h1 className="text-5xl sm:text-7xl lg:text-8xl font-black tracking-tighter leading-[0.9] fade-up" data-testid="hero-title">
-            LUDO <span className="grad-text neon-text">CASH</span><br />
+            LUDO <span className="grad-text neon-text">COINS</span><br />
             <span className="grad-text-gold vip-text">PLAY</span>
           </h1>
           <p className="mt-6 text-lg sm:text-xl text-slate-300 max-w-2xl fade-up" data-testid="hero-subtitle">

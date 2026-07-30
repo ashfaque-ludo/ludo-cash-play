@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation, useParams } from "react-router-dom";
 
 const BACKEND = process.env.REACT_APP_BACKEND_URL || "";
 
@@ -28,69 +28,42 @@ Website: https://myakadda.com`,
   terms: {
     title: "Terms & Conditions",
     icon: "📋",
-    content: `1. ELIGIBILITY
-• You must be 18 years or older to play.
-• This platform is not available in Assam, Odisha, Telangana, Andhra Pradesh, Nagaland, and Sikkim.
-• By registering, you confirm you are eligible under local laws.
+    content: `Welcome to Ludo Coins Play (https://myakadda.com). By using our platform you agree to these Terms.
 
-2. KYC REQUIREMENT
-• KYC verification is mandatory for withdrawals.
-• Provide accurate Aadhaar information.
-• False KYC information will result in permanent account ban.
+Eligibility: You must be 18 years or older to use this platform.
 
-3. GAMEPLAY RULES
-• MyAkadda is a skill-based game.
-• Cheating, collusion, or use of bots will result in permanent ban and forfeiture of balance.
-• Share the room code honestly with your opponent.
-• Submit genuine match screenshots.
+Account: You are responsible for keeping your account and login secure. One account per user.
 
-4. DEPOSITS & WITHDRAWALS
-• Minimum deposit: ₹10
-• Minimum withdrawal: ₹500 (KYC verification required)
-• Maximum withdrawal: ₹50,000 per day
-• Withdrawals are processed to UPI/Bank only.
+Use of Platform: You agree to use the platform fairly and not to cheat, use bots, or exploit bugs. We may suspend accounts that violate these terms.
 
-5. COMMISSION
-• We charge 5% commission on all battle winnings.
-• Example: ₹100 battle → Winner gets ₹190.
+Transactions: All transactions on the platform are subject to verification. We reserve the right to review and hold any transaction found suspicious.
 
-6. DISPUTES
-• Disputes must be raised within 24 hours of the match.
-• Admin decision is final.
+Limitation of Liability: The platform is provided 'as is'. We are not liable for losses arising from misuse, technical issues, or third-party services.
 
-7. ACCOUNT TERMINATION
-• We reserve the right to close accounts that violate our terms.`,
+Changes: We may update these Terms at any time. Continued use means you accept the updated Terms.
+
+Contact: For questions, email [SUPPORT_EMAIL] or WhatsApp [SUPPORT_NUMBER].
+
+Last updated: July 30, 2026.`,
   },
   privacy: {
     title: "Privacy Policy",
     icon: "🔒",
-    content: `INFORMATION WE COLLECT
-• Phone number (required for login)
-• Aadhaar number (last 4 digits stored for KYC)
-• Device information and IP address
-• Transaction history and gameplay data
+    content: `Ludo Coins Play ('we', 'us') operates the website https://myakadda.com. This Privacy Policy explains how we handle your information.
 
-HOW WE USE YOUR DATA
-• To verify your identity (KYC)
-• To process payments and withdrawals
-• To prevent fraud and cheating
-• To improve our platform
+Information We Collect: We collect your mobile number for account creation and login verification (OTP). We may collect basic profile and transaction information you provide while using the platform.
 
-DATA SHARING
-• We do not sell your personal data to third parties.
-• We may share data with payment processors and law enforcement if required by law.
+How We Use It: Your mobile number is used only for authentication and account security. We do not sell or share your personal information with third parties for marketing.
 
-DATA SECURITY
-• All data is encrypted in transit and at rest.
-• We use industry-standard security practices.
-• Your Aadhaar number is never stored in full — only last 4 digits.
+OTP & Communication: We use SMS-based one-time passwords to verify your identity. By registering, you consent to receive transactional SMS related to your account.
 
-COOKIES
-• We use cookies to maintain your login session.
-• No third-party tracking cookies are used.
+Data Security: We take reasonable measures to protect your data. However, no method of transmission over the internet is fully secure.
 
-CONTACT
-For privacy concerns: support@myakadda.com`,
+Your Rights: You may contact us to update or delete your account information.
+
+Contact: For any privacy questions, email [SUPPORT_EMAIL] or WhatsApp [SUPPORT_NUMBER].
+
+Last updated: July 30, 2026.`,
   },
   refund: {
     title: "Refund Policy",
@@ -120,11 +93,23 @@ DISPUTES
 };
 
 export default function Legal() {
-  const [active, setActive] = useState("about");
+  const location = useLocation();
+  const { section: sectionParam } = useParams();
+  const initialActive =
+    sectionParam && SECTIONS[sectionParam] ? sectionParam :
+    location.pathname === "/terms" ? "terms" :
+    location.pathname === "/privacy" ? "privacy" :
+    "about";
+  const [active, setActive] = useState(initialActive);
   const [supportNumber, setSupportNumber] = useState("7206638948");
   const nav = useNavigate();
   const section = SECTIONS[active];
   const content = section.content.replace(/8930988948/g, supportNumber);
+
+  useEffect(() => {
+    setActive(initialActive);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname, sectionParam]);
 
   useEffect(() => {
     fetch(`${BACKEND}/api/public/payment-info`)
