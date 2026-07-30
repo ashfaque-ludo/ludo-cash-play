@@ -9,6 +9,7 @@ const { validators, handleValidation } = require("../middleware/validators");
 const { v4: uuidv4 } = require("uuid");
 const { sendOTPviaSMS } = require("../utils/fast2smsService");
 const { generateOTP, canSend, saveOTP, verifyOTP } = require("../utils/otpStore");
+const { verifyIdToken } = require("../utils/firebase");
 
 const COOKIE = {
   httpOnly: true,
@@ -198,14 +199,25 @@ router.post("/register", authLimiter, async (req,res) => {
 });
 
 // POST /api/auth/verify-firebase-otp
-// Trusts phone number from Firebase-verified frontend session (no Admin SDK needed).
-router.post("/verify-firebase-otp", validators.phone, handleValidation, async (req, res) => {
+// Verifies the Firebase ID token server-side and derives the phone number
+// from the decoded token — never from client-supplied req.body.phone.
+router.post("/verify-firebase-otp", async (req, res) => {
   try {
-    const { phone: phoneInput, referral_code } = req.body;
-    if (!phoneInput) return res.status(400).json({ detail: "Phone number required." });
+    const { idToken, referral_code } = req.body;
+    if (!idToken) return res.status(400).json({ detail: "Firebase ID token required." });
+
+    let decoded;
+    try {
+      decoded = await verifyIdToken(idToken);
+    } catch (e) {
+      return res.status(401).json({ detail: "Invalid or expired Firebase token." });
+    }
+
+    const phoneNumber = decoded.phone_number;
+    if (!phoneNumber) return res.status(401).json({ detail: "Token has no verified phone number." });
 
     // Strip non-digits then remove leading 91 country code
-    const digits = String(phoneInput).replace(/\D/g, "").replace(/^91/, "");
+    const digits = String(phoneNumber).replace(/\D/g, "").replace(/^91/, "");
     if (!/^[6-9]\d{9}$/.test(digits)) {
       return res.status(400).json({ detail: "Invalid Indian phone number." });
     }
