@@ -6,7 +6,7 @@ async function send2FactorOTP(phone, otp) {
   const key = process.env.TWOFACTOR_API_KEY;
   if (!key) throw new Error("TWOFACTOR_API_KEY not set");
   const template = process.env.TWOFACTOR_TEMPLATE || "OTP1";
-  const url = `https://2factor.in/API/V1/${key}/SMS/${phone}/${otp}/${template}`;
+  const url = `https://2factor.in/API/V1/${key}/SMS/${phone}/${otp}/${encodeURIComponent(template)}`;
   const res = await axios.get(url, { timeout: 8000 });
   // TEMP DIAGNOSTIC — remove once SMS-vs-VOICE delivery is confirmed. Logs
   // 2Factor's full JSON response (never the API key) so Render logs show
