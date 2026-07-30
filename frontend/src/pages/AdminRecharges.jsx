@@ -80,7 +80,7 @@ export default function AdminRecharges() {
                   <div>
                     <p className="text-white font-bold text-lg">👤 {recharge.userId.name}</p>
                     <p className="text-purple-300 text-sm">{recharge.userId.email}</p>
-                    <p className="text-cyan-400 font-bold text-2xl mt-2">₹ {recharge.amount}</p>
+                    <p className="text-cyan-400 font-bold text-2xl mt-2"> {recharge.amount}</p>
                   </div>
                   <div className="text-right">
                     <p className="text-white text-sm">{new Date(recharge.createdAt).toLocaleDateString('en-IN')}</p>
@@ -100,7 +100,7 @@ export default function AdminRecharges() {
                     onClick={() => handleApprove(recharge._id)}
                     className="flex-1 bg-green-500 hover:bg-green-600 text-white font-bold py-3 rounded"
                   >
-                    ✅ APPROVE (₹{recharge.amount})
+                    ✅ APPROVE ({recharge.amount})
                   </button>
                   <button
                     onClick={() => setSelectedRecharge(recharge._id)}

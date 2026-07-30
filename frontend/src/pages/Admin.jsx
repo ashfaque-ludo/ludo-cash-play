@@ -98,9 +98,9 @@ function AnalyticsTab() {
     {l:"Completed matches", v:a.completed_matches, c:"text-emerald-400"},
     {l:"Pending deposits", v:a.pending_deposits, c:"text-amber-300"},
     {l:"Pending withdrawals", v:a.pending_withdrawals, c:"text-amber-300"},
-    {l:"Total deposit (₹)", v:fmtINR(a.total_deposit), c:"text-blue-300"},
-    {l:"Total withdraw (₹)", v:fmtINR(a.total_withdraw), c:"text-red-300"},
-    {l:"Total entry volume (₹)", v:fmtINR(a.total_entry_volume), c:"text-blue-300"},
+    {l:"Total deposit ()", v:fmtINR(a.total_deposit), c:"text-blue-300"},
+    {l:"Total withdraw ()", v:fmtINR(a.total_withdraw), c:"text-red-300"},
+    {l:"Total entry volume ()", v:fmtINR(a.total_entry_volume), c:"text-blue-300"},
     {l:"Commission (all time)", v:fmtINR(a.platform_commission_earned), c:"text-emerald-400"},
     {l:"Commission (this month)", v:fmtINR(a.month_commission), c:"text-emerald-400"},
     {l:"Commission (today)", v:fmtINR(a.today_commission), c:"text-emerald-400"},
@@ -797,7 +797,7 @@ function TablesTab(){
       </CardHeader>
       <CardContent>
         <div className="grid sm:grid-cols-5 gap-2 mb-4">
-          <Input type="number" placeholder="Stake (₹)" value={form.stake} onChange={e=>setForm({...form, stake:e.target.value})} className="bg-gray-50 border-gray-300 text-gray-900" data-testid="table-stake" />
+          <Input type="number" placeholder="Stake ()" value={form.stake} onChange={e=>setForm({...form, stake:e.target.value})} className="bg-gray-50 border-gray-300 text-gray-900" data-testid="table-stake" />
           <Input placeholder="Label" value={form.label} onChange={e=>setForm({...form, label:e.target.value})} className="bg-gray-50 border-gray-300 text-gray-900" data-testid="table-label" />
           <Select value={form.tier} onValueChange={v=>setForm({...form, tier:v})}>
             <SelectTrigger className="bg-gray-50 border-gray-300 text-gray-900" data-testid="table-tier"><SelectValue /></SelectTrigger>
@@ -921,7 +921,7 @@ function ScreenshotsTab() {
   const approve = async (id) => {
     try {
       const { data } = await api.post(`/admin/screenshots/${id}/approve`);
-      toast.success(`Approved! ₹${data.net_prize_credited} credited to winner's wallet.`);
+      toast.success(`Approved! ${data.net_prize_credited} credited to winner's wallet.`);
       load();
     } catch (e) { toast.error(e.response?.data?.detail || "Approve failed"); }
   };
@@ -966,8 +966,8 @@ function ScreenshotsTab() {
                     <div className="font-semibold">{ss.user?.name || "Unknown"} <span className="text-gray-400 text-sm font-normal">{ss.user?.email}</span></div>
                     {ss.match_id && <div className="text-gray-400 text-xs mt-0.5">Match: {ss.match_id}</div>}
                     <div className="flex gap-4 mt-1 text-sm flex-wrap">
-                      <span className="text-amber-400">Claimed: ₹{ss.amount || 0}</span>
-                      <span className="text-emerald-400">Net (−10%): ₹{ss.net_prize || 0}</span>
+                      <span className="text-amber-400">Claimed: {ss.amount || 0}</span>
+                      <span className="text-emerald-400">Net (−10%): {ss.net_prize || 0}</span>
                     </div>
                     <div className="text-gray-500 text-xs mt-1">{new Date(ss.created_at).toLocaleString("en-IN")}</div>
                   </div>
@@ -997,7 +997,7 @@ function ScreenshotsTab() {
                 {ss.status === "pending" && (
                   <div className="flex flex-wrap gap-2">
                     <Button onClick={() => approve(ss.id)} className="rounded-full bg-emerald-500 hover:bg-emerald-400 text-black font-bold" data-testid={`ss-approve-${ss.id}`}>
-                      ✅ Approve (+₹{ss.net_prize || 0})
+                      ✅ Approve (+{ss.net_prize || 0})
                     </Button>
                     <Button onClick={() => setRejectState({ id: ss.id, reason: "" })} variant="outline" className="rounded-full border-red-500/30 text-red-300 bg-red-500/10" data-testid={`ss-reject-${ss.id}`}>
                       ❌ Reject
@@ -1317,7 +1317,7 @@ function PenaltyBonusTab({ actor }) {
       else if (type === "penalty") { wallet.deposit = Math.max(0, wallet.deposit - num); }
       else if (type === "add_winning") { wallet.winning += num; }
       await api.post(`/admin/users/${sel.id}/wallet`, { ...wallet, reason });
-      toast.success(`Applied ${type} of ₹${num} to ${sel.name}`);
+      toast.success(`Applied ${type} of ${num} to ${sel.name}`);
       setAmount(""); setReason(""); setSel(null); setUsers([]);
     } catch (e) { toast.error(formatApiError(e.response?.data?.detail) || e.message); }
     finally { setBusy(false); }
@@ -1361,7 +1361,7 @@ function PenaltyBonusTab({ actor }) {
             </Select>
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <Label className="text-gray-600 text-xs">Amount (₹)</Label>
+                <Label className="text-gray-600 text-xs">Amount ()</Label>
                 <Input type="number" value={amount} onChange={e => setAmount(e.target.value)} className="bg-gray-50 border-gray-300 text-gray-900 mt-1" placeholder="0" />
               </div>
               <div>
@@ -1409,7 +1409,7 @@ function ReferralSettingsTab() {
       <CardHeader><CardTitle>Referral &amp; Contact Settings</CardTitle></CardHeader>
       <CardContent className="space-y-4 max-w-md">
         <div>
-          <Label className="text-gray-600">Referral Bonus Amount (₹)</Label>
+          <Label className="text-gray-600">Referral Bonus Amount ()</Label>
           <Input type="number" value={bonus} onChange={e => setBonus(e.target.value)} className="bg-gray-50 border-gray-300 text-gray-900 mt-1" />
           <p className="text-xs text-gray-500 mt-1">Bonus credited to referrer when referred user joins</p>
         </div>

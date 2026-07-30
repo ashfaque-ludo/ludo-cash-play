@@ -55,10 +55,10 @@ export default function MatchLobby() {
   const handleCustomCreate = () => {
     const amt = Number(customAmt);
     if (!customAmt || isNaN(amt)) return toast.error("Enter a valid amount");
-    if (!Number.isInteger(amt) || amt % 10 !== 0) return toast.error("Amount must be a whole number and multiple of ₹10");
-    if (amt < 10) return toast.error("Minimum custom stake is ₹10");
-    if (amt > 50000) return toast.error("Maximum custom stake is ₹50,000");
-    setCreating({ custom: true, stake: amt, label: `Custom ₹${amt}`, prize: Math.round(amt * 2 * 0.95) });
+    if (!Number.isInteger(amt) || amt % 10 !== 0) return toast.error("Amount must be a whole number and multiple of 10");
+    if (amt < 10) return toast.error("Minimum custom stake is 10");
+    if (amt > 50000) return toast.error("Maximum custom stake is 50,000");
+    setCreating({ custom: true, stake: amt, label: `Custom ${amt}`, prize: Math.round(amt * 2 * 0.95) });
     setCustomOpen(false);
   };
 
@@ -98,7 +98,7 @@ export default function MatchLobby() {
             <div className="text-xs uppercase tracking-[0.25em] text-purple-400 font-bold">Match lobby</div>
             <h1 className="text-3xl sm:text-4xl font-extrabold mt-1">Pick your <span className="grad-text">arena</span></h1>
             <p className="text-slate-400 mt-1 text-sm">Create a challenge or join an open one. Game is played on Ludo King app using the room code.</p>
-            <p className="text-xs text-slate-500 mt-1">Min stake: ₹10 custom · Max stake: ₹50,000</p>
+            <p className="text-xs text-slate-500 mt-1">Min stake: 10 custom · Max stake: 50,000</p>
           </div>
           <Dialog>
             <DialogTrigger asChild>
@@ -173,9 +173,9 @@ export default function MatchLobby() {
                   <PenLine className="w-5 h-5 text-teal-300 shrink-0" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-3xl font-black text-teal-300">₹?</div>
+                  <div className="text-3xl font-black text-teal-300">?</div>
                   <div className="text-xs text-slate-400 mt-1">Prize <span className="text-emerald-400 font-semibold">stake × 1.9</span></div>
-                  <div className="mt-3 text-xs text-slate-500">₹10–₹50,000 · multiple of ₹10</div>
+                  <div className="mt-3 text-xs text-slate-500">10–50,000 · multiple of 10</div>
                   <Dialog open={customOpen} onOpenChange={setCustomOpen}>
                     <DialogTrigger asChild>
                       <Button className="mt-4 w-full rounded-full font-bold bg-gradient-to-r from-teal-600 to-cyan-600 text-white" data-testid="create-custom-open">
@@ -188,19 +188,19 @@ export default function MatchLobby() {
                         <div>
                           <Label className="text-slate-300 text-sm font-medium block mb-2">Custom Amount</Label>
                           <div className="relative">
-                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300 text-lg font-bold pointer-events-none select-none">₹</span>
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300 text-lg font-bold pointer-events-none select-none"></span>
                             <Input
                               type="text"
                               inputMode="numeric"
                               pattern="[0-9]*"
                               value={customAmt}
                               onChange={(e) => setCustomAmt(e.target.value.replace(/\D/g, ""))}
-                              placeholder="Enter amount (min ₹10)"
+                              placeholder="Enter amount (min 10)"
                               className="w-full pl-8 bg-black/40 border-white/10 text-white text-xl rounded-lg h-12"
                               data-testid="custom-stake-input"
                             />
                           </div>
-                          <p className="text-xs text-slate-500 mt-1.5">Min ₹10 · Max ₹50,000 · Must be multiple of ₹10</p>
+                          <p className="text-xs text-slate-500 mt-1.5">Min 10 · Max 50,000 · Must be multiple of 10</p>
                         </div>
                         {customAmt && Number(customAmt) >= 10 && (
                           <div className="rounded-xl bg-teal-500/10 border border-teal-500/20 p-3 text-sm space-y-1">

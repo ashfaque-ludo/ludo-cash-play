@@ -23,7 +23,7 @@ const FAQS = [
   },
   {
     q: "What is the commission charge?",
-    a: "We charge 5% commission on winning amount. Example: ₹100 battle → Prize = ₹190 (₹200 × 95%).",
+    a: "We charge 5% commission on winning amount. Example: 100 battle → Prize = 190 (200 × 95%).",
   },
   {
     q: "How does referral work?",

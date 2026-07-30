@@ -253,7 +253,7 @@ export default function MatchRoom() {
         <div className="max-w-md mx-auto px-3 mt-6">
           <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 text-center">
             <h3 className="font-bold text-gray-900 text-lg mb-1">{match.label || 'Battle'}</h3>
-            <p className="text-sm text-gray-500 mb-4">Entry: ₹{match.stake} · Prize: ₹{match.prize || match.prize_pool}</p>
+            <p className="text-sm text-gray-500 mb-4">Entry: {match.stake} · Prize: {match.prize || match.prize_pool}</p>
             <p className="text-sm text-gray-500">This battle is between other players. You can watch it in the Running Battles list, but you can't open or join it.</p>
           </div>
         </div>
@@ -337,8 +337,8 @@ export default function MatchRoom() {
           </div>
           <div className="mt-4 pt-3 border-t border-gray-200 text-center">
             <p className="text-gray-500 text-sm">Playing for</p>
-            <p className="text-2xl font-black text-green-600">₹{prizeAmount}</p>
-            <p className="text-xs text-gray-400">Entry: ₹{stakeAmount} each</p>
+            <p className="text-2xl font-black text-green-600">{prizeAmount}</p>
+            <p className="text-xs text-gray-400">Entry: {stakeAmount} each</p>
           </div>
 
           {/* Cancel button for creator while waiting for opponent */}

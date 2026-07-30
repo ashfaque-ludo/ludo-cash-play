@@ -34,7 +34,7 @@ export default function DepositsTab() {
   }, [load]);
 
   const approve = async (id, amount) => {
-    if (!window.confirm(`Approve ₹${amount}?`)) return;
+    if (!window.confirm(`Approve ${amount}?`)) return;
     try {
       await axios.post(`${BACKEND}/api/admin/deposits/${id}/approve`, {}, {
         headers: { Authorization: `Bearer ${token}` },
@@ -127,7 +127,7 @@ export default function DepositsTab() {
               }`}>
                 <div className="flex justify-between items-start mb-3">
                   <div>
-                    <p className="text-3xl font-black text-green-400">₹{d.amount}</p>
+                    <p className="text-3xl font-black text-green-400">{d.amount}</p>
                     {userName && <p className="text-sm text-gray-300 font-bold">{userName}</p>}
                     <p className="text-xs text-gray-400">{userLabel}</p>
                     <p className="text-xs text-gray-500 mt-0.5">

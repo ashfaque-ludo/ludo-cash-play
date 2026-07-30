@@ -36,8 +36,8 @@ function BattleCard({ match, onPlay }) {
           Challenge from {challenger?.name || "Player"}
         </p>
         <div className="flex gap-3 mt-0.5">
-          <span className="text-xs text-gray-500">Entry: <span className="font-semibold text-gray-700">₹{fee}</span></span>
-          <span className="text-xs text-gray-500">Prize: <span className="font-semibold text-green-600">₹{p}</span></span>
+          <span className="text-xs text-gray-500">Entry: <span className="font-semibold text-gray-700">{fee}</span></span>
+          <span className="text-xs text-gray-500">Prize: <span className="font-semibold text-green-600">{p}</span></span>
         </div>
       </div>
       {isOwn ? (
@@ -61,7 +61,7 @@ function RunningCard({ match }) {
       <Avatar name={p1?.name || "A"} />
       <div className="flex-1 text-center">
         <div className="text-xs font-black text-red-700 tracking-widest">VS</div>
-        <div className="text-xs text-green-600 font-bold">Prize: ₹{prize(match.stake || 0)}</div>
+        <div className="text-xs text-green-600 font-bold">Prize: {prize(match.stake || 0)}</div>
       </div>
       <Avatar name={p2?.name || "B"} />
     </div>
@@ -114,12 +114,12 @@ export default function Dashboard() {
 
   const handleCreate = async () => {
     const stake = parseInt(createAmt);
-    if (!stake || stake < 10) return toast.error("Minimum ₹10");
-    if (stake > 50000) return toast.error("Maximum ₹50,000");
+    if (!stake || stake < 10) return toast.error("Minimum 10");
+    if (stake > 50000) return toast.error("Maximum 50,000");
     if (total < stake) return toast.error("Insufficient balance. Add money first.");
     setCreating(true);
     try {
-      const r = await api.post("/matches", { stake, tier: "custom", label: `₹${stake} Battle` });
+      const r = await api.post("/matches", { stake, tier: "custom", label: `${stake} Battle` });
       const id = r.data?.match?._id || r.data?._id;
       toast.success("Battle created!");
       setCreateAmt("");
@@ -167,13 +167,13 @@ export default function Dashboard() {
           <h2 className="font-black text-gray-900 text-base mb-3">⚔️ Create a Battle!</h2>
           <div className="flex gap-2">
             <div className="flex-1 relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-bold">₹</span>
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-bold"></span>
               <input
                 type="text"
                 inputMode="numeric"
                 value={createAmt}
                 onChange={e => setCreateAmt(e.target.value.replace(/\D/g,""))}
-                placeholder="Enter amount (₹10–₹50000)"
+                placeholder="Enter amount (10–50000)"
                 className="w-full h-11 pl-7 pr-3 rounded-xl bg-gray-50 border border-gray-300 text-gray-900 outline-none focus:border-red-600 focus:ring-2 focus:ring-red-100 transition-all"
               />
             </div>
@@ -185,7 +185,7 @@ export default function Dashboard() {
               {creating ? <Loader2 className="w-4 h-4 animate-spin" /> : "Set"}
             </button>
           </div>
-          <p className="text-xs text-gray-400 mt-2 text-center">Min ₹10 · Max ₹50,000 · Winner gets 95% of prize pool</p>
+          <p className="text-xs text-gray-400 mt-2 text-center">Min 10 · Max 50,000 · Winner gets 95% of prize pool</p>
         </div>
 
         {/* Open Battles */}

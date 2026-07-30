@@ -23,7 +23,7 @@ export default function Footer() {
             <div className="text-white font-extrabold text-lg">LUDO <span className="grad-text">COINS PLAY</span></div>
           </div>
           <p className="text-slate-400 text-sm mt-3 max-w-md">
-            India's premium real-money Ludo challenge platform. Play against real players across stake tables from ₹50 to ₹1,00,000 VIP rooms.
+            India's premium real-money Ludo challenge platform. Play against real players across stake tables from 50 to 1,00,000 VIP rooms.
           </p>
           <div className="flex items-center gap-3 mt-5">
             <a href="https://t.me/myakadda" target="_blank" rel="noreferrer" data-testid="footer-telegram"

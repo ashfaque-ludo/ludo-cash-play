@@ -39,7 +39,7 @@ export default function Play() {
               padding: '24px',
               textAlign: 'center'
             }}>
-              <p style={{color: '#06b6d4', fontSize: '36px', fontWeight: 'bold', margin: '0 0 8px 0'}}>₹{amt}</p>
+              <p style={{color: '#06b6d4', fontSize: '36px', fontWeight: 'bold', margin: '0 0 8px 0'}}>{amt}</p>
               <p style={{color: '#c4b5fd', fontSize: '14px', marginBottom: '16px'}}>Entry Fee</p>
               <button
                 onClick={() => navigate(`/create-room?amount=${amt}`)}

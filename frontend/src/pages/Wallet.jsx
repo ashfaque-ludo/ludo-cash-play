@@ -16,7 +16,7 @@ function RedeemModal({ balance, onClose, onSuccess }) {
 
   const handleRedeem = async () => {
     const amt = parseFloat(amount);
-    if (!amt || amt < 50) return toast.error("Minimum redeem is ₹50");
+    if (!amt || amt < 50) return toast.error("Minimum redeem is 50");
     if (amt > balance) return toast.error("Amount exceeds referral balance");
     setLoading(true);
     try {
@@ -38,9 +38,9 @@ function RedeemModal({ balance, onClose, onSuccess }) {
         <p className="text-sm text-gray-500 mb-4">Available: <strong>{fmtINR(balance)}</strong></p>
 
         <div className="mb-3">
-          <label className="text-xs font-bold text-gray-600 uppercase tracking-wide block mb-1.5">Amount (min ₹50)</label>
+          <label className="text-xs font-bold text-gray-600 uppercase tracking-wide block mb-1.5">Amount (min 50)</label>
           <div className="flex items-center bg-gray-50 rounded-xl border border-gray-300 px-3">
-            <span className="text-gray-500 font-bold mr-1">₹</span>
+            <span className="text-gray-500 font-bold mr-1"></span>
             <input type="text" inputMode="numeric" value={amount}
               onChange={e => setAmount(e.target.value.replace(/\D/g,""))}
               className="flex-1 bg-transparent py-3 outline-none text-gray-900 text-lg" />
@@ -105,8 +105,8 @@ function DepositPage({ onBack }) {
   useEffect(() => { loadPending(); }, [loadPending]);
 
   const handleNext = async () => {
-    if (!amt || amt < 10) return toast.error("Minimum deposit ₹10");
-    if (amt > 60000) return toast.error("Maximum deposit ₹60,000");
+    if (!amt || amt < 10) return toast.error("Minimum deposit 10");
+    if (amt > 60000) return toast.error("Maximum deposit 60,000");
     try {
       // Fetch admin's REAL payment info from DB (no cache)
       const r = await api.get(`/public/payment-info`);
@@ -199,7 +199,7 @@ function DepositPage({ onBack }) {
           <CheckCircle className="w-12 h-12 text-green-500" />
         </div>
         <h2 className="text-xl font-black text-gray-900 mb-1">Screenshot Submitted!</h2>
-        <p className="text-gray-500 text-sm">Admin will verify and credit ₹{amt} within</p>
+        <p className="text-gray-500 text-sm">Admin will verify and credit {amt} within</p>
         <p className="text-red-700 font-black text-lg">5–30 minutes</p>
       </div>
       <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-sm text-amber-800">
@@ -222,7 +222,7 @@ function DepositPage({ onBack }) {
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4 space-y-4">
         <div className="bg-gray-50 rounded-xl p-3">
           <p className="text-xs text-gray-500">Amount paid</p>
-          <p className="text-2xl font-black text-gray-900">₹{amt}</p>
+          <p className="text-2xl font-black text-gray-900">{amt}</p>
         </div>
 
         <div>
@@ -264,7 +264,7 @@ function DepositPage({ onBack }) {
     <div className="p-3 space-y-3">
       <div className="flex items-center gap-3">
         <button onClick={() => { stopTimer(); setStep("amount"); }} className="text-gray-500 font-semibold">← Back</button>
-        <h2 className="font-black text-gray-900">Pay ₹{amt}</h2>
+        <h2 className="font-black text-gray-900">Pay {amt}</h2>
         <span className={`ml-auto text-xs font-bold ${countdown <= 60 ? "text-red-600" : "text-gray-400"}`}>
           ⏱ {mm}:{ss}
         </span>
@@ -281,7 +281,7 @@ function DepositPage({ onBack }) {
                 className="w-56 h-56 object-contain"
               />
             </div>
-            <p className="text-sm font-bold text-gray-800 mt-2">Scan with any UPI app · Pay ₹{amt}</p>
+            <p className="text-sm font-bold text-gray-800 mt-2">Scan with any UPI app · Pay {amt}</p>
           </div>
         ) : (
           <div className="bg-gray-50 rounded-xl p-4">
@@ -303,7 +303,7 @@ function DepositPage({ onBack }) {
         )}
 
         <div className="mb-3">
-          <p className="text-sm font-semibold text-gray-700 text-center mb-3">Pay ₹{amt} via</p>
+          <p className="text-sm font-semibold text-gray-700 text-center mb-3">Pay {amt} via</p>
           <div className="grid grid-cols-2 gap-3">
             <button
               onClick={handlePhonePe}
@@ -361,12 +361,12 @@ function DepositPage({ onBack }) {
               className={`py-3 rounded-xl font-bold border-2 text-sm transition-all ${
                 amt === v ? "bg-red-700 text-white border-red-700" : "bg-white text-gray-700 border-gray-200"
               }`}>
-              ₹{v.toLocaleString("en-IN")}
+              {v.toLocaleString("en-IN")}
             </button>
           ))}
         </div>
         <div className="flex items-center bg-gray-50 rounded-xl border border-gray-300 px-3 focus-within:border-red-600 focus-within:ring-2 focus-within:ring-red-100 transition-all">
-          <span className="text-gray-500 font-bold mr-1 text-lg">₹</span>
+          <span className="text-gray-500 font-bold mr-1 text-lg"></span>
           <input type="text" inputMode="numeric" value={amount}
             onChange={e => setAmount(e.target.value.replace(/\D/g,"").slice(0,6))}
             placeholder="Enter custom amount"
@@ -374,7 +374,7 @@ function DepositPage({ onBack }) {
         </div>
         {amt >= 10 && (
           <p className="text-xs text-center text-gray-500">
-            Pay <strong>₹{amt}</strong> to admin via UPI
+            Pay <strong>{amt}</strong> to admin via UPI
           </p>
         )}
         <button onClick={handleNext} disabled={!amt || amt < 10}
@@ -388,7 +388,7 @@ function DepositPage({ onBack }) {
         <ul className="text-sm text-gray-800 space-y-1">
           <li>✅ आप जिस नाम से <strong>KYC</strong> कर रखे हैं, उसी नाम से deposit करें।</li>
           <li>⏱️ QR code generate होने के बाद <strong>3 मिनट के अंदर</strong> payment करें।</li>
-          <li>📱 <strong>₹2000 से ज़्यादा</strong> के लिए दूसरे फ़ोन से scan करें या UPI ID से payment करें।</li>
+          <li>📱 <strong>2000 से ज़्यादा</strong> के लिए दूसरे फ़ोन से scan करें या UPI ID से payment करें।</li>
           <li>💳 UPI ID से <strong>कितनी भी राशि</strong> payment कर सकते हैं।</li>
         </ul>
       </div>
@@ -404,7 +404,7 @@ function DepositPage({ onBack }) {
           {pendingList.map(d => (
             <div key={d._id} className="flex items-center justify-between px-4 py-3 border-b border-gray-50 last:border-0">
               <div>
-                <p className="text-sm font-semibold text-gray-900">₹{d.amount}</p>
+                <p className="text-sm font-semibold text-gray-900">{d.amount}</p>
                 <p className="text-xs text-gray-400">{new Date(d.createdAt || d.created_at).toLocaleString("en-IN")}</p>
               </div>
               <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 font-semibold">Pending</span>
@@ -432,7 +432,7 @@ export default function Wallet() {
       label: "Deposit Coin",
       amount: w.deposit || 0,
       desc: "Can be used to play battles. Cannot be withdrawn.",
-      btn: "Add Cash",
+      btn: "Add",
       color: "from-blue-600 to-blue-800",
       icon: "💳",
       onClick: () => setDepositOpen(true),

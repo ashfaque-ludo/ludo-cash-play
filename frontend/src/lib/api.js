@@ -32,6 +32,6 @@ export function formatApiError(detail) {
 }
 
 export function fmtINR(n) {
-  if (n == null || isNaN(n)) return "₹0";
-  return "₹" + Number(n).toLocaleString("en-IN");
+  if (n == null || isNaN(n)) return "0";
+  return "" + Number(n).toLocaleString("en-IN");
 }

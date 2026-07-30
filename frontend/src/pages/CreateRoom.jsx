@@ -61,7 +61,7 @@ export default function CreateRoom() {
                       : "bg-white/5 border border-white/10 text-slate-300 hover:border-purple-500/40 hover:text-white"
                   }`}
                 >
-                  ₹{a}
+                  {a}
                 </button>
               ))}
             </div>
@@ -81,7 +81,7 @@ export default function CreateRoom() {
           <div className="glass-strong rounded-3xl border border-white/10 p-6 fade-up glow-ring">
             <div className="text-center mb-6">
               <div className="text-xs uppercase tracking-widest text-slate-400 mb-1">Entry</div>
-              <div className="text-2xl font-black grad-text">₹{room.amount}</div>
+              <div className="text-2xl font-black grad-text">{room.amount}</div>
             </div>
 
             {/* Room code */}

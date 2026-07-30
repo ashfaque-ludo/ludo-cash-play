@@ -108,7 +108,7 @@ function DashboardTab() {
   }, [loadStats]);
 
   const fmt = (n) => n?.toLocaleString("en-IN") ?? "—";
-  const fmtR = (n) => n != null ? `₹${Number(n).toLocaleString("en-IN")}` : "—";
+  const fmtR = (n) => n != null ? `${Number(n).toLocaleString("en-IN")}` : "—";
 
   return (
     <div className="space-y-5">
@@ -348,13 +348,13 @@ function SettingsTab() {
       <SettingCard title="Stake Limits" subtitle="Min/Max battle stake amounts">
         <div className="flex flex-wrap gap-3 items-end">
           <div>
-            <label className="text-xs text-slate-400 block mb-1">Min Stake (₹)</label>
+            <label className="text-xs text-slate-400 block mb-1">Min Stake ()</label>
             <input type="number" min={0} value={cfg.min_stake}
               onChange={e => setCfg(p => ({ ...p, min_stake: Number(e.target.value) }))}
               className="w-32 bg-slate-700 border border-slate-600 text-white rounded-xl px-3 py-2 text-sm" />
           </div>
           <div>
-            <label className="text-xs text-slate-400 block mb-1">Max Stake (₹)</label>
+            <label className="text-xs text-slate-400 block mb-1">Max Stake ()</label>
             <input type="number" min={0} value={cfg.max_stake}
               onChange={e => setCfg(p => ({ ...p, max_stake: Number(e.target.value) }))}
               className="w-32 bg-slate-700 border border-slate-600 text-white rounded-xl px-3 py-2 text-sm" />
@@ -895,7 +895,7 @@ function DangerZoneTab() {
         {result && (
           <div className={`mt-3 p-3 rounded-xl text-sm font-semibold ${result.ok ? "bg-green-900/40 text-green-400" : "bg-red-900/40 text-red-400"}`}>
             {result.ok
-              ? `✓ Deleted ${result.deleted} battles. Refunded ₹${result.refunded} to users.`
+              ? `✓ Deleted ${result.deleted} battles. Refunded ${result.refunded} to users.`
               : `✗ ${result.msg}`}
           </div>
         )}

@@ -61,7 +61,7 @@ export default function Register() {
 
         <div className="glass-strong border border-white/10 rounded-2xl p-8">
           <h1 className="text-2xl font-black text-white text-center mb-1">Create Account</h1>
-          <p className="text-slate-400 text-sm text-center mb-7">Join MyAkadda · Get ₹50 signup bonus</p>
+          <p className="text-slate-400 text-sm text-center mb-7">Join MyAkadda · Get 50 signup bonus</p>
 
           {error && (
             <div className="bg-red-500/10 border border-red-500/20 text-red-400 rounded-xl px-4 py-3 text-sm mb-5">

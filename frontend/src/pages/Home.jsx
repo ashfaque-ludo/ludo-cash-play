@@ -139,8 +139,8 @@ function BattleHub({ user }) {
 
   const handleCreate = async () => {
     const stake = parseInt(amount) || 0;
-    if (stake < 10) return toast.error("Minimum ₹10");
-    if (stake > 50000) return toast.error("Maximum ₹50,000");
+    if (stake < 10) return toast.error("Minimum 10");
+    if (stake > 50000) return toast.error("Maximum 50,000");
     if (total < stake) return toast.error("Insufficient balance");
     setBusy(true);
     try {
@@ -238,7 +238,7 @@ function BattleHub({ user }) {
         <h2 className="font-bold text-lg text-gray-900 mb-3">Create Battle</h2>
         <div className="flex gap-2">
           <div className="flex-1 flex items-center bg-gray-50 border-2 border-gray-300 rounded-xl px-3">
-            <span className="text-gray-700 font-bold mr-1 text-lg">₹</span>
+            <span className="text-gray-700 font-bold mr-1 text-lg"></span>
             <input
               type="text"
               inputMode="numeric"
@@ -434,7 +434,7 @@ function MarketingHome() {
           </h1>
           <p className="mt-6 text-lg sm:text-xl text-slate-300 max-w-2xl fade-up" data-testid="hero-subtitle">
             Win Real Money Online. Challenge players across <span className="text-purple-300 font-semibold">8 stake tiers</span> from
-            ₹50 entry to ₹50K VIP rooms. Instant UPI withdrawals.
+            50 entry to 50K VIP rooms. Instant UPI withdrawals.
           </p>
 
           <div className="mt-10 flex flex-col sm:flex-row gap-4 items-start fade-up">
@@ -545,7 +545,7 @@ function MarketingHome() {
               Enter the <span className="grad-text-gold vip-text">Golden VIP</span> Arena
             </h2>
             <p className="mt-5 text-slate-300 text-lg max-w-xl">
-              Exclusive ₹25K–₹50K entry tables for serious champions. Faster verification, dedicated support, priority withdrawals.
+              Exclusive 25K–50K entry tables for serious champions. Faster verification, dedicated support, priority withdrawals.
             </p>
             <ul className="mt-6 space-y-2 text-slate-300">
               {["Priority winner verification","Dedicated VIP support","Same-day withdrawals","Exclusive monthly tournaments"].map((f) => (
@@ -564,12 +564,12 @@ function MarketingHome() {
               <div className="flex items-center justify-between">
                 <div>
                   <div className="text-xs uppercase tracking-widest text-amber-300">VIP Table</div>
-                  <div className="text-3xl font-black grad-text-gold mt-1">₹50,000 Entry</div>
+                  <div className="text-3xl font-black grad-text-gold mt-1">50,000 Entry</div>
                 </div>
                 <Crown className="w-10 h-10 text-amber-300" />
               </div>
               <div className="mt-6 grid grid-cols-3 gap-3 text-center">
-                {[{l:"Prize",v:"₹95K"},{l:"Commission",v:"5%"},{l:"Players",v:"1v1"}].map((s) => (
+                {[{l:"Prize",v:"95K"},{l:"Commission",v:"5%"},{l:"Players",v:"1v1"}].map((s) => (
                   <div key={s.l} className="rounded-xl bg-black/40 border border-amber-500/20 p-3">
                     <div className="text-[10px] uppercase tracking-widest text-amber-300/80">{s.l}</div>
                     <div className="text-white font-bold mt-1">{s.v}</div>
@@ -658,8 +658,8 @@ function MarketingHome() {
           </div>
           <div className="mt-12 grid md:grid-cols-4 gap-5">
             {[
-              { i: IndianRupee, t: "Add money", d: "Add ₹50+ via UPI / card." },
-              { i: Dice5, t: "Pick a table", d: "Choose stake from ₹50 to ₹50K." },
+              { i: IndianRupee, t: "Add money", d: "Add 50+ via UPI / card." },
+              { i: Dice5, t: "Pick a table", d: "Choose stake from 50 to 50K." },
               { i: Smartphone, t: "Play on Ludo King", d: "Use room code with opponent." },
               { i: Trophy, t: "Win & withdraw", d: "Upload screenshot. Instant UPI payout." },
             ].map((s, i) => (
@@ -686,7 +686,7 @@ function MarketingHome() {
             {[
               {q:"Is MyAkadda legal in India?", a:"Ludo is recognized as a game of skill by multiple Indian high court rulings. However, real-money play is restricted in Andhra Pradesh, Assam, Nagaland, Odisha, Sikkim, Telangana and Tamil Nadu."},
               {q:"How does winner verification work?", a:"After your match on Ludo King, both players submit their result with a screenshot. If results match, prizes are credited instantly. Conflicts are reviewed by admin within 30 minutes."},
-              {q:"How fast are withdrawals?", a:"Standard withdrawals are processed within 30 minutes. VIP players get priority within 5–10 minutes. Minimum withdrawal is ₹500 and requires completed KYC verification."},
+              {q:"How fast are withdrawals?", a:"Standard withdrawals are processed within 30 minutes. VIP players get priority within 5–10 minutes. Minimum withdrawal is 500 and requires completed KYC verification."},
               {q:"What is the platform commission?", a:"We charge a flat 5% commission on the total prize pool. Everything else is paid out to the winner."},
               {q:"Is my money safe?", a:"All transactions use bank-grade encryption. We never store card details on our servers."},
             ].map((f,i)=>(

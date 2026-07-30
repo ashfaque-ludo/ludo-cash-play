@@ -41,9 +41,9 @@ export default function Withdraw() {
 
   const handleWithdraw = async () => {
     const amt = parseFloat(amount);
-    if (!amt || amt < 500) return toast.error("Minimum withdrawal ₹500");
-    if (amt > 50000) return toast.error("Maximum withdrawal ₹50,000");
-    if (amt > withdrawable) return toast.error(`Insufficient balance. Withdrawable: ₹${withdrawable}`);
+    if (!amt || amt < 500) return toast.error("Minimum withdrawal 500");
+    if (amt > 50000) return toast.error("Maximum withdrawal 50,000");
+    if (amt > withdrawable) return toast.error(`Insufficient balance. Withdrawable: ${withdrawable}`);
     if (method === "upi" && !upiId.trim()) return toast.error("Enter your UPI ID");
     if (method === "bank" && (!accNo.trim() || !ifsc.trim() || !holder.trim())) {
       return toast.error("Fill all bank details");
@@ -105,10 +105,10 @@ export default function Withdraw() {
             Withdrawal Amount
           </label>
           <div className="flex items-center bg-gray-50 rounded-xl border border-gray-300 px-3 focus-within:border-red-600 focus-within:ring-2 focus-within:ring-red-100 transition-all">
-            <span className="text-gray-500 font-bold mr-1 text-lg">₹</span>
+            <span className="text-gray-500 font-bold mr-1 text-lg"></span>
             <input type="text" inputMode="numeric" value={amount}
               onChange={e => setAmount(e.target.value.replace(/\D/g,""))}
-              placeholder="Min ₹500, Max ₹50,000"
+              placeholder="Min 500, Max 50,000"
               className="flex-1 bg-transparent py-3 outline-none text-gray-900 text-lg" />
           </div>
         </div>

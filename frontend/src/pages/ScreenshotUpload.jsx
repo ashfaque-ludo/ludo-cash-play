@@ -131,7 +131,7 @@ export default function ScreenshotUpload() {
 
           {/* Prize amount */}
           <div className="mb-5">
-            <Label className="text-[10px] uppercase tracking-widest text-slate-400">Prize amount to claim (₹)</Label>
+            <Label className="text-[10px] uppercase tracking-widest text-slate-400">Prize amount to claim ()</Label>
             <Input
               type="number"
               min="0"
@@ -143,7 +143,7 @@ export default function ScreenshotUpload() {
             {commission && (
               <div className="flex items-center gap-1.5 text-emerald-400 text-xs mt-2">
                 <Sparkles className="w-3 h-3" />
-                After 10% commission: <span className="font-bold">₹{commission}</span>
+                After 10% commission: <span className="font-bold">{commission}</span>
               </div>
             )}
           </div>

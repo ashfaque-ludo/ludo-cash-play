@@ -34,7 +34,7 @@ export default function AdminScreenshots() {
   const approve = async (id) => {
     try {
       const { data } = await api.post(`/admin/screenshots/${id}/approve`);
-      toast.success(`Approved! ₹${data.net_prize_credited} credited to winner's wallet.`);
+      toast.success(`Approved! ${data.net_prize_credited} credited to winner's wallet.`);
       load();
     } catch (e) {
       toast.error(e.response?.data?.detail || "Approve failed");
@@ -106,8 +106,8 @@ export default function AdminScreenshots() {
                     </div>
                     {ss.match_id && <div style={{ color: "#94a3b8", fontSize: 12, marginTop: 2 }}>Match: {ss.match_id}</div>}
                     <div style={{ marginTop: 4, display: "flex", gap: 16, flexWrap: "wrap" }}>
-                      <span style={{ color: "#f59e0b" }}>Prize claimed: ₹{ss.amount || 0}</span>
-                      <span style={{ color: "#10b981" }}>Net (after 10%): ₹{ss.net_prize || 0}</span>
+                      <span style={{ color: "#f59e0b" }}>Prize claimed: {ss.amount || 0}</span>
+                      <span style={{ color: "#10b981" }}>Net (after 10%): {ss.net_prize || 0}</span>
                     </div>
                     <div style={{ color: "#475569", fontSize: 12, marginTop: 4 }}>
                       {new Date(ss.created_at).toLocaleString("en-IN")}
@@ -153,7 +153,7 @@ export default function AdminScreenshots() {
                       onClick={() => approve(ss.id)}
                       style={{ padding: "10px 20px", background: "#10b981", color: "#fff", border: "none", borderRadius: 8, fontWeight: 700, cursor: "pointer", fontSize: 14 }}
                     >
-                      ✅ Approve (+₹{ss.net_prize || 0})
+                      ✅ Approve (+{ss.net_prize || 0})
                     </button>
                     <button
                       onClick={() => setRejectState({ id: ss.id, reason: "" })}
