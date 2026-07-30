@@ -16,7 +16,18 @@ router.get("/", async (req,res)=>{
     filter.status=status;
   }
   const matches=await Match.find(filter).sort({createdAt:-1}).limit(200);
-  res.json({matches:matches.map(m=>({...m.toObject(),id:m._id.toString(),created_at:m.createdAt}))});
+
+  // Look up each player's phone (not stored on the match) so admins can see it
+  // in the dispute view — read-only enrichment, does not touch match/user data.
+  const userIds=[...new Set(matches.flatMap(m=>m.players.map(p=>p.user?.toString()).filter(Boolean)))];
+  const users=await User.find({_id:{$in:userIds}}).select("phone");
+  const phoneById=Object.fromEntries(users.map(u=>[u._id.toString(),u.phone||""]));
+
+  res.json({matches:matches.map(m=>{
+    const obj=m.toObject();
+    obj.players=(obj.players||[]).map(p=>({...p,phone:phoneById[p.user?.toString()]||""}));
+    return {...obj,id:m._id.toString(),created_at:m.createdAt};
+  })});
 });
 
 // POST /api/admin/matches/clear-my-history — wipe the CURRENT admin's own game

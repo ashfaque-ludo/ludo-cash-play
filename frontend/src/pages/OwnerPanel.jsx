@@ -670,7 +670,7 @@ function OwnerMatchesTab() {
                 <div className="grid grid-cols-2 gap-3 mb-3">
                   {[{ p: p1, ss: p1ss, label: "P1" }, { p: p2, ss: p2ss, label: "P2" }].map(({ p, ss, label }) => (
                     <div key={label} className="bg-black/20 rounded-xl p-2">
-                      <p className="text-xs text-slate-500 mb-0.5">{label} – {(p?.name || "?").slice(0, 10)}</p>
+                      <p className="text-xs text-slate-500 mb-0.5">{label} – {(p?.name || "?").slice(0, 10)}{p?.phone ? ` · ${p.phone}` : ""}</p>
                       <p className={`font-bold text-sm ${p?.result_claim === "won" ? "text-green-400" : p?.result_claim === "lost" ? "text-red-400" : "text-slate-500"}`}>
                         {p?.result_claim || "Pending"}
                       </p>

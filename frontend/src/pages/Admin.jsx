@@ -572,7 +572,7 @@ function MatchesTab({ actor }){
                     <div className="grid grid-cols-2 gap-3 mb-3">
                       {[{p: p1, ss: p1ss, label: "Player 1", bg: "bg-blue-50"}, {p: p2, ss: p2ss, label: "Player 2", bg: "bg-red-50"}].map(({p, ss, label, bg}) => (
                         <div key={label} className={`${bg} rounded-xl p-2`}>
-                          <p className="text-xs text-gray-500 mb-0.5">{label} ({(p?.name || "?").slice(0,8)}):</p>
+                          <p className="text-xs text-gray-500 mb-0.5">{label} ({(p?.name || "?").slice(0,8)}{p?.phone ? ` · ${p.phone}` : ""}):</p>
                           <p className={`font-bold text-sm ${p?.result_claim === "won" ? "text-green-600" : p?.result_claim === "lost" ? "text-red-600" : "text-gray-400"}`}>
                             {p?.result_claim || "Pending"}
                           </p>

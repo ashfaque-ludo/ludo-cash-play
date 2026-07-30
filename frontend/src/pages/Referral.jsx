@@ -25,7 +25,7 @@ export default function Referral() {
 
   const code = stats?.code || user?.referral_code || "";
   const shareUrl = `https://myakadda.com/login/${code}`;
-  const shareMessage = `🎮 Play Ludo and Win Cash Daily!\n⚡ 24x7 Live Support\n💰 Commission Charge 5%\n🎁 Referral Bonus 1% on All Games\n⚡ Instant Withdrawal Via UPI/Bank\n${shareUrl}\n\nRegister Now, My refer code is ${code}`;
+  const shareMessage = `🎮 Play Ludo and Win Coins Daily!\n⚡ 24x7 Live Support\n${shareUrl}\n\nRegister Now, My refer code is ${code}`;
 
   const copyCode = () => {
     navigator.clipboard.writeText(code).catch(() => {});
