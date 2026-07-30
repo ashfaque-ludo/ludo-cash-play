@@ -98,9 +98,9 @@ function AnalyticsTab() {
     {l:"Completed matches", v:a.completed_matches, c:"text-emerald-400"},
     {l:"Pending deposits", v:a.pending_deposits, c:"text-amber-300"},
     {l:"Pending withdrawals", v:a.pending_withdrawals, c:"text-amber-300"},
-    {l:"Total deposit ()", v:fmtINR(a.total_deposit), c:"text-blue-300"},
-    {l:"Total withdraw ()", v:fmtINR(a.total_withdraw), c:"text-red-300"},
-    {l:"Total entry volume ()", v:fmtINR(a.total_entry_volume), c:"text-blue-300"},
+    {l:"Total deposit", v:fmtINR(a.total_deposit), c:"text-blue-300"},
+    {l:"Total withdraw", v:fmtINR(a.total_withdraw), c:"text-red-300"},
+    {l:"Total entry volume", v:fmtINR(a.total_entry_volume), c:"text-blue-300"},
     {l:"Commission (all time)", v:fmtINR(a.platform_commission_earned), c:"text-emerald-400"},
     {l:"Commission (this month)", v:fmtINR(a.month_commission), c:"text-emerald-400"},
     {l:"Commission (today)", v:fmtINR(a.today_commission), c:"text-emerald-400"},
@@ -797,7 +797,7 @@ function TablesTab(){
       </CardHeader>
       <CardContent>
         <div className="grid sm:grid-cols-5 gap-2 mb-4">
-          <Input type="number" placeholder="Stake ()" value={form.stake} onChange={e=>setForm({...form, stake:e.target.value})} className="bg-gray-50 border-gray-300 text-gray-900" data-testid="table-stake" />
+          <Input type="number" placeholder="Stake" value={form.stake} onChange={e=>setForm({...form, stake:e.target.value})} className="bg-gray-50 border-gray-300 text-gray-900" data-testid="table-stake" />
           <Input placeholder="Label" value={form.label} onChange={e=>setForm({...form, label:e.target.value})} className="bg-gray-50 border-gray-300 text-gray-900" data-testid="table-label" />
           <Select value={form.tier} onValueChange={v=>setForm({...form, tier:v})}>
             <SelectTrigger className="bg-gray-50 border-gray-300 text-gray-900" data-testid="table-tier"><SelectValue /></SelectTrigger>
@@ -1361,7 +1361,7 @@ function PenaltyBonusTab({ actor }) {
             </Select>
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <Label className="text-gray-600 text-xs">Amount ()</Label>
+                <Label className="text-gray-600 text-xs">Amount</Label>
                 <Input type="number" value={amount} onChange={e => setAmount(e.target.value)} className="bg-gray-50 border-gray-300 text-gray-900 mt-1" placeholder="0" />
               </div>
               <div>
@@ -1409,7 +1409,7 @@ function ReferralSettingsTab() {
       <CardHeader><CardTitle>Referral &amp; Contact Settings</CardTitle></CardHeader>
       <CardContent className="space-y-4 max-w-md">
         <div>
-          <Label className="text-gray-600">Referral Bonus Amount ()</Label>
+          <Label className="text-gray-600">Referral Bonus Amount</Label>
           <Input type="number" value={bonus} onChange={e => setBonus(e.target.value)} className="bg-gray-50 border-gray-300 text-gray-900 mt-1" />
           <p className="text-xs text-gray-500 mt-1">Bonus credited to referrer when referred user joins</p>
         </div>

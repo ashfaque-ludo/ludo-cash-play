@@ -7,7 +7,7 @@ const BACKEND = process.env.REACT_APP_BACKEND_URL || "";
 const FAQS = [
   {
     q: "How do I deposit money?",
-    a: "Go to Wallet → Add Cash. Scan the QR code or click 'Open UPI App'. Your wallet is credited automatically after payment is confirmed.",
+    a: "Go to Wallet → Add. Scan the QR code or click 'Open UPI App'. Your wallet is credited automatically after payment is confirmed.",
   },
   {
     q: "How do I withdraw my winnings?",

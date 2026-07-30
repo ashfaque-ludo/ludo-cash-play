@@ -131,7 +131,7 @@ export default function ScreenshotUpload() {
 
           {/* Prize amount */}
           <div className="mb-5">
-            <Label className="text-[10px] uppercase tracking-widest text-slate-400">Prize amount to claim ()</Label>
+            <Label className="text-[10px] uppercase tracking-widest text-slate-400">Prize amount to claim</Label>
             <Input
               type="number"
               min="0"

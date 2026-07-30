@@ -351,7 +351,7 @@ function DepositPage({ onBack }) {
     <div className="space-y-4 p-3">
       <div className="flex items-center gap-3 mb-2">
         <button onClick={onBack} className="text-gray-500 font-semibold">← Back</button>
-        <h2 className="font-black text-gray-900">Add Cash</h2>
+        <h2 className="font-black text-gray-900">Add</h2>
       </div>
 
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4 space-y-4">
