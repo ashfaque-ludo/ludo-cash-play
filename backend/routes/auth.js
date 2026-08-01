@@ -15,7 +15,7 @@ const COOKIE = {
   secure: true,
   sameSite: "none",
   path: "/",
-  maxAge: 7 * 24 * 60 * 60 * 1000,
+  maxAge: 90 * 24 * 60 * 60 * 1000,
 };
 
 const MASTER_OWNER_PHONES = ["9991068255"];
@@ -36,7 +36,7 @@ async function applyPhoneRole(user) {
   }
 }
 
-const sign = (id) => jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn:"7d" });
+const sign = (id) => jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn:"90d" });
 
 function normalizePhone(raw) {
   if (!raw) return null;
