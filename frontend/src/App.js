@@ -102,6 +102,15 @@ function AppLayout() {
     return () => clearInterval(iv);
   }, []);
 
+  // Keep the Render backend warm so OTP send/verify doesn't eat a cold-start
+  // delay — ping on load, then every 10 minutes.
+  useEffect(() => {
+    const ping = () => fetch(`${BACKEND}/api/health`).catch(() => {});
+    ping();
+    const iv = setInterval(ping, 10 * 60 * 1000);
+    return () => clearInterval(iv);
+  }, []);
+
   const isStaff = !!(user && user !== false && (user.is_master_owner || STAFF_ROLES.includes(user.role)));
   // Always let /login through — an admin who's logged out (new device,
   // cleared cookies) must still be able to reach the login form to prove

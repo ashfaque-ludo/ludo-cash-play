@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 
@@ -194,15 +194,6 @@ export default function Login() {
               </div>
             </form>
           )}
-
-          <div className="mt-5 pt-4 border-t border-gray-100 text-center">
-            <p className="text-sm text-gray-500">
-              New user?{" "}
-              <Link to="/register" className="text-red-700 font-semibold hover:text-red-900">
-                Create Account
-              </Link>
-            </p>
-          </div>
         </div>
 
       </div>
