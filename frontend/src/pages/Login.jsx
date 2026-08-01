@@ -96,7 +96,7 @@ export default function Login() {
           </h2>
           <p className="text-sm text-gray-500 mb-5">
             {step === "phone"
-              ? "Login or create your account instantly"
+              ? "Enter your phone number to continue"
               : `OTP sent to +91 ${phone}`}
           </p>
 
