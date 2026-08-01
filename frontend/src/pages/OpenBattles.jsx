@@ -184,10 +184,9 @@ export default function OpenBattles() {
           <div className="mt-10 rounded-2xl glass-strong border border-purple-500/20 p-6 text-center">
             <Trophy className="w-8 h-8 text-amber-400 mx-auto mb-3" />
             <div className="font-bold text-lg mb-1">Ready to win real money?</div>
-            <p className="text-slate-400 text-sm mb-4">Create your free account and start playing in minutes.</p>
+            <p className="text-slate-400 text-sm mb-4">Login to start playing in minutes.</p>
             <div className="flex gap-3 justify-center">
-              <Link to="/register"><Button className="rounded-full bg-gradient-to-r from-[#8B1111] to-[#C62828] text-white font-bold px-6">Sign Up Free</Button></Link>
-              <Link to="/login"><Button variant="outline" className="rounded-full border-white/20 bg-white/5 text-white px-6">Login</Button></Link>
+              <Link to="/login"><Button className="rounded-full bg-gradient-to-r from-[#8B1111] to-[#C62828] text-white font-bold px-6">Login</Button></Link>
             </div>
           </div>
         )}

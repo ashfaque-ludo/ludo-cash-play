@@ -438,7 +438,7 @@ function MarketingHome() {
           </p>
 
           <div className="mt-10 flex flex-col sm:flex-row gap-4 items-start fade-up">
-            <Link to="/register">
+            <Link to="/login">
               <Button data-testid="hero-play-now" size="lg"
                 className="rounded-full bg-gradient-to-r from-[#8B1111] to-[#C62828] hover:from-[#C62828] hover:to-[#8B1111] text-white font-bold text-base px-8 h-14 pulse-glow">
                 <Zap className="w-5 h-5 mr-2" /> PLAY NOW
@@ -491,7 +491,7 @@ function MarketingHome() {
               <div className="text-xs tracking-[0.25em] uppercase text-purple-400 font-bold mb-2">High Stakes Arenas</div>
               <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight">Choose your <span className="grad-text">arena</span></h2>
             </div>
-            <Link to="/register" data-testid="tables-view-all" className="text-purple-300 hover:text-white inline-flex items-center gap-1 text-sm">
+            <Link to="/login" data-testid="tables-view-all" className="text-purple-300 hover:text-white inline-flex items-center gap-1 text-sm">
               View all arenas <ChevronRight className="w-4 h-4" />
             </Link>
           </div>
@@ -500,7 +500,7 @@ function MarketingHome() {
             {tables.slice(0, 4).map((t) => {
               const isVip = t.tier === "vip";
               return (
-                <Link to="/register" key={t.stake} data-testid={`stake-card-${t.stake}`}
+                <Link to="/login" key={t.stake} data-testid={`stake-card-${t.stake}`}
                   className={`relative rounded-2xl p-5 transition-all duration-300 group cursor-pointer ${
                     isVip ? "bg-gradient-to-br from-amber-500/10 to-amber-900/20 border border-amber-500/30 glow-ring-gold hover:-translate-y-1"
                     : t.tier === "premium" ? "glass border-purple-500/20 hover:border-purple-500/60 hover:-translate-y-1"
@@ -552,7 +552,7 @@ function MarketingHome() {
                 <li key={f} className="flex items-center gap-2"><Award className="w-4 h-4 text-amber-400" /> {f}</li>
               ))}
             </ul>
-            <Link to="/register">
+            <Link to="/login">
               <Button data-testid="vip-enter-cta"
                 className="mt-8 rounded-full bg-gradient-to-r from-amber-500 to-amber-700 text-black font-bold px-8 h-12 shadow-[0_0_25px_rgba(234,179,8,0.45)]">
                 <Crown className="w-4 h-4 mr-2" /> Enter VIP Room
@@ -705,7 +705,7 @@ function MarketingHome() {
           <ShieldCheck className="w-10 h-10 mx-auto text-emerald-400" />
           <h2 className="text-3xl sm:text-4xl font-extrabold mt-4">Ready to win <span className="grad-text">real money?</span></h2>
           <p className="text-slate-400 mt-3">Join 12,000+ players competing in skill-based Ludo battles.</p>
-          <Link to="/register">
+          <Link to="/login">
             <Button data-testid="final-cta-play" className="mt-6 rounded-full bg-gradient-to-r from-[#8B1111] to-[#C62828] text-white font-bold px-8 h-12 pulse-glow">
               <Zap className="w-4 h-4 mr-2" /> Start playing
             </Button>

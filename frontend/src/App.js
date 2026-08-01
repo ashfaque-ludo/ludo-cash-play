@@ -28,7 +28,6 @@ function LoginWithRef() {
 
 // Lazy-loaded routes
 const Home           = lazy(() => import("@/pages/Home"));
-const Register       = lazy(() => import("@/pages/Register"));
 const Dashboard      = lazy(() => import("@/pages/Dashboard"));
 const MatchLobby     = lazy(() => import("@/pages/MatchLobby"));
 const MatchRoom      = lazy(() => import("@/pages/MatchRoom"));
@@ -135,8 +134,8 @@ function AppLayout() {
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<Login />} />
           <Route path="/login/:refCode" element={<LoginWithRef />} />
-          <Route path="/register" element={<Register />} />
-          <Route path="/signup" element={<Register />} />
+          <Route path="/register" element={<Navigate to="/login" replace />} />
+          <Route path="/signup" element={<Navigate to="/login" replace />} />
           <Route path="/leaderboard" element={<Leaderboard />} />
           <Route path="/legal" element={<Legal />} />
           <Route path="/legal/:section" element={<Legal />} />

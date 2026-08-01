@@ -84,10 +84,9 @@ export default function Header({ onMenuOpen }) {
             </>
           ) : (
             <div className="flex items-center gap-2">
-              <Link to="/login" className="text-sm text-slate-300 hover:text-white px-2 py-1.5 hidden sm:block" data-testid="header-login-link">Login</Link>
-              <Link to="/register" data-testid="header-register-btn">
+              <Link to="/login" data-testid="header-login-link">
                 <Button size="sm" className="rounded-full bg-gradient-to-r from-purple-600 to-blue-600 text-white font-semibold text-xs px-3 h-8">
-                  Sign Up
+                  Login
                 </Button>
               </Link>
             </div>

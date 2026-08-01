@@ -92,11 +92,8 @@ export default function Sidebar({ open, onClose }) {
           </div>
         ) : (
           <div className="px-4 py-3 border-b border-white/10">
-            <Link to="/login" onClick={onClose} className="block w-full text-center py-2 rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 text-white text-sm font-bold mb-2">
+            <Link to="/login" onClick={onClose} className="block w-full text-center py-2 rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 text-white text-sm font-bold">
               Login
-            </Link>
-            <Link to="/register" onClick={onClose} className="block w-full text-center py-2 rounded-xl border border-white/20 text-white text-sm font-semibold">
-              Create Account
             </Link>
           </div>
         )}
