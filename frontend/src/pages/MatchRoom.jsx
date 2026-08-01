@@ -28,9 +28,17 @@ function openLudoKing() {
     // filter, since MAIN/LAUNCHER resolution is independent of URL scheme
     // matching. Chrome falls back to the Play Store natively if the app
     // isn't installed — no JS timer that fires the store unconditionally.
+    // IMPORTANT: no `scheme=`/host here — setting one makes Chrome build an
+    // Intent with a data URI (e.g. https://launch), which then requires
+    // Ludo King's launcher activity to declare a matching data element in
+    // its intent-filter. It doesn't (plain MAIN/LAUNCHER, no data), so that
+    // data-bearing intent fails to resolve and Chrome silently falls back to
+    // the Play Store even though the app is installed — this was the bug.
+    // Package + MAIN + LAUNCHER with no data is exactly what
+    // PackageManager.getLaunchIntentForPackage() builds, so it resolves.
     const fallback = encodeURIComponent(LUDO_KING_PLAY_STORE);
     window.location.href =
-      `intent://launch#Intent;scheme=https;package=${LUDO_KING_PACKAGE};action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;S.browser_fallback_url=${fallback};end`;
+      `intent://#Intent;package=${LUDO_KING_PACKAGE};action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;S.browser_fallback_url=${fallback};end`;
     return;
   }
 

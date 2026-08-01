@@ -117,16 +117,33 @@ export default function Dashboard() {
     if (!stake || stake < 10) return toast.error("Minimum 10");
     if (stake > 50000) return toast.error("Maximum 50,000");
     if (total < stake) return toast.error("Insufficient balance. Add money first.");
+
+    // Show the battle in the list immediately so it doesn't feel like a
+    // frozen button while the network round-trip finishes — the real list
+    // (loadBattles) overwrites this the moment the server responds, and on
+    // failure we pull the temp entry back out.
+    const tempId = `temp-${Date.now()}`;
+    const optimisticMatch = {
+      _id: tempId,
+      id: tempId,
+      stake,
+      prize: prize(stake),
+      status: "waiting",
+      isOwn: true,
+      players: [{ name: user.name }],
+    };
+    setOpenBattles(prev => [optimisticMatch, ...prev]);
+    setCreateAmt("");
     setCreating(true);
     try {
       const r = await api.post("/matches", { stake, tier: "custom", label: `${stake} Battle` });
       const id = r.data?.match?._id || r.data?._id;
       toast.success("Battle created!");
-      setCreateAmt("");
       refresh();
       loadBattles();
       if (id) nav(`/match/${id}`);
     } catch (e) {
+      setOpenBattles(prev => prev.filter(m => (m._id || m.id) !== tempId));
       toast.error(e.response?.data?.detail || "Failed to create battle");
     } finally {
       setCreating(false);

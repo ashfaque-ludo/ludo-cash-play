@@ -141,8 +141,9 @@ router.get("/tables", async (req, res) => {
 const handleCreate = async (req, res) => {
   if (!req.user) return res.status(401).json({ detail: "Not authenticated." });
   try {
-    const userCheck = await User.findById(req.user._id);
-    if (userCheck && userCheck.wallet_frozen) {
+    // req.user is already the fresh user doc loaded by the auth middleware —
+    // re-fetching it here was a redundant DB round-trip on every create.
+    if (req.user.wallet_frozen) {
       return res.status(403).json({ detail: "Your wallet is frozen. Contact support." });
     }
     const openCount = await Match.countDocuments({
@@ -194,8 +195,11 @@ const handleCreate = async (req, res) => {
       return res.status(400).json({ detail: createErr.message });
     }
 
-    // Record entry fee deduction so it appears in Game History
-    await Transaction.create({
+    // Record entry fee deduction so it appears in Game History — fired
+    // without awaiting: it's a display-only audit log, failure is already
+    // swallowed below, and there's no reason to make the caller's response
+    // wait on this write finishing.
+    Transaction.create({
       user: req.user._id, user_phone: req.user.phone || "",
       type: "match_entry", amount: stakeAmount, status: "completed",
       description: `Battle entry ${stakeAmount}`,
