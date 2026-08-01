@@ -27,6 +27,7 @@ const qrUpload=multer({
 router.get("/promos", async (req,res)=>{ res.json({promos:await Promo.find().sort({createdAt:-1})}); });
 router.post("/promos", async (req,res)=>{
   try{
+    if(!req.can("admin")) return res.status(403).json({detail:"admin or above required."});
     const {code,amount,max_redemptions}=req.body;
     const p=await Promo.create({code:code.toUpperCase(),amount:Number(amount),max_redemptions:Number(max_redemptions),created_by:req.user._id});
     await logActivity(req,"promo_created",code,{amount});
@@ -107,6 +108,7 @@ router.get("/payment-settings", async (req,res)=>{
   res.json({ admin_upi_id, admin_upi_name, admin_qr_image, whatsapp_number, support_email, admin_qr_updated_at, support_whatsapp });
 });
 router.post("/payment-settings", async (req,res)=>{
+  if(!req.can("admin")) return res.status(403).json({detail:"admin or above required."});
   const { admin_upi_id, admin_upi_name, admin_qr_image, whatsapp_number, support_email, support_whatsapp } = req.body;
   if (admin_upi_id !== undefined) await Config.set("admin_upi_id", admin_upi_id.trim());
   if (admin_upi_name !== undefined) await Config.set("admin_upi_name", admin_upi_name.trim());
@@ -121,6 +123,7 @@ router.post("/payment-settings", async (req,res)=>{
 // QR image file upload — stored as base64 data URL in MongoDB so it survives server restarts
 router.post("/payment-settings/upload-qr", qrUpload.single("qr_image"), async (req,res)=>{
   try {
+    if(!req.can("admin")) return res.status(403).json({detail:"admin or above required."});
     if(!req.file) return res.status(400).json({detail:"No file uploaded."});
     const base64=`data:${req.file.mimetype};base64,${req.file.buffer.toString("base64")}`;
     const ts=new Date().toISOString();

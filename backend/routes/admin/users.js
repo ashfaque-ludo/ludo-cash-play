@@ -1,6 +1,7 @@
 const router=require("express").Router();
 const User=require("../../models/User");
 const {logActivity}=require("../../middleware/activityLogger");
+const {LEVELS}=require("../../middleware/adminAuth");
 router.get("/", async (req,res)=>{
   try{
     const {q,limit=100}=req.query;
@@ -15,8 +16,10 @@ router.patch("/:id", async (req,res)=>{
     if(!target) return res.status(404).json({detail:"User not found."});
     if(target.is_master_owner) return res.status(403).json({detail:"Master owner cannot be modified."});
     const {role,banned,ban_reason}=req.body;
-    if(role==="super_admin"&&req.user.role!=="super_admin") return res.status(403).json({detail:"Only super_admin can assign super_admin."});
-    if(role!==undefined) target.role=role;
+    if(role!==undefined){
+      if(!req.can("super_admin")) return res.status(403).json({detail:"Only super_admin can change roles."});
+      target.role=role;
+    }
     if(banned!==undefined) target.banned=banned;
     if(ban_reason!==undefined) target.ban_reason=ban_reason;
     await target.save();
@@ -63,11 +66,14 @@ router.post("/:id/unfreeze-wallet", async (req,res)=>{
 });
 router.post("/:id/reset-password", async (req,res)=>{
   try{
+    if(!req.can("admin")) return res.status(403).json({detail:"admin or above required."});
     const {new_password}=req.body;
     if(!new_password||new_password.length<6) return res.status(400).json({detail:"Min 6 chars."});
     const target=await User.findById(req.params.id).select("+password");
     if(!target) return res.status(404).json({detail:"User not found."});
     if(target.is_master_owner&&!req.user.is_master_owner) return res.status(403).json({detail:"Cannot reset master owner password."});
+    if(req.user.role!=="super_admin"&&(LEVELS[target.role]??0)>=(LEVELS[req.user.role]??0))
+      return res.status(403).json({detail:"Cannot reset password for an account at or above your own role level."});
     target.password=new_password; await target.save();
     await logActivity(req,"password_reset",target.email,{});
     res.json({ok:true});
