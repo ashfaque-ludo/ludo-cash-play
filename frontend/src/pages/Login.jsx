@@ -77,7 +77,7 @@ export default function Login() {
             <span className="text-3xl">🎲</span>
           </div>
           <h1 className="text-2xl font-black text-gray-900">MyAkadda</h1>
-          <p className="text-sm text-gray-500 mt-1">Play. Win. Earn Real Money.</p>
+          <p className="text-sm text-gray-500 mt-1">Play. Win. Earn Coins.</p>
         </div>
 
         {/* Card */}
