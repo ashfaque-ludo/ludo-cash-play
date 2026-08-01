@@ -105,6 +105,9 @@ export default function AdminScreenshots() {
                       <span style={{ color: "#64748b", fontSize: 13, fontWeight: 400 }}>{ss.user?.email}</span>
                     </div>
                     {ss.match_id && <div style={{ color: "#94a3b8", fontSize: 12, marginTop: 2 }}>Match: {ss.match_id}</div>}
+                    {ss.room_code && (
+                      <div style={{ color: "#10b981", fontSize: 14, fontWeight: 700, marginTop: 2 }}>Room Code: {ss.room_code}</div>
+                    )}
                     <div style={{ marginTop: 4, display: "flex", gap: 16, flexWrap: "wrap" }}>
                       <span style={{ color: "#f59e0b" }}>Prize claimed: {ss.amount || 0}</span>
                       <span style={{ color: "#10b981" }}>Net (after 10%): {ss.net_prize || 0}</span>

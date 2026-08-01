@@ -101,14 +101,9 @@ function AppLayout() {
     return () => clearInterval(iv);
   }, []);
 
-  // Keep the Render backend warm so OTP send/verify doesn't eat a cold-start
-  // delay — ping on load, then every 10 minutes.
-  useEffect(() => {
-    const ping = () => fetch(`${BACKEND}/api/health`).catch(() => {});
-    ping();
-    const iv = setInterval(ping, 10 * 60 * 1000);
-    return () => clearInterval(iv);
-  }, []);
+  // Keep-alive ping to /api/health lives in index.js (runs once at app
+  // bootstrap) — having it here too was firing the same request twice on
+  // every load and running two overlapping 10-minute timers forever.
 
   const isStaff = !!(user && user !== false && (user.is_master_owner || STAFF_ROLES.includes(user.role)));
   // Always let /login through — an admin who's logged out (new device,

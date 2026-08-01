@@ -1,6 +1,8 @@
+const mongoose = require("mongoose");
 const router = require("express").Router();
 const Screenshot = require("../../models/Screenshot");
 const User = require("../../models/User");
+const Match = require("../../models/Match");
 const { logActivity } = require("../../middleware/activityLogger");
 
 // GET /api/admin/screenshots?status=pending
@@ -14,7 +16,22 @@ router.get("/", async (req, res) => {
       .populate("reviewed_by", "name email")
       .sort({ createdAt: -1 })
       .limit(200);
-    res.json({ screenshots: screenshots.map(s => ({ ...s.toObject(), id: s._id.toString(), created_at: s.createdAt })) });
+
+    // Look up the room code for each linked match — screenshot.match_id is a
+    // loose string field (not a ref), so admins reviewing a claim here had no
+    // way to see the room code without also opening the Matches tab.
+    const matchIds = [...new Set(
+      screenshots.map(s => s.match_id).filter(id => mongoose.Types.ObjectId.isValid(id))
+    )];
+    const matches = await Match.find({ _id: { $in: matchIds } }).select("room_code");
+    const roomCodeById = Object.fromEntries(matches.map(m => [m._id.toString(), m.room_code || ""]));
+
+    res.json({ screenshots: screenshots.map(s => ({
+      ...s.toObject(),
+      id: s._id.toString(),
+      created_at: s.createdAt,
+      room_code: roomCodeById[s.match_id] || "",
+    })) });
   } catch (e) {
     res.status(500).json({ detail: "Server error." });
   }

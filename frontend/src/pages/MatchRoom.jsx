@@ -568,14 +568,14 @@ export default function MatchRoom() {
       />
       <WonPopup
         open={showWon}
-        onClose={() => { setShowWon(false); fetchMatch(); }}
+        onClose={() => setShowWon(false)}
         matchId={id}
         prize={match.prize || prizeAmount}
         onResult={handleResult}
       />
       <LostPopup
         open={showLost}
-        onClose={() => { setShowLost(false); fetchMatch(); }}
+        onClose={() => setShowLost(false)}
         matchId={id}
         onResult={handleResult}
       />
