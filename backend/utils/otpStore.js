@@ -1,14 +1,12 @@
 const otpMap = new Map();
-const rateLimitMap = new Map();
 
 function generateOTP() {
   return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
-function canSend(phone) {
-  const last = rateLimitMap.get(phone) || 0;
-  if (Date.now() - last < 60000) return false;
-  rateLimitMap.set(phone, Date.now());
+// No per-phone cooldown — resend is instant. The otpLimiter Express
+// middleware (10 requests/60s per phone) still guards against scripted abuse.
+function canSend() {
   return true;
 }
 

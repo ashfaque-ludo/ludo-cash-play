@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
@@ -21,25 +21,17 @@ export default function Login() {
   const [step, setStep] = useState("phone");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [resendTimer, setResendTimer] = useState(0);
   // Synchronous (non-state) guard against double-submit — setLoading(true) is
   // async, so two rapid taps/re-renders could both pass the `loading` check
   // before either had updated.
   const sendingRef = useRef(false);
-
-  // Resend countdown
-  useEffect(() => {
-    if (resendTimer <= 0) return;
-    const t = setTimeout(() => setResendTimer(s => s - 1), 1000);
-    return () => clearTimeout(t);
-  }, [resendTimer]);
 
   // ── Send OTP ────────────────────────────────────────────────────────────
   const handleSendOtp = async (e) => {
     e?.preventDefault();
     setError("");
 
-    if (sendingRef.current || loading || resendTimer > 0) return;
+    if (sendingRef.current || loading) return;
 
     const clean = phone.replace(/\D/g, "");
     if (!/^[6-9]\d{9}$/.test(clean)) {
@@ -56,7 +48,6 @@ export default function Login() {
     if (r.dev_otp) toast.success(`OTP: ${r.dev_otp}`, { duration: 15000 });
     else toast.success("OTP sent via SMS!");
     setStep("otp");
-    setResendTimer(30);
   };
 
   // ── Verify OTP ────────────────────────────────────────────────────────────
@@ -186,10 +177,10 @@ export default function Login() {
                 <button
                   type="button"
                   onClick={handleSendOtp}
-                  disabled={resendTimer > 0 || loading}
+                  disabled={loading}
                   className="text-red-700 font-semibold disabled:text-gray-400 disabled:cursor-not-allowed hover:text-red-900 transition-colors"
                 >
-                  {resendTimer > 0 ? `Resend in ${resendTimer}s` : "Resend OTP"}
+                  Resend OTP
                 </button>
               </div>
             </form>

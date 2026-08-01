@@ -17,12 +17,16 @@ module.exports = {
     message: { detail: "Too many login attempts. Try after 15 minutes." },
   }),
 
+  // Per-phone cooldown was removed (resend is now instant) — this is the
+  // only remaining guard against scripted SMS-bombing, since /send-otp is
+  // unauthenticated and takes any phone number. Raised from 3 so normal
+  // rapid resend-tapping never hits it.
   otpLimiter: rateLimit({
     ...opts,
     windowMs: 60 * 1000,
-    max: 3,
+    max: 10,
     keyGenerator: (req) => req.body?.phone || req.ip,
-    message: { detail: "Wait 1 minute before requesting another OTP." },
+    message: { detail: "Too many OTP requests. Please wait a moment." },
   }),
 
   otpVerifyLimiter: rateLimit({
