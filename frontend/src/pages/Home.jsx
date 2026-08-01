@@ -433,7 +433,7 @@ function MarketingHome() {
             <span className="grad-text-gold vip-text">PLAY</span>
           </h1>
           <p className="mt-6 text-lg sm:text-xl text-slate-300 max-w-2xl fade-up" data-testid="hero-subtitle">
-            Win Real Money Online. Challenge players across <span className="text-purple-300 font-semibold">8 stake tiers</span> from
+            Win Coins Online. Challenge players across <span className="text-purple-300 font-semibold">8 stake tiers</span> from
             50 entry to 50K VIP rooms. Instant UPI withdrawals.
           </p>
 
