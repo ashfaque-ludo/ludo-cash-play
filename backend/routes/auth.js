@@ -153,7 +153,12 @@ router.post("/verify-firebase-otp", async (req, res) => {
     try {
       decoded = await verifyIdToken(idToken);
     } catch (e) {
-      return res.status(401).json({ detail: "Invalid or expired Firebase token." });
+      // Surface the real Firebase Admin SDK error (e.g. project-id mismatch,
+      // service account not configured, clock skew) instead of a generic
+      // message — this is diagnostic info, not a secret, and without it
+      // there's no way to tell "OTP wrong" apart from "server misconfigured"
+      // from the client side.
+      return res.status(401).json({ detail: `Invalid or expired Firebase token (${e.code || e.message || "unknown error"}).` });
     }
 
     const phoneNumber = decoded.phone_number;
