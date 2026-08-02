@@ -366,8 +366,14 @@ export default function MatchRoom() {
         {/* DIVIDER */}
         <div className="border-t-2 border-gray-300 mb-4" />
 
-        {/* ROOM CODE SECTION */}
-        {!hasRoomCode ? (
+        {/* ROOM CODE SECTION — only while the match is still actually in
+            progress. Without the status check, a cancelled/ended match with
+            no room_code (the common case: cancelled before a code was ever
+            set) still matched `!hasRoomCode` and re-rendered the "Set Room
+            Code" / "CANCEL MATCH" panel right on top of the "Match
+            Cancelled" message below — looking like a brand new table had
+            appeared immediately after cancelling. */}
+        {!hasRoomCode && (match.status === 'waiting' || match.status === 'in_progress') ? (
           <>
             {isCreator ? (
               <div className="bg-white rounded-2xl shadow-sm border-2 border-amber-400 p-4 mb-4">
@@ -422,7 +428,7 @@ export default function MatchRoom() {
               />
             )}
           </>
-        ) : (
+        ) : hasRoomCode ? (
           /* CODE IS SET — both players see code + copy + Play button */
           <div className="bg-white rounded-2xl shadow-sm border-2 border-green-400 p-4 mb-4">
             <h3 className="font-bold text-center text-green-700 mb-3">Room Code</h3>
@@ -489,7 +495,7 @@ export default function MatchRoom() {
               </div>
             )}
           </div>
-        )}
+        ) : null}
 
         {/* Match ended */}
         {match.status === 'ended' && (
