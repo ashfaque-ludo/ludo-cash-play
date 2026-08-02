@@ -9,6 +9,7 @@ const { validators, handleValidation } = require("../middleware/validators");
 const { v4: uuidv4 } = require("uuid");
 const { send2FactorOTP } = require("../utils/twofactorService");
 const { generateOTP, canSend, saveOTP, verifyOTP } = require("../utils/otpStore");
+const { verifyIdToken } = require("../utils/firebase");
 
 const COOKIE = {
   httpOnly: true,
@@ -137,6 +138,71 @@ router.post("/verify-otp", validators.phone, validators.otp, handleValidation, a
     res.cookie("lcp_token", token, COOKIE);
     res.json({ ...user.toPublic(), token, is_new_user, needs_name: !user.name });
   } catch (e) { console.error(e); res.status(500).json({ detail: "Server error." }); }
+});
+
+// POST /api/auth/verify-firebase-otp
+// Verifies the Firebase ID token server-side and derives the phone number
+// from the decoded token — never from client-supplied req.body.phone. This
+// is what closes the auth-bypass a client-trusted phone field would open.
+router.post("/verify-firebase-otp", async (req, res) => {
+  try {
+    const { idToken, referral_code } = req.body;
+    if (!idToken) return res.status(400).json({ detail: "Firebase ID token required." });
+
+    let decoded;
+    try {
+      decoded = await verifyIdToken(idToken);
+    } catch (e) {
+      return res.status(401).json({ detail: "Invalid or expired Firebase token." });
+    }
+
+    const phoneNumber = decoded.phone_number;
+    if (!phoneNumber) return res.status(401).json({ detail: "Token has no verified phone number." });
+
+    // Strip non-digits then remove leading 91 country code
+    const digits = String(phoneNumber).replace(/\D/g, "").replace(/^91/, "");
+    if (!/^[6-9]\d{9}$/.test(digits)) {
+      return res.status(400).json({ detail: "Invalid Indian phone number." });
+    }
+
+    let user = await findUserByPhone(digits);
+    let is_new_user = false;
+
+    if (!user) {
+      is_new_user = true;
+      let refCode;
+      do { refCode = uuidv4().slice(0, 8).toUpperCase(); } while (await User.findOne({ referral_code: refCode }));
+
+      user = new User({
+        name: `User${digits.slice(-4)}`,
+        phone: digits,
+        referral_code: refCode,
+        wallet: { deposit: 0, winning: 0, bonus: 0 },
+      });
+
+      if (referral_code) {
+        const referrer = await User.findOne({ referral_code: referral_code.toUpperCase() });
+        if (referrer && referrer._id.toString() !== user._id.toString()) {
+          user.referred_by = referrer._id;
+          await user.save();
+          await Referral.create({ referrer: referrer._id, referred: user._id, referral_code: referral_code.toUpperCase(), commission_earned: 0, status: "pending" });
+        } else { await user.save(); }
+      } else { await user.save(); }
+    } else {
+      if (user.banned) return res.status(403).json({ detail: "Account banned." });
+      user.last_login_at = new Date();
+      user.last_login_ip = req.ip;
+      await user.save();
+    }
+
+    await applyPhoneRole(user);
+    const token = sign(user._id);
+    res.cookie("lcp_token", token, COOKIE);
+    res.json({ ...user.toPublic(), token, is_new_user, needs_name: !user.name });
+  } catch (e) {
+    console.error("[verify-firebase-otp] ERROR:", e.message, "| code:", e.code);
+    res.status(500).json({ detail: e.message, code: e.code || "unknown" });
+  }
 });
 
 // POST /api/auth/set-name (for new OTP users setting their name)

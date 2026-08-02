@@ -69,6 +69,7 @@ app.post("/api/auth/login", authLimiter);
 app.post("/api/auth/register", authLimiter);
 app.post("/api/auth/send-otp", otpLimiter);
 app.post("/api/auth/verify-otp", otpVerifyLimiter);
+app.post("/api/auth/verify-firebase-otp", otpVerifyLimiter);
 app.use("/api/wallet/withdraw", withdrawLimiter);
 app.use("/api/wallet", walletLimiter);
 app.post("/api/matches/create", matchCreateLimiter);
