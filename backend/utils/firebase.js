@@ -11,28 +11,17 @@ function init() {
     return false;
   }
 
-  // ── TEMPORARY DIAGNOSTIC — remove once init succeeds reliably ──────────────
-  // Narrows down *which* step is failing without ever logging the secret
-  // itself (only its length, and structural booleans/field names).
-  console.log(`[Firebase][diag] FIREBASE_SERVICE_ACCOUNT present, length=${sa.length} chars`);
-
   let serviceAccount;
   try {
     // Try raw JSON first — the plain content of the downloaded service account file.
     serviceAccount = JSON.parse(sa);
-    console.log("[Firebase][diag] Parsed FIREBASE_SERVICE_ACCOUNT as raw JSON.");
   } catch (e1) {
     try {
       // Fall back to base64-encoded JSON for backward compatibility.
       const decodedStr = Buffer.from(sa, "base64").toString("utf-8");
       serviceAccount = JSON.parse(decodedStr);
-      console.log("[Firebase][diag] Parsed FIREBASE_SERVICE_ACCOUNT as base64-encoded JSON.");
     } catch (e2) {
-      console.error(
-        "[Firebase][diag] Could not parse FIREBASE_SERVICE_ACCOUNT as raw JSON or base64 JSON.",
-        "Raw JSON.parse error:", e1.message,
-        "| base64 JSON.parse error:", e2.message
-      );
+      console.error("[Firebase] Could not parse FIREBASE_SERVICE_ACCOUNT as raw JSON or base64 JSON.");
       return false;
     }
   }
@@ -44,16 +33,9 @@ function init() {
   const requiredFields = ["type", "project_id", "private_key", "client_email"];
   const missingFields = requiredFields.filter(f => !serviceAccount[f]);
   if (missingFields.length) {
-    console.error("[Firebase][diag] Decoded JSON is missing required field(s):", missingFields.join(", "));
+    console.error("[Firebase] Service account JSON is missing required field(s):", missingFields.join(", "));
     return false;
   }
-  console.log("[Firebase][diag] project_id in service account JSON:", serviceAccount.project_id);
-  console.log(
-    "[Firebase][diag] private_key looks structurally valid:",
-    serviceAccount.private_key.startsWith("-----BEGIN PRIVATE KEY-----") &&
-    serviceAccount.private_key.includes("\n")
-  );
-  // ── END TEMPORARY DIAGNOSTIC ────────────────────────────────────────────────
 
   try {
     admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
