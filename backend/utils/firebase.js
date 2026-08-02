@@ -16,27 +16,29 @@ function init() {
   // itself (only its length, and structural booleans/field names).
   console.log(`[Firebase][diag] FIREBASE_SERVICE_ACCOUNT present, length=${sa.length} chars`);
 
-  let decodedStr;
-  try {
-    decodedStr = Buffer.from(sa, "base64").toString("utf-8");
-  } catch (e) {
-    console.error("[Firebase][diag] base64 decode threw:", e.message);
-    return false;
-  }
-  if (!decodedStr.trim().startsWith("{")) {
-    console.error(
-      "[Firebase][diag] Decoded content does not start with '{' — this is not valid base64-encoded JSON. " +
-      `First 20 chars of decoded output: "${decodedStr.slice(0, 20).replace(/[^\x20-\x7E]/g, "?")}"`
-    );
-    return false;
-  }
-
   let serviceAccount;
   try {
-    serviceAccount = JSON.parse(decodedStr);
-  } catch (e) {
-    console.error("[Firebase][diag] JSON.parse failed after base64 decode:", e.message);
-    return false;
+    // Try raw JSON first — the plain content of the downloaded service account file.
+    serviceAccount = JSON.parse(sa);
+    console.log("[Firebase][diag] Parsed FIREBASE_SERVICE_ACCOUNT as raw JSON.");
+  } catch (e1) {
+    try {
+      // Fall back to base64-encoded JSON for backward compatibility.
+      const decodedStr = Buffer.from(sa, "base64").toString("utf-8");
+      serviceAccount = JSON.parse(decodedStr);
+      console.log("[Firebase][diag] Parsed FIREBASE_SERVICE_ACCOUNT as base64-encoded JSON.");
+    } catch (e2) {
+      console.error(
+        "[Firebase][diag] Could not parse FIREBASE_SERVICE_ACCOUNT as raw JSON or base64 JSON.",
+        "Raw JSON.parse error:", e1.message,
+        "| base64 JSON.parse error:", e2.message
+      );
+      return false;
+    }
+  }
+
+  if (serviceAccount.private_key) {
+    serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, "\n");
   }
 
   const requiredFields = ["type", "project_id", "private_key", "client_email"];
