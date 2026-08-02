@@ -34,7 +34,8 @@ export default function OpenBattles() {
   }, [load]);
 
   const join = async (m) => {
-    if (!user) { navigate("/login"); return; }
+    if (user === false) { navigate("/login"); return; }
+    if (!user) return; // auth check still in flight — don't bounce a logged-in user
     setJoining(m.id);
     try {
       const { data } = await api.post(`/matches/${m.id}/join`, {});
