@@ -77,6 +77,7 @@ function RedeemModal({ balance, onClose, onSuccess }) {
 
 // ── Deposit Flow ──────────────────────────────────────────────────────────────
 function DepositPage({ onBack }) {
+  const { refresh } = useAuth();
   // steps: amount → qr → upload → submitted
   const [step, setStep] = useState("amount");
   const [amount, setAmount] = useState("");
@@ -88,6 +89,7 @@ function DepositPage({ onBack }) {
   const [screenshotName, setScreenshotName] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [pendingList, setPendingList] = useState([]);
+  const [depositId, setDepositId] = useState(null);
   const timerRef = useRef(null);
   const fileRef = useRef();
 
@@ -103,6 +105,28 @@ function DepositPage({ onBack }) {
     } catch {}
   }, []);
   useEffect(() => { loadPending(); }, [loadPending]);
+
+  // Once the screenshot is submitted, poll for the admin's decision so the
+  // "submitted" screen closes itself the moment the deposit is approved —
+  // instead of leaving the user staring at "5-30 minutes" after the wallet
+  // has already been credited, forcing them to hit Back to see it.
+  useEffect(() => {
+    if (step !== "submitted" || !depositId) return;
+    const poll = setInterval(async () => {
+      try {
+        const r = await api.get("/wallet/deposits");
+        const dep = (r.data.deposits || []).find(d => (d.id || d._id) === depositId);
+        if (dep && dep.status !== "pending") {
+          clearInterval(poll);
+          await refresh();
+          if (dep.status === "approved") toast.success(`${amt} added to your wallet!`);
+          else if (dep.status === "rejected") toast.error("Deposit was rejected. Contact support if this is a mistake.");
+          onBack();
+        }
+      } catch {}
+    }, 5000);
+    return () => clearInterval(poll);
+  }, [step, depositId]); // eslint-disable-line
 
   const handleNext = async () => {
     if (!amt || amt < 10) return toast.error("Minimum deposit 10");
@@ -176,10 +200,11 @@ function DepositPage({ onBack }) {
       const fd = new FormData();
       fd.append("screenshot", screenshot);
       fd.append("amount", String(amt));
-      await api.post("/wallet/deposit-screenshot", fd, {
+      const r = await api.post("/wallet/deposit-screenshot", fd, {
         headers: { "Content-Type": "multipart/form-data" },
       });
       toast.success("Screenshot submitted!");
+      setDepositId(r.data?.deposit_id || null);
       setStep("submitted");
       loadPending();
     } catch (e) {
