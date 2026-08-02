@@ -36,7 +36,6 @@ const Leaderboard    = lazy(() => import("@/pages/Leaderboard"));
 const Referral       = lazy(() => import("@/pages/Referral"));
 const Legal          = lazy(() => import("@/pages/Legal"));
 const Admin          = lazy(() => import("@/pages/Admin"));
-const AdminRecharges = lazy(() => import("@/pages/AdminRecharges"));
 const ScreenshotUpload = lazy(() => import("@/pages/ScreenshotUpload"));
 const CreateRoom     = lazy(() => import("@/pages/CreateRoom"));
 const RoomGen        = lazy(() => import("@/pages/RoomGen"));
@@ -164,7 +163,12 @@ function AppLayout() {
           {/* Admin routes */}
           <Route path="/admin" element={<ProtectedRoute requireRole="support_agent"><Admin /></ProtectedRoute>} />
           <Route path="/super-admin" element={<ProtectedRoute requireRole="super_admin"><Admin /></ProtectedRoute>} />
-          <Route path="/admin/recharges" element={<ProtectedRoute requireRole="support_agent"><AdminRecharges /></ProtectedRoute>} />
+          {/* Old standalone recharges page hit a backend route that was never
+              mounted (always 404) and read the wrong localStorage key for its
+              auth token (always unauthenticated) — approvals there silently
+              never touched the real Transaction/wallet data. Redirect to the
+              real Deposits tab inside the main Admin panel instead. */}
+          <Route path="/admin/recharges" element={<Navigate to="/admin" replace />} />
           <Route path="/admin/screenshots" element={<ProtectedRoute requireRole="support_agent"><AdminScreenshots /></ProtectedRoute>} />
 
           <Route path="*" element={<Navigate to="/" replace />} />
