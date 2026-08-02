@@ -10,10 +10,10 @@ export default function AnnouncementBar() {
       .then(r => r.json())
       .then(data => {
         const num = data?.whatsapp_number || "7206638948";
-        setNotice(`🎮 Play Ludo Win Cash | Support: ${num} | 24x7 Live Help | Commission: 5% | Referral Bonus: 1%`);
+        setNotice(`🎮 Play Ludo Win Coins | Support: ${num} | 24x7 Live Help | Commission: 5% | Referral Bonus: 1%`);
       })
       .catch(() => {
-        setNotice("🎮 Play Ludo Win Cash Daily | 24x7 Live Support | Instant Withdrawal | 5% Commission");
+        setNotice("🎮 Play Ludo Win Coins Daily | 24x7 Live Support | Instant Withdrawal | 5% Commission");
       });
   }, []);
 
