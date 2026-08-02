@@ -9,7 +9,6 @@ export default function ScreenshotUpload() {
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState(null);
   const [matchId, setMatchId] = useState("");
-  const [amount, setAmount] = useState("");
   const [dragging, setDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [message, setMessage] = useState({ text: "", ok: true });
@@ -30,23 +29,21 @@ export default function ScreenshotUpload() {
 
   const handleUpload = async () => {
     if (!file) { setMessage({ text: "Please select a screenshot first.", ok: false }); return; }
+    if (!matchId.trim()) { setMessage({ text: "Match ID is required.", ok: false }); return; }
     setUploading(true);
     setMessage({ text: "", ok: true });
     const formData = new FormData();
     formData.append("screenshot", file);
-    if (matchId.trim()) formData.append("match_id", matchId.trim());
-    if (amount) formData.append("amount", amount);
+    formData.append("match_id", matchId.trim());
     try {
       await api.post("/upload", formData, { headers: { "Content-Type": "multipart/form-data" } });
       setMessage({ text: "Screenshot uploaded! Pending admin review.", ok: true });
-      setFile(null); setPreview(null); setMatchId(""); setAmount("");
+      setFile(null); setPreview(null); setMatchId("");
     } catch (err) {
       setMessage({ text: "Upload failed: " + (err.response?.data?.error || err.message), ok: false });
     }
     setUploading(false);
   };
-
-  const commission = amount ? (parseFloat(amount) * 0.9).toFixed(2) : null;
 
   return (
     <div className="min-h-screen pt-24 pb-16 bg-[#0A0A0E] text-white">
@@ -118,8 +115,8 @@ export default function ScreenshotUpload() {
           )}
 
           {/* Match ID */}
-          <div className="mb-4">
-            <Label className="text-[10px] uppercase tracking-widest text-slate-400">Match ID (optional)</Label>
+          <div className="mb-5">
+            <Label className="text-[10px] uppercase tracking-widest text-slate-400">Match ID</Label>
             <Input
               type="text"
               value={matchId}
@@ -127,25 +124,10 @@ export default function ScreenshotUpload() {
               placeholder="e.g. 664abc123…"
               className="bg-black/40 border-white/10 text-white mt-1 rounded-xl"
             />
-          </div>
-
-          {/* Prize amount */}
-          <div className="mb-5">
-            <Label className="text-[10px] uppercase tracking-widest text-slate-400">Prize amount to claim</Label>
-            <Input
-              type="number"
-              min="0"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              placeholder="e.g. 900"
-              className="bg-black/40 border-white/10 text-white mt-1 rounded-xl"
-            />
-            {commission && (
-              <div className="flex items-center gap-1.5 text-emerald-400 text-xs mt-2">
-                <Sparkles className="w-3 h-3" />
-                After 10% commission: <span className="font-bold">{commission}</span>
-              </div>
-            )}
+            <div className="flex items-center gap-1.5 text-slate-500 text-xs mt-2">
+              <Sparkles className="w-3 h-3" />
+              Prize amount is verified against this match automatically — no need to enter it.
+            </div>
           </div>
 
           {/* Submit */}
