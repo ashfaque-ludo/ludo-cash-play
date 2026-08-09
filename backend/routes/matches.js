@@ -104,6 +104,44 @@ router.get("/", async (req, res) => {
   } catch (e) { res.status(500).json({ detail: "Server error." }); }
 });
 
+// Deterministic pseudo-random hash so the simulated list changes slowly
+// (per 2-min bucket) instead of jumping on every poll.
+function pseudoRand(seed) {
+  let h = (seed * 2654435761) >>> 0;
+  h = (h ^ (h >>> 13)) >>> 0;
+  h = (h * 2246822519) >>> 0;
+  return (h >>> 0) / 4294967296;
+}
+
+const SIM_NAMES = ["Rahul","Amit","Priya","Suresh","Neha","Vikas","Pooja","Ravi","Sneha","Manoj","Kavita","Arjun","Deepak","Anjali","Rohit","Sonia"];
+const SIM_STAKES = [50, 50, 100, 100, 250, 500];
+
+// Always keeps "Running Battles" looking active for guests/new users — floors
+// the list with simulated in-progress battles (heaviest on the 50/100 entry
+// tiers) when real live-match volume is low, so the table never reads empty.
+function simulatedBattles(minCount) {
+  const bucket = Math.floor(Date.now() / (2 * 60 * 1000));
+  const out = [];
+  for (let i = 0; i < minCount; i++) {
+    const r1 = pseudoRand(bucket * 97 + i * 13);
+    const r2 = pseudoRand(bucket * 131 + i * 17 + 1);
+    const stake = SIM_STAKES[Math.floor(r1 * SIM_STAKES.length)];
+    const n1 = SIM_NAMES[Math.floor(r1 * SIM_NAMES.length)];
+    let n2 = SIM_NAMES[Math.floor(r2 * SIM_NAMES.length)];
+    if (n2 === n1) n2 = SIM_NAMES[(SIM_NAMES.indexOf(n2) + 1) % SIM_NAMES.length];
+    out.push({
+      id: `sim-${bucket}-${i}`,
+      label: `${stake} Table`,
+      stake,
+      prize: Math.round(stake * 2 * 0.9),
+      prize_pool: Math.round(stake * 2 * 0.9),
+      status: "in_progress",
+      players: [{ name: n1 }, { name: n2 }],
+    });
+  }
+  return out;
+}
+
 // GET /matches/running — public spectator list of all in-progress battles.
 // Visible to every user, but redacted (no room code/password) — only the
 // two actual players can open/act on a match (enforced in join/submit-result/cancel).
@@ -111,9 +149,22 @@ router.get("/running", async (req, res) => {
   try {
     const running = await Match.find({ status: { $in: ["in_progress", "awaiting_review", "disputed"] } })
       .sort({ createdAt: -1 }).limit(50).lean();
-    res.json({ matches: running.map(m => redactForSpectator(serializeMatch(m))) });
+    const real = running.map(m => redactForSpectator(serializeMatch(m)));
+    const MIN_SHOWN = 8;
+    const matches = real.length >= MIN_SHOWN ? real : [...real, ...simulatedBattles(MIN_SHOWN - real.length)];
+    res.json({ matches });
   } catch (e) { res.status(500).json({ detail: "Server error." }); }
 });
+
+// Always shows tables as "running" — floors the active count to a believable
+// baseline (50-100) so stake tiers never look empty to new visitors. Varies
+// slowly (per 10-min bucket) per stake so it doesn't look static or jump around.
+function minActiveFloor(stake) {
+  const bucket = Math.floor(Date.now() / (10 * 60 * 1000));
+  let h = (bucket * 2654435761 + stake * 40503) >>> 0;
+  h = (h ^ (h >>> 13)) >>> 0;
+  return 50 + (h % 51); // 50-100
+}
 
 // GET /matches/tables
 router.get("/tables", async (req, res) => {
@@ -130,7 +181,7 @@ router.get("/tables", async (req, res) => {
       tables: tables.map(t => ({
         ...t.toJSON(),
         prize: Math.round(t.stake * 2 * (1 - PCT / 100)),
-        active: countMap[t.stake] || 0,
+        active: Math.max(countMap[t.stake] || 0, minActiveFloor(t.stake)),
       })),
     });
   } catch (e) { res.status(500).json({ detail: "Server error." }); }
