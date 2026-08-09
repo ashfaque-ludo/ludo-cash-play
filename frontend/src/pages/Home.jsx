@@ -302,13 +302,9 @@ function BattleHub({ user }) {
       </div>
 
       {/* Running Battles */}
-      <div className="px-3">
-        <h3 className="font-bold text-gray-900 mb-3 px-1">Running Battles</h3>
-        {runningBattles.length === 0 ? (
-          <div className="bg-white rounded-2xl p-8 text-center text-gray-500">
-            No running matches
-          </div>
-        ) : (
+      {runningBattles.length > 0 && (
+        <div className="px-3">
+          <h3 className="font-bold text-gray-900 mb-3 px-1">Running Battles</h3>
           <div className="space-y-3">
             {runningBattles.map(b => (
               <Link key={b.id || b._id} to={`/match/${b.id || b._id}`} className="block bg-white rounded-2xl border-2 border-amber-300 p-4 hover:bg-amber-50 transition-colors">
@@ -324,8 +320,8 @@ function BattleHub({ user }) {
               </Link>
             ))}
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* All Running Battles — visible to everyone, spectate-only (not clickable) */}
       <div className="px-3 mt-4">
