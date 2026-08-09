@@ -74,7 +74,8 @@ router.post("/:id/decide", async (req,res)=>{
     if(["ended","cancelled"].includes(match.status)) return res.status(400).json({detail:"Already resolved."});
     if(cancel){
       match.status="cancelled"; match.decided_by=req.user._id; match.decided_at=new Date(); await match.save();
-      for(const p of match.players) await User.findByIdAndUpdate(p.user,{$inc:{"wallet.deposit":match.stake}});
+      const cancelIds=match.players.map(p=>p.user).filter(Boolean);
+      if(cancelIds.length) await User.updateMany({_id:{$in:cancelIds}},{$inc:{"wallet.deposit":match.stake}});
       await logActivity(req,"match_cancelled",match._id.toString(),{stake:match.stake});
     } else {
       const ws=match.players.find(p=>p.user.toString()===winner_id);
@@ -130,7 +131,8 @@ router.post("/:id/resolve", async (req,res)=>{
     } else if(winner==="both"){
       match.status="cancelled"; match.decided_by=req.user._id; match.decided_at=new Date(); match.admin_resolved=true;
       await match.save();
-      for(const p of match.players) await User.findByIdAndUpdate(p.user,{$inc:{"wallet.deposit":match.stake}});
+      const bothIds=match.players.map(p=>p.user).filter(Boolean);
+      if(bothIds.length) await User.updateMany({_id:{$in:bothIds}},{$inc:{"wallet.deposit":match.stake}});
       await logActivity(req,"match_refunded_both",match._id.toString(),{stake:match.stake});
     } else {
       return res.status(400).json({detail:"winner must be player1, player2, or both."});

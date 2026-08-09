@@ -340,8 +340,8 @@ router.post("/:id/cancel", async (req, res) => {
           { new: true }
         );
         if (settled) {
-          if (settled.players[0]) await User.findByIdAndUpdate(settled.players[0].user, { $inc: { "wallet.deposit": settled.stake } });
-          if (settled.players[1]) await User.findByIdAndUpdate(settled.players[1].user, { $inc: { "wallet.deposit": settled.stake } });
+          const ids = settled.players.map(p => p.user).filter(Boolean);
+          if (ids.length) await User.updateMany({ _id: { $in: ids } }, { $inc: { "wallet.deposit": settled.stake } });
         }
         return res.json({ ok: true, auto_resolved: true, message: "Both cancelled. Amount refunded to both." });
       } else {
@@ -414,9 +414,8 @@ router.post("/:id/submit-result", async (req, res) => {
           { new: true }
         );
         if (settled) {
-          for (const p of settled.players) {
-            await User.findByIdAndUpdate(p.user, { $inc: { "wallet.deposit": settled.stake } });
-          }
+          const ids = settled.players.map(p => p.user).filter(Boolean);
+          if (ids.length) await User.updateMany({ _id: { $in: ids } }, { $inc: { "wallet.deposit": settled.stake } });
         }
         return res.json({ ok: true, auto_resolved: true, cancelled: true, match: serializeMatch(settled || updated) });
       } else {

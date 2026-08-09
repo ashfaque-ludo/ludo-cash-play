@@ -120,13 +120,13 @@ async function reviewStuckMatches(){
     const twoHoursAgo=new Date(Date.now()-2*60*60*1000);
     const stuck=await Match.find({status:"in_progress",started_at:{$lt:twoHoursAgo}});
     const toReview=stuck.filter(m=>!m.players.some(p=>p.result_claim!=null));
-    for(const m of toReview){
-      m.status="admin_review";
-      m.cancel_reason="No result submitted for 2+ hours — awaiting admin decision";
-      await m.save();
-      console.log(`[STARTUP-REVIEW] Match ${m._id} moved to admin_review`);
+    if(toReview.length){
+      await Match.updateMany(
+        { _id:{ $in: toReview.map(m=>m._id) } },
+        { $set:{ status:"admin_review", cancel_reason:"No result submitted for 2+ hours — awaiting admin decision" } }
+      );
+      console.log(`[STARTUP] ${toReview.length} match(es) moved to admin_review`);
     }
-    if(toReview.length) console.log(`[STARTUP] ${toReview.length} match(es) moved to admin_review`);
   }catch(err){console.error("Startup review error:",err.message);}
 }
 

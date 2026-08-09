@@ -353,11 +353,18 @@ router.post("/cleanup-matches", async (req, res) => {
   try {
     const active = await Match.find({ status: { $in: ["waiting", "in_progress"] } });
     let refunded = 0;
+    const refundByUser = new Map();
     for (const m of active) {
       for (const p of m.players) {
-        await User.findByIdAndUpdate(p.user, { $inc: { "wallet.deposit": m.stake } });
+        const uid = p.user.toString();
+        refundByUser.set(uid, (refundByUser.get(uid) || 0) + m.stake);
         refunded += m.stake;
       }
+    }
+    if (refundByUser.size) {
+      await User.bulkWrite([...refundByUser.entries()].map(([uid, amount]) => ({
+        updateOne: { filter: { _id: uid }, update: { $inc: { "wallet.deposit": amount } } }
+      })));
     }
     const { deletedCount } = await Match.deleteMany({});
     await ActivityLog.create({ action: "owner_cleanup_matches", actor: req.user._id, actor_email: req.user.email || req.user.phone, actor_role: req.user.role, meta: { deleted: deletedCount, refunded }, ip: req.ip });

@@ -91,6 +91,9 @@ async function repairIndexes() {
     const transactions = mongoose.connection.collection("transactions");
     const matches = mongoose.connection.collection("matches");
     const screenshots = mongoose.connection.collection("screenshots");
+    const kycs = mongoose.connection.collection("kycs");
+    const referrals = mongoose.connection.collection("referrals");
+    const banners = mongoose.connection.collection("banners");
 
     await transactions.createIndex({ user: 1, createdAt: -1 }, { name: "tx_user_date", background: true }).catch(() => {});
     await transactions.createIndex({ status: 1, createdAt: -1 }, { name: "tx_status_date", background: true }).catch(() => {});
@@ -98,6 +101,12 @@ async function repairIndexes() {
     await matches.createIndex({ player_ids: 1 }, { name: "match_players", background: true }).catch(() => {});
     await matches.createIndex({ winner: 1, status: 1 }, { name: "match_winner_status", background: true }).catch(() => {});
     await screenshots.createIndex({ user: 1, status: 1 }, { name: "ss_user_status", background: true }).catch(() => {});
+    // Admin KYC queue defaults to status=pending, sorted by newest — was doing a full collection scan.
+    await kycs.createIndex({ status: 1, createdAt: -1 }, { name: "kyc_status_date", background: true }).catch(() => {});
+    // User-facing "my referrals" screen filters by referrer and sorts by newest — no index existed at all.
+    await referrals.createIndex({ referrer: 1, createdAt: -1 }, { name: "referral_referrer_date", background: true }).catch(() => {});
+    // Public home screen filters active banners and sorts by position — unindexed.
+    await banners.createIndex({ active: 1, position: 1 }, { name: "banner_active_position", background: true }).catch(() => {});
 
     console.log("[DB] Index setup complete");
   } catch (err) {

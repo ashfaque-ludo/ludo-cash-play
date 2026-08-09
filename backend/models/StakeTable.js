@@ -15,7 +15,9 @@ s.statics.seedDefaults = async function() {
     { stake:25000, label:"Elite 25K",    tier:"vip"      },
     { stake:50000, label:"Legend 50K",   tier:"vip"      },
   ];
-  for (const d of defaults) await this.findOneAndUpdate({ stake:d.stake }, { ...d, active:true }, { upsert:true, new:true });
+  await this.bulkWrite(defaults.map(d => ({
+    updateOne: { filter: { stake: d.stake }, update: { $set: { ...d, active: true } }, upsert: true }
+  })));
   // Deactivate legacy table no longer offered
   await this.findOneAndUpdate({ stake:100000 }, { active:false });
 };
