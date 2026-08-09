@@ -1,7 +1,9 @@
+const crypto = require("crypto");
+
 const otpMap = new Map();
 
 function generateOTP() {
-  return Math.floor(100000 + Math.random() * 900000).toString();
+  return crypto.randomInt(100000, 1000000).toString();
 }
 
 // No per-phone cooldown — resend is instant. The otpLimiter Express

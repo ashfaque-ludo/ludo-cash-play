@@ -7,7 +7,7 @@ const auth = require("../middleware/auth");
 const { authLimiter } = require("../middleware/rateLimiter");
 const { validators, handleValidation } = require("../middleware/validators");
 const { v4: uuidv4 } = require("uuid");
-const { send2FactorOTP } = require("../utils/twofactorService");
+const { sendApiKingOTP } = require("../utils/apiKingService");
 const { generateOTP, canSend, saveOTP, verifyOTP } = require("../utils/otpStore");
 const { verifyIdToken } = require("../utils/firebase");
 
@@ -71,11 +71,14 @@ router.post("/send-otp", validators.phone, handleValidation, async (req, res) =>
     saveOTP(phone, otp);
 
     try {
-      await send2FactorOTP(phone, otp);
+      await sendApiKingOTP(phone, otp);
     } catch (e) {
+      // e.message is safe to log — apiKingService never includes the API key
+      // in thrown errors (only sends it as a request header, never echoed back).
+      const isTimeout = /timed out/i.test(e.message || "");
       if (process.env.NODE_ENV === "production") {
-        console.error("2Factor send error:", e.message);
-        return res.status(502).json({ detail: "Could not send OTP. Try again." });
+        console.error("API-King send error:", e.message);
+        return res.status(502).json({ detail: isTimeout ? "SMS gateway timed out. Try again." : "Could not send OTP. Try again." });
       }
       console.log(`[DEV OTP] ${phone}: ${otp}`);
       return res.json({ ok: true, message: "OTP sent (dev)", dev_otp: otp });
