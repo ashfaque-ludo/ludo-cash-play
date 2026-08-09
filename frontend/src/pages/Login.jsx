@@ -2,45 +2,6 @@ import React, { useState, useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
-import { signInWithPhoneNumber, RecaptchaVerifier } from "firebase/auth";
-import { auth, FIREBASE_READY } from "@/lib/firebase";
-
-// ─── Module-level singleton (survives React re-renders / Strict Mode) ────────
-let _recaptcha = null;
-let _confirmation = null;
-
-function clearRecaptcha() {
-  if (_recaptcha) {
-    try { _recaptcha.clear(); } catch {}
-    _recaptcha = null;
-  }
-  const el = document.getElementById("lcp-recaptcha");
-  if (el) el.innerHTML = "";
-}
-
-async function getRecaptcha() {
-  if (_recaptcha) return _recaptcha;
-
-  let container = document.getElementById("lcp-recaptcha");
-  if (!container) {
-    container = document.createElement("div");
-    container.id = "lcp-recaptcha";
-    document.body.appendChild(container);
-  } else {
-    container.innerHTML = "";
-  }
-
-  _recaptcha = new RecaptchaVerifier(auth, "lcp-recaptcha", {
-    size: "invisible",
-    callback: () => {},
-    "expired-callback": () => clearRecaptcha(),
-    "error-callback": () => clearRecaptcha(),
-  });
-
-  await _recaptcha.render();
-  return _recaptcha;
-}
-// ─────────────────────────────────────────────────────────────────────────────
 
 function redirectPath(user, from) {
   if (user.is_master_owner) return "/owner-panel";
@@ -50,7 +11,7 @@ function redirectPath(user, from) {
 }
 
 export default function Login() {
-  const { verifyFirebaseOtp, sendOtp, verifyOtp } = useAuth();
+  const { sendOtp, verifyOtp } = useAuth();
   const nav = useNavigate();
   const { state } = useLocation();
   const from = state?.from;
@@ -61,21 +22,10 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [resendTimer, setResendTimer] = useState(0);
-  const [useBackend, setUseBackend] = useState(false);
   // Synchronous (non-state) guard against double-submit — setLoading(true) is
   // async, so two rapid taps/re-renders could both pass the `loading` check
-  // before either had updated. This ref blocks the second call in the same
-  // tick and is the actual reason repeated OTP requests were slipping
-  // through and tripping Firebase's "too many requests" rate limit.
+  // before either had updated. This ref blocks the second call in the same tick.
   const sendingRef = useRef(false);
-
-  // Pre-initialize reCAPTCHA on page load so it's ready before button click —
-  // this is what makes "Send OTP" feel instant instead of waiting on the
-  // widget to render after the tap.
-  useEffect(() => {
-    if (FIREBASE_READY && auth) getRecaptcha().catch(() => {});
-    return () => clearRecaptcha();
-  }, []);
 
   // Resend countdown
   useEffect(() => {
@@ -84,8 +34,7 @@ export default function Login() {
     return () => clearTimeout(t);
   }, [resendTimer]);
 
-  // ── Send OTP (Firebase first — fast, no server round-trip to send the SMS
-  //    — backend/2Factor as automatic fallback if Firebase errors out) ──────
+  // ── Send OTP — backend generates + delivers via API-King, never Firebase ──
   const handleSendOtp = async (e) => {
     e?.preventDefault();
     setError("");
@@ -101,44 +50,17 @@ export default function Login() {
     sendingRef.current = true;
     setLoading(true);
 
-    // Try Firebase first
-    if (FIREBASE_READY && auth) {
-      try {
-        const verifier = await getRecaptcha();
-        _confirmation = await signInWithPhoneNumber(auth, `+91${clean}`, verifier);
-        setUseBackend(false);
-        toast.success("OTP sent to your phone!");
-        setStep("otp");
-        setResendTimer(60);
-        setLoading(false);
-        sendingRef.current = false;
-        // The invisible reCAPTCHA widget is single-use — reusing an already
-        // "solved" widget for the next resend/attempt is what triggers
-        // Firebase's abuse detection ("too many requests"). Clear it now and
-        // let it lazily re-render fresh in the background for next time.
-        clearRecaptcha();
-        getRecaptcha().catch(() => {});
-        return;
-      } catch (fbErr) {
-        clearRecaptcha();
-        _confirmation = null;
-        console.log("[OTP] Firebase failed:", fbErr.code, "— falling back to backend SMS");
-      }
-    }
-
-    // Backend SMS fallback
     const r = await sendOtp(clean);
     setLoading(false);
     sendingRef.current = false;
     if (!r.ok) { setError(r.error || "Failed to send OTP"); return; }
-    setUseBackend(true);
     if (r.dev_otp) toast.success(`OTP: ${r.dev_otp}`, { duration: 15000 });
     else toast.success("OTP sent via SMS!");
     setStep("otp");
     setResendTimer(60);
   };
 
-  // ── Verify OTP ────────────────────────────────────────────────────────────
+  // ── Verify OTP — always against the backend OTP store ─────────────────────
   const handleVerifyOtp = async (e) => {
     e?.preventDefault();
     setError("");
@@ -147,34 +69,6 @@ export default function Login() {
 
     const storedRef = localStorage.getItem("referral_code") || undefined;
 
-    // Firebase verify path
-    if (!useBackend && FIREBASE_READY && auth && _confirmation) {
-      try {
-        const result = await _confirmation.confirm(otp);
-        const idToken = await result.user.getIdToken();
-        const firebasePhone = result.user.phoneNumber;
-
-        clearRecaptcha();
-        _confirmation = null;
-
-        const r = await verifyFirebaseOtp(idToken, firebasePhone, storedRef);
-        setLoading(false);
-        if (!r.ok) { setError(r.error || "Login failed"); return; }
-        if (storedRef) localStorage.removeItem("referral_code");
-        toast.success("Welcome to MyAkadda!");
-        nav(redirectPath(r.user, from), { replace: true });
-      } catch (err) {
-        setLoading(false);
-        const code = err.code || "";
-        let msg = err.message || "Verification failed";
-        if (code === "auth/invalid-verification-code") msg = "Wrong OTP. Please try again.";
-        else if (code === "auth/code-expired") msg = "OTP expired. Request a new one.";
-        setError(msg);
-      }
-      return;
-    }
-
-    // Backend verify OTP path
     const r = await verifyOtp(phone.replace(/\D/g, ""), otp, undefined, storedRef);
     setLoading(false);
     if (!r.ok) { setError(r.error || "Invalid OTP"); return; }
@@ -186,12 +80,6 @@ export default function Login() {
   // ── UI ────────────────────────────────────────────────────────────────────
   return (
     <>
-      {/* Off-screen container for invisible reCAPTCHA */}
-      <div
-        id="lcp-recaptcha"
-        style={{ position: "fixed", top: -9999, left: -9999, pointerEvents: "none" }}
-      />
-
       <div className="min-h-screen bg-gradient-to-b from-amber-50 to-white flex items-center justify-center px-4 pt-20 pb-12">
         <div className="w-full max-w-sm">
 
@@ -293,10 +181,7 @@ export default function Login() {
                 <div className="flex justify-between text-sm">
                   <button
                     type="button"
-                    onClick={() => {
-                      setStep("phone"); setOtp(""); setError("");
-                      clearRecaptcha(); _confirmation = null;
-                    }}
+                    onClick={() => { setStep("phone"); setOtp(""); setError(""); }}
                     className="text-gray-500 hover:text-red-700 transition-colors"
                   >
                     ← Change number
