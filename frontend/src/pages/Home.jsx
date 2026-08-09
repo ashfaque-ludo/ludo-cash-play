@@ -367,6 +367,7 @@ function MarketingHome() {
   const [online, setOnline] = useState(0);
   const [stats, setStats] = useState({ users: 0, matches: 0, total_prize_paid: 0 });
   const [installPrompt, setInstallPrompt] = useState(null);
+  const [liveBattles, setLiveBattles] = useState([]);
 
   useEffect(() => {
     const handler = (e) => { e.preventDefault(); setInstallPrompt(e); };
@@ -393,6 +394,17 @@ function MarketingHome() {
         setStats(s.data);
       } catch {}
     })();
+  }, []);
+
+  // Real running battles, visible to guests too (spectate-only, redacted) —
+  // shows actual live activity across stake tiers instead of a static claim.
+  useEffect(() => {
+    const loadLive = () => {
+      api.get("/matches/running").then(r => setLiveBattles(r.data.matches || [])).catch(() => {});
+    };
+    loadLive();
+    const iv = setInterval(loadLive, 8000);
+    return () => clearInterval(iv);
   }, []);
 
   const handleApk = async () => {
@@ -482,6 +494,39 @@ function MarketingHome() {
           ))}
         </div>
       </section>
+
+      {/* LIVE BATTLES — real in-progress matches, redacted (no room code, no
+          emails), spectate-only. Only renders when battles are genuinely
+          running — an honest reflection of real activity, not a fixed claim. */}
+      {liveBattles.length > 0 && (
+        <section className="relative py-16 border-b border-white/5" data-testid="live-battles-section">
+          <div className="max-w-7xl mx-auto px-6 lg:px-12">
+            <div className="flex items-center gap-2 mb-8">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
+              <div className="text-xs tracking-[0.25em] uppercase text-emerald-400 font-bold">Live right now</div>
+              <div className="text-sm text-slate-400">{liveBattles.length} battle{liveBattles.length !== 1 ? "s" : ""} in progress</div>
+            </div>
+            <div className="flex gap-4 overflow-x-auto pb-2 -mx-6 px-6 sm:mx-0 sm:px-0 sm:grid sm:grid-cols-2 lg:grid-cols-4">
+              {liveBattles.slice(0, 8).map((b) => (
+                <div key={b.id} className="glass rounded-2xl p-4 min-w-[220px] sm:min-w-0 flex-shrink-0" data-testid={`live-battle-${b.id}`}>
+                  <div className="flex items-center justify-between">
+                    <div className="text-lg font-black text-white">{fmtINR(b.stake)}</div>
+                    <span className="text-[10px] bg-emerald-500/15 text-emerald-300 px-2 py-0.5 rounded-full font-semibold uppercase tracking-wide">
+                      {(b.status || "in_progress").replace(/_/g, " ")}
+                    </span>
+                  </div>
+                  <div className="text-xs text-slate-400 mt-1">
+                    Prize <span className="text-emerald-400 font-semibold">{fmtINR(b.prize || b.prize_pool)}</span>
+                  </div>
+                  <div className="text-xs text-slate-500 mt-2 truncate">
+                    {(b.players || []).map(p => p.name).filter(Boolean).join(" vs ") || "2 players"}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* STAKE TABLES */}
       <section id="tables" className="relative py-24">

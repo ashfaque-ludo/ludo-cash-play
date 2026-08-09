@@ -23,6 +23,7 @@ export default function RunningBattles() {
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
+    if (!user) { setLoading(false); return; }
     try {
       const { data } = await api.get("/matches/my/list");
       const active = (data.matches || []).filter(m =>
@@ -31,7 +32,7 @@ export default function RunningBattles() {
       setMatches(active);
     } catch { toast.error("Failed to load battles"); }
     finally { setLoading(false); }
-  }, []);
+  }, [user]);
 
   const loadSpectate = useCallback(async () => {
     try {
@@ -48,7 +49,9 @@ export default function RunningBattles() {
     return () => { clearInterval(iv); clearInterval(iv2); };
   }, [load, loadSpectate]);
 
-  if (!user) return null;
+  // Guests can't have "my battles", but the spectate feed below (real running
+  // matches, redacted) is public — don't hide the whole page from them.
+  const showMine = !!user;
 
   return (
     <div className="min-h-screen pt-24 pb-20 bg-[#0A0A0E] text-white">
@@ -57,19 +60,29 @@ export default function RunningBattles() {
           <div>
             <div className="text-xs uppercase tracking-[0.25em] text-blue-400 font-bold mb-1">Active</div>
             <h1 className="text-3xl sm:text-4xl font-extrabold">Running <span className="grad-text">Battles</span></h1>
-            <p className="text-slate-400 mt-1 text-sm">{matches.length} active battle{matches.length !== 1 ? "s" : ""}</p>
+            <p className="text-slate-400 mt-1 text-sm">
+              {showMine
+                ? `${matches.length} active battle${matches.length !== 1 ? "s" : ""}`
+                : `${spectate.length} battle${spectate.length !== 1 ? "s" : ""} in progress right now`}
+            </p>
           </div>
           <div className="flex gap-2">
-            <Button onClick={load} variant="outline" className="rounded-full border-white/20 bg-white/5 text-white gap-2">
+            <Button onClick={() => { load(); loadSpectate(); }} variant="outline" className="rounded-full border-white/20 bg-white/5 text-white gap-2">
               <RefreshCw className="w-4 h-4" /> Refresh
             </Button>
-            <Link to="/play">
-              <Button className="rounded-full bg-gradient-to-r from-[#8B1111] to-[#C62828] text-white font-bold">+ New Battle</Button>
-            </Link>
+            {showMine ? (
+              <Link to="/play">
+                <Button className="rounded-full bg-gradient-to-r from-[#8B1111] to-[#C62828] text-white font-bold">+ New Battle</Button>
+              </Link>
+            ) : (
+              <Link to="/login">
+                <Button className="rounded-full bg-gradient-to-r from-[#8B1111] to-[#C62828] text-white font-bold">Login to Play</Button>
+              </Link>
+            )}
           </div>
         </div>
 
-        {loading ? (
+        {!showMine ? null : loading ? (
           <div className="space-y-4">
             {[1,2,3].map(i => <Skeleton key={i} className="h-32 rounded-2xl" />)}
           </div>
@@ -138,7 +151,7 @@ export default function RunningBattles() {
 
         {/* All running battles — visible to everyone, spectate-only */}
         <div className="mt-8">
-          <h3 className="font-bold text-lg mb-3">All Running Battles</h3>
+          <h3 className="font-bold text-lg mb-3">{showMine ? "All Running Battles" : "Running Battles"}</h3>
           {spectate.filter(b => !matches.some(m => m.id === b.id)).length === 0 ? (
             <div className="text-slate-500 text-sm">No other battles in progress right now.</div>
           ) : (
@@ -164,7 +177,7 @@ export default function RunningBattles() {
         </div>
 
         {/* Recent ended matches */}
-        <RecentHistory />
+        {showMine && <RecentHistory />}
       </div>
     </div>
   );
