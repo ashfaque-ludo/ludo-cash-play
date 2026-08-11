@@ -73,82 +73,89 @@ export default function Sidebar({ open, onClose }) {
           </button>
         </div>
 
-        {/* User card */}
-        {loggedIn ? (
-          <div className="px-4 py-3 border-b border-white/10 bg-white/5">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-600 to-blue-600 grid place-items-center text-white font-bold text-sm flex-shrink-0">
-                {(user.name || user.email || "U").slice(0, 1).toUpperCase()}
+        {isAdmin ? (
+          <>
+            {/* User card */}
+            <div className="px-4 py-3 border-b border-white/10 bg-white/5">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-600 to-blue-600 grid place-items-center text-white font-bold text-sm flex-shrink-0">
+                  {(user.name || user.email || "U").slice(0, 1).toUpperCase()}
+                </div>
+                <div className="min-w-0">
+                  <div className="font-semibold text-white text-sm truncate">{user.name || "Player"}</div>
+                  <div className="text-xs text-slate-400 truncate">{user.phone || user.email}</div>
+                </div>
               </div>
-              <div className="min-w-0">
-                <div className="font-semibold text-white text-sm truncate">{user.name || "Player"}</div>
-                <div className="text-xs text-slate-400 truncate">{user.phone || user.email}</div>
+              <div className="mt-2 flex items-center gap-1.5 text-emerald-400 text-sm font-bold">
+                <WalletIcon className="w-3.5 h-3.5" /> {fmtINR(total)}
+                <span className="text-xs text-slate-500 font-normal">balance</span>
               </div>
             </div>
-            <div className="mt-2 flex items-center gap-1.5 text-emerald-400 text-sm font-bold">
-              <WalletIcon className="w-3.5 h-3.5" /> {fmtINR(total)}
-              <span className="text-xs text-slate-500 font-normal">balance</span>
+
+            {/* Menu sections */}
+            <nav className="flex-1 px-2 py-2">
+              {MENU_ITEMS.map(({ section, items }) => {
+                const visible = items.filter(i => !i.auth || loggedIn);
+                if (!visible.length) return null;
+                return (
+                  <div key={section} className="mb-3">
+                    <div className="px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-slate-500 font-bold">{section}</div>
+                    {visible.map(item => (
+                      <Link key={item.to + item.label} to={item.to} onClick={onClose}
+                        className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-colors ${
+                          loc.pathname === item.to
+                            ? "bg-purple-600/20 text-purple-300"
+                            : "text-slate-300 hover:bg-white/5 hover:text-white"
+                        }`}
+                      >
+                        <item.icon className="w-4 h-4 flex-shrink-0" />
+                        <span className="flex-1">{item.label}</span>
+                        {loc.pathname === item.to && <ChevronRight className="w-3.5 h-3.5 text-purple-400" />}
+                      </Link>
+                    ))}
+                  </div>
+                );
+              })}
+
+              <div className="mb-3">
+                <div className="px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-amber-400/70 font-bold">Admin</div>
+                <Link to="/admin" onClick={onClose}
+                  className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-amber-300 hover:bg-amber-500/10">
+                  <ShieldCheck className="w-4 h-4" /> Admin Panel
+                </Link>
+              </div>
+            </nav>
+
+            {/* Footer actions */}
+            <div className="px-2 pb-4 border-t border-white/10 pt-2 space-y-1">
+              <button onClick={toggleLang}
+                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-slate-400 hover:text-white hover:bg-white/5">
+                <Globe className="w-4 h-4" />
+                {lang === "en" ? "🇮🇳 हिंदी में देखें" : "🇬🇧 View in English"}
+              </button>
+
+              <button onClick={handleLogout}
+                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-red-400 hover:bg-red-500/10">
+                <LogOut className="w-4 h-4" /> Logout
+              </button>
             </div>
-          </div>
+          </>
         ) : (
-          <div className="px-4 py-3 border-b border-white/10">
-            <Link to="/login" onClick={onClose} className="block w-full text-center py-2 rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 text-white text-sm font-bold">
-              Login
-            </Link>
-          </div>
-        )}
-
-        {/* Menu sections */}
-        <nav className="flex-1 px-2 py-2">
-          {MENU_ITEMS.map(({ section, items }) => {
-            const visible = items.filter(i => !i.auth || loggedIn);
-            if (!visible.length) return null;
-            return (
-              <div key={section} className="mb-3">
-                <div className="px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-slate-500 font-bold">{section}</div>
-                {visible.map(item => (
-                  <Link key={item.to + item.label} to={item.to} onClick={onClose}
-                    className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-colors ${
-                      loc.pathname === item.to
-                        ? "bg-purple-600/20 text-purple-300"
-                        : "text-slate-300 hover:bg-white/5 hover:text-white"
-                    }`}
-                  >
-                    <item.icon className="w-4 h-4 flex-shrink-0" />
-                    <span className="flex-1">{item.label}</span>
-                    {loc.pathname === item.to && <ChevronRight className="w-3.5 h-3.5 text-purple-400" />}
-                  </Link>
-                ))}
-              </div>
-            );
-          })}
-
-          {isAdmin && (
-            <div className="mb-3">
-              <div className="px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-amber-400/70 font-bold">Admin</div>
-              <Link to="/admin" onClick={onClose}
-                className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-amber-300 hover:bg-amber-500/10">
-                <ShieldCheck className="w-4 h-4" /> Admin Panel
+          /* Normal (non-admin) user: sidebar shows only Login/Logout, nothing else */
+          <nav className="flex-1 px-2 py-2">
+            {loggedIn ? (
+              <button onClick={handleLogout}
+                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-red-400 hover:bg-red-500/10">
+                <LogOut className="w-4 h-4" /> Logout
+              </button>
+            ) : (
+              <Link to="/login" onClick={onClose}
+                className="block w-full text-center py-2 rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 text-white text-sm font-bold">
+                Login
               </Link>
-            </div>
-          )}
-        </nav>
-
-        {/* Footer actions */}
-        <div className="px-2 pb-4 border-t border-white/10 pt-2 space-y-1">
-          <button onClick={toggleLang}
-            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-slate-400 hover:text-white hover:bg-white/5">
-            <Globe className="w-4 h-4" />
-            {lang === "en" ? "🇮🇳 हिंदी में देखें" : "🇬🇧 View in English"}
-          </button>
-
-          {loggedIn && (
-            <button onClick={handleLogout}
-              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-red-400 hover:bg-red-500/10">
-              <LogOut className="w-4 h-4" /> Logout
-            </button>
-          )}
-        </div>
+            )}
+          </nav>
+        )}
       </aside>
     </>
   );
