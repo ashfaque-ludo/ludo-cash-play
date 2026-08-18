@@ -57,3 +57,7 @@ __pycache__/
 *.py[cod]
 *.pyo
 *.pyc
+
+# Archives / editor index files — never meant for source control
+*.zip
+*.code-search

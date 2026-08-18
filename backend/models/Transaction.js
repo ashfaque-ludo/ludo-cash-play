@@ -6,10 +6,14 @@ const schema = new mongoose.Schema({
   user_phone:       { type: String, default: "" },
   type:             { type: String, enum: ["deposit","withdrawal","match_win","match_loss","match_entry","referral_bonus","bonus","signup_bonus","penalty"], required: true },
   amount:           { type: Number, required: true },
-  status:           { type: String, enum: ["pending","approved","rejected","completed"], default: "pending" },
+  status:           { type: String, enum: ["pending","approved","rejected","completed","failed"], default: "pending" },
   method:           { type: String, default: "UPI" },
   upi_id:           { type: String, default: "" },
   utr:              { type: String, default: "" },
+  // Payment gateway linkage (e.g. IMB). gateway_order_id is unique so a
+  // gateway callback/verification can never credit the same order twice.
+  gateway:          { type: String, default: "" },
+  gateway_order_id: { type: String, default: undefined },
   screenshot:       { type: String, default: "" },
   screenshot_url:   { type: String, default: "" },
   description:      { type: String, default: "" },
@@ -27,6 +31,7 @@ const schema = new mongoose.Schema({
 schema.index({ user: 1, createdAt: -1 });
 schema.index({ status: 1, createdAt: -1 });
 schema.index({ type: 1, user: 1 });
+schema.index({ gateway_order_id: 1 }, { unique: true, sparse: true });
 schema.virtual("id").get(function() { return this._id.toString(); });
 schema.set("toJSON", { virtuals: true });
 schema.set("toObject", { virtuals: true });
