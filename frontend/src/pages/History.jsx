@@ -34,17 +34,36 @@ export default function History() {
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  // Backup for a missed IMB webhook: when the Deposit tab is opened and any
+  // deposit is still "pending", actively re-check it against IMB's own Check
+  // Status API (GET /payments/imb/status/:order_id, which internally calls
+  // IMB and idempotently credits the wallet if IMB confirms payment) before
+  // silently re-reading the list.
+  const verifyPendingImb = useCallback(async (pending) => {
+    if (!pending.length) return;
+    await Promise.all(pending.map(t => api.get(`/payments/imb/status/${t.gateway_order_id}`).catch(() => {})));
+    try {
+      const r = await api.get(`/wallet/transactions?type=deposit&limit=100`);
+      setTransactions(r.data.transactions || []);
+    } catch {}
+  }, []);
+
   const load = useCallback(async (tab) => {
     setLoading(true);
     try {
       const r = await api.get(`/wallet/transactions?type=${tab}&limit=100`);
-      setTransactions(r.data.transactions || []);
+      const txs = r.data.transactions || [];
+      setTransactions(txs);
+      if (tab === "deposit") {
+        const pending = txs.filter(t => t.status === "pending" && t.gateway === "imb" && t.gateway_order_id);
+        verifyPendingImb(pending);
+      }
     } catch {
       setTransactions([]);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [verifyPendingImb]);
 
   useEffect(() => { load(activeTab); }, [activeTab, load]);
 

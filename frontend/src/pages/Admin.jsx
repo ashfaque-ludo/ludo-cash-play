@@ -43,7 +43,7 @@ export default function Admin() {
           <TabsList className="bg-white border border-gray-200 shadow-sm flex-wrap h-auto p-1 gap-1">
             {can("staff_manager") && <TabsTrigger value="analytics" data-testid="tab-analytics"><BarChart3 className="w-3.5 h-3.5 mr-1" /> Analytics</TabsTrigger>}
             <TabsTrigger value="users" data-testid="tab-users"><Users className="w-3.5 h-3.5 mr-1" /> Users</TabsTrigger>
-            {can("staff_manager") && <TabsTrigger value="deposits" data-testid="tab-deposits"><WalletIcon className="w-3.5 h-3.5 mr-1" /> Deposits</TabsTrigger>}
+            {can("staff_manager") && <TabsTrigger value="deposits" data-testid="tab-deposits"><WalletIcon className="w-3.5 h-3.5 mr-1" /> Deposit History</TabsTrigger>}
             {can("staff_manager") && <TabsTrigger value="withdrawals" data-testid="tab-withdrawals"><ArrowDownToLine className="w-3.5 h-3.5 mr-1" /> Withdrawals</TabsTrigger>}
             <TabsTrigger value="matches" data-testid="tab-matches"><Trophy className="w-3.5 h-3.5 mr-1" /> Matches</TabsTrigger>
             <TabsTrigger value="screenshots" data-testid="tab-screenshots"><Camera className="w-3.5 h-3.5 mr-1" /> Screenshots</TabsTrigger>

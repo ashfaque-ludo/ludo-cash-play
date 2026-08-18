@@ -1,12 +1,14 @@
 import React, { useEffect, useState, useCallback, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { api, fmtINR } from "@/lib/api";
 import { toast } from "sonner";
-import { CheckCircle, Loader2, Copy, Check } from "lucide-react";
+import { CheckCircle, XCircle, Loader2 } from "lucide-react";
 
-const ADMIN_UPI = process.env.REACT_APP_ADMIN_UPI || "myakadda@upi";
 const QUICK_AMOUNTS = [100, 250, 500, 2000];
+// How long to keep polling for the IMB webhook to land after redirect-back.
+const STATUS_POLL_MS = 3000;
+const STATUS_POLL_MAX_TRIES = 40; // ~2 minutes
 
 // ── Redeem Referral Modal ─────────────────────────────────────────────────────
 function RedeemModal({ balance, onClose, onSuccess }) {
@@ -75,298 +77,137 @@ function RedeemModal({ balance, onClose, onSuccess }) {
   );
 }
 
-// ── Deposit Flow ──────────────────────────────────────────────────────────────
-function DepositPage({ onBack }) {
+// ── Deposit Flow (IMB — automatic, no screenshot) ────────────────────────────
+function DepositPage({ onBack, initialOrderId }) {
   const { refresh } = useAuth();
-  // steps: amount → qr → upload → submitted
-  const [step, setStep] = useState("amount");
+  // steps: amount → checking (after IMB redirect back) → result
+  const [step, setStep] = useState(initialOrderId ? "checking" : "amount");
   const [amount, setAmount] = useState("");
-  const [payInfo, setPayInfo] = useState(null);
-  const [fetchTime, setFetchTime] = useState(null);
-  const [countdown, setCountdown] = useState(600);
-  const [copied, setCopied] = useState(false);
-  const [screenshot, setScreenshot] = useState(null);
-  const [screenshotName, setScreenshotName] = useState("");
-  const [submitting, setSubmitting] = useState(false);
+  const [creating, setCreating] = useState(false);
   const [pendingList, setPendingList] = useState([]);
-  const [depositId, setDepositId] = useState(null);
-  const timerRef = useRef(null);
-  const fileRef = useRef();
+  const [orderId] = useState(initialOrderId || null);
+  const [result, setResult] = useState(null); // { ok: true|false|null, amount }
+  const triesRef = useRef(0);
 
   const amt = parseInt(amount) || 0;
-
-  const stopTimer = () => { if (timerRef.current) clearInterval(timerRef.current); };
-  useEffect(() => () => stopTimer(), []);
 
   const loadPending = useCallback(async () => {
     try {
       const r = await api.get("/wallet/deposits");
-      setPendingList((r.data.deposits || []).filter(d => d.status === "pending"));
+      const pending = (r.data.deposits || []).filter(d => d.status === "pending");
+      setPendingList(pending);
+
+      // Backup for a missed webhook: actively re-check any still-pending IMB
+      // order against IMB's own Check Status API before the user even opens
+      // it, then silently re-read the list if anything changed.
+      const imbPending = pending.filter(d => d.gateway === "imb" && d.gateway_order_id);
+      if (imbPending.length) {
+        await Promise.all(imbPending.map(d => api.get(`/payments/imb/status/${d.gateway_order_id}`).catch(() => {})));
+        const r2 = await api.get("/wallet/deposits");
+        setPendingList((r2.data.deposits || []).filter(d => d.status === "pending"));
+        refresh();
+      }
     } catch {}
-  }, []);
+  }, [refresh]);
   useEffect(() => { loadPending(); }, [loadPending]);
 
-  // Once the screenshot is submitted, poll for the admin's decision so the
-  // "submitted" screen closes itself the moment the deposit is approved —
-  // instead of leaving the user staring at "5-30 minutes" after the wallet
-  // has already been credited, forcing them to hit Back to see it.
+  // After IMB redirects back to /wallet?imb_order_id=..., poll — via the
+  // Check Status backup path, not just our own stale record — until the
+  // payment is confirmed one way or another.
   useEffect(() => {
-    if (step !== "submitted" || !depositId) return;
+    if (step !== "checking" || !orderId) return;
+    triesRef.current = 0;
     const poll = setInterval(async () => {
+      triesRef.current += 1;
       try {
-        const r = await api.get("/wallet/deposits");
-        const dep = (r.data.deposits || []).find(d => (d.id || d._id) === depositId);
-        if (dep && dep.status !== "pending") {
+        const r = await api.get(`/payments/imb/status/${orderId}`);
+        const { status, amount: orderAmount } = r.data;
+        if (status === "completed") {
           clearInterval(poll);
           await refresh();
-          if (dep.status === "approved") toast.success(`${amt} added to your wallet!`);
-          else if (dep.status === "rejected") toast.error("Deposit was rejected. Contact support if this is a mistake.");
-          onBack();
+          setResult({ ok: true, amount: orderAmount });
+          setStep("result");
+        } else if (status === "failed") {
+          clearInterval(poll);
+          setResult({ ok: false, amount: orderAmount });
+          setStep("result");
+        } else if (triesRef.current >= STATUS_POLL_MAX_TRIES) {
+          clearInterval(poll);
+          setResult({ ok: null, amount: orderAmount });
+          setStep("result");
         }
-      } catch {}
-    }, 5000);
+      } catch {
+        if (triesRef.current >= STATUS_POLL_MAX_TRIES) {
+          clearInterval(poll);
+          setResult({ ok: null, amount: null });
+          setStep("result");
+        }
+      }
+    }, STATUS_POLL_MS);
     return () => clearInterval(poll);
-  }, [step, depositId]); // eslint-disable-line
+  }, [step, orderId]); // eslint-disable-line
 
-  const handleNext = async () => {
+  const handlePayNow = async () => {
     if (!amt || amt < 10) return toast.error("Minimum deposit 10");
     if (amt > 60000) return toast.error("Maximum deposit 60,000");
+    setCreating(true);
     try {
-      // Fetch admin's REAL payment info from DB (no cache)
-      const r = await api.get(`/public/payment-info`);
-      setPayInfo(r.data);
-      setFetchTime(Date.now());
-      setCountdown(600);
-      setStep("qr");
-      timerRef.current = setInterval(() => {
-        setCountdown(c => { if (c <= 1) { stopTimer(); return 0; } return c - 1; });
-      }, 1000);
+      const r = await api.post("/payments/imb/create-order", { amount: amt });
+      const { payment_url } = r.data || {};
+      if (!payment_url) {
+        toast.error("Could not start payment. Try again.");
+        setCreating(false);
+        return;
+      }
+      window.location.href = payment_url;
     } catch (e) {
-      toast.error("Failed to load payment info. Try again.");
+      toast.error(e.response?.data?.detail || "Could not start payment. Try again.");
+      setCreating(false);
     }
   };
 
-  const upiId = payInfo?.admin_upi_id || "";
-  const merchantName = payInfo?.admin_upi_name || "MyAkadda";
+  if (step === "checking") return (
+    <div className="p-4 space-y-4">
+      <div className="flex flex-col items-center py-10 text-center">
+        <Loader2 className="w-12 h-12 text-red-600 animate-spin mb-4" />
+        <h2 className="text-xl font-black text-gray-900 mb-1">Confirming your payment…</h2>
+        <p className="text-gray-500 text-sm">This usually takes a few seconds.</p>
+      </div>
+    </div>
+  );
 
-  const buildUpiUrl = (scheme = "upi") => {
-    const p = new URLSearchParams({ pa: upiId, pn: merchantName, am: String(amt), cu: "INR", tn: `Deposit-${Date.now()}` });
-    return `${scheme}://pay?${p.toString()}`;
-  };
-
-  const handlePhonePe = () => {
-    const p = new URLSearchParams({ pa: upiId, pn: merchantName, am: String(amt), cu: "INR", tn: "Deposit" });
-    window.location.href = `upi://pay?${p.toString()}`;
-  };
-
-  const handleGPay = () => {
-    const p = new URLSearchParams({ pa: upiId, pn: merchantName, am: String(amt), cu: "INR", tn: "Deposit" });
-    window.location.href = `upi://pay?${p.toString()}`;
-    setTimeout(() => { window.location.href = 'https://pay.google.com'; }, 1500);
-  };
-
-  const handlePaytm = () => {
-    const upiUrl = `paytmmp://pay?pa=${upiId}&pn=${encodeURIComponent(merchantName)}&am=${amt}&cu=INR`;
-    window.location.href = upiUrl;
-    setTimeout(() => { window.location.href = 'https://paytm.com'; }, 1500);
-  };
-
-  const handleAnyUPI = () => {
-    const upiUrl = `upi://pay?pa=${upiId}&pn=${encodeURIComponent(merchantName)}&am=${amt}&cu=INR&tn=Deposit`;
-    const link = document.createElement('a');
-    link.href = upiUrl;
-    link.rel = 'noopener noreferrer';
-    document.body.appendChild(link);
-    link.click();
-    setTimeout(() => document.body.removeChild(link), 200);
-  };
-
-  const copyUpi = async () => {
-    await navigator.clipboard.writeText(upiId);
-    setCopied(true); setTimeout(() => setCopied(false), 2000);
-    toast.success("UPI ID copied!");
-  };
-
-  const onFile = (e) => {
-    const f = e.target.files?.[0]; if (!f) return;
-    setScreenshotName(f.name);
-    setScreenshot(f);
-  };
-
-  const handleSubmit = async () => {
-    if (!screenshot) return toast.error("Upload your payment screenshot");
-    setSubmitting(true);
-    try {
-      const fd = new FormData();
-      fd.append("screenshot", screenshot);
-      fd.append("amount", String(amt));
-      const r = await api.post("/wallet/deposit-screenshot", fd, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
-      toast.success("Screenshot submitted!");
-      setDepositId(r.data?.deposit_id || null);
-      setStep("submitted");
-      loadPending();
-    } catch (e) {
-      toast.error(e.response?.data?.detail || "Upload failed. Try again.");
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const mm = Math.floor(countdown / 60);
-  const ss = String(countdown % 60).padStart(2, "0");
-
-  if (step === "submitted") return (
+  if (step === "result") return (
     <div className="p-4 space-y-4">
       <div className="flex flex-col items-center py-6 text-center">
-        <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mb-4">
-          <CheckCircle className="w-12 h-12 text-green-500" />
-        </div>
-        <h2 className="text-xl font-black text-gray-900 mb-1">Screenshot Submitted!</h2>
-        <p className="text-gray-500 text-sm">Admin will verify and credit {amt} within</p>
-        <p className="text-red-700 font-black text-lg">5–30 minutes</p>
-      </div>
-      <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-sm text-amber-800">
-        ℹ️ Balance updates once admin approves in the Admin panel.
+        {result?.ok === true ? (
+          <>
+            <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mb-4">
+              <CheckCircle className="w-12 h-12 text-green-500" />
+            </div>
+            <h2 className="text-xl font-black text-gray-900 mb-1">Payment Successful!</h2>
+            <p className="text-gray-500 text-sm">{fmtINR(result.amount)} added to your Deposit wallet.</p>
+          </>
+        ) : result?.ok === false ? (
+          <>
+            <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mb-4">
+              <XCircle className="w-12 h-12 text-red-500" />
+            </div>
+            <h2 className="text-xl font-black text-gray-900 mb-1">Payment Failed</h2>
+            <p className="text-gray-500 text-sm">Your payment could not be confirmed. If money was deducted, it will be refunded by your bank.</p>
+          </>
+        ) : (
+          <>
+            <div className="w-20 h-20 bg-amber-100 rounded-full flex items-center justify-center mb-4">
+              <Loader2 className="w-12 h-12 text-amber-500" />
+            </div>
+            <h2 className="text-xl font-black text-gray-900 mb-1">Still Processing</h2>
+            <p className="text-gray-500 text-sm">We're still waiting for confirmation. Your wallet updates automatically the moment it's confirmed — check back shortly.</p>
+          </>
+        )}
       </div>
       <button onClick={onBack}
         className="w-full py-3 bg-gradient-to-r from-red-700 to-black text-white font-black rounded-xl">
         ← Back to Wallet
-      </button>
-    </div>
-  );
-
-  if (step === "upload") return (
-    <div className="p-3 space-y-4">
-      <div className="flex items-center gap-3">
-        <button onClick={() => setStep("qr")} className="text-gray-500 font-semibold">← Back</button>
-        <h2 className="font-black text-gray-900">Upload Screenshot</h2>
-      </div>
-
-      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4 space-y-4">
-        <div className="bg-gray-50 rounded-xl p-3">
-          <p className="text-xs text-gray-500">Amount paid</p>
-          <p className="text-2xl font-black text-gray-900">{amt}</p>
-        </div>
-
-        <div>
-          <label className="text-xs font-bold text-gray-600 uppercase tracking-wide block mb-1.5">
-            Payment Screenshot *
-          </label>
-          <div
-            onClick={() => fileRef.current?.click()}
-            className={`rounded-xl border-2 border-dashed p-5 text-center cursor-pointer transition-all ${
-              screenshot ? "border-green-500 bg-green-50" : "border-gray-300 hover:border-red-400 bg-gray-50"
-            }`}
-          >
-            <input ref={fileRef} type="file" accept="image/*" onChange={onFile} className="hidden" />
-            {screenshot ? (
-              <div>
-                <p className="text-green-700 font-bold text-sm">✓ {screenshotName}</p>
-                <p className="text-xs text-gray-500 mt-0.5">Tap to change</p>
-              </div>
-            ) : (
-              <div>
-                <p className="text-4xl mb-2">📷</p>
-                <p className="text-sm font-semibold text-gray-600">Tap to upload screenshot</p>
-                <p className="text-xs text-gray-400 mt-1">Take screenshot from your UPI app after payment</p>
-              </div>
-            )}
-          </div>
-        </div>
-
-        <button onClick={handleSubmit} disabled={submitting || !screenshot}
-          className="w-full h-12 rounded-xl bg-gradient-to-r from-red-700 to-black text-white font-black disabled:opacity-50 hover:opacity-90 transition-all flex items-center justify-center gap-2">
-          {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-          Submit Screenshot
-        </button>
-      </div>
-    </div>
-  );
-
-  if (step === "qr") return (
-    <div className="p-3 space-y-3">
-      <div className="flex items-center gap-3">
-        <button onClick={() => { stopTimer(); setStep("amount"); }} className="text-gray-500 font-semibold">← Back</button>
-        <h2 className="font-black text-gray-900">Pay {amt}</h2>
-        <span className={`ml-auto text-xs font-bold ${countdown <= 60 ? "text-red-600" : "text-gray-400"}`}>
-          ⏱ {mm}:{ss}
-        </span>
-      </div>
-
-      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4 text-center space-y-3">
-        {/* Admin's real QR image */}
-        {payInfo?.admin_qr_image ? (
-          <div className="flex flex-col items-center">
-            <div className="bg-white border-4 border-red-200 rounded-2xl p-2 shadow-sm inline-block">
-              <img
-                src={payInfo.admin_qr_image}
-                alt="Pay via UPI"
-                className="w-56 h-56 object-contain"
-              />
-            </div>
-            <p className="text-sm font-bold text-gray-800 mt-2">Scan with any UPI app · Pay {amt}</p>
-          </div>
-        ) : (
-          <div className="bg-gray-50 rounded-xl p-4">
-            <p className="text-gray-500 text-sm">No QR uploaded yet. Use UPI ID below.</p>
-          </div>
-        )}
-
-        {/* UPI ID with copy */}
-        {upiId && (
-          <div className="flex items-center justify-between bg-gray-50 rounded-xl border border-gray-200 px-3 py-2">
-            <div className="text-left">
-              <p className="text-[10px] text-gray-400 uppercase tracking-wide">UPI ID</p>
-              <p className="text-sm font-bold text-gray-900 font-mono">{upiId}</p>
-            </div>
-            <button onClick={copyUpi} className="p-2 rounded-lg bg-white border border-gray-200 shadow-sm">
-              {copied ? <Check className="w-4 h-4 text-green-600" /> : <Copy className="w-4 h-4 text-gray-600" />}
-            </button>
-          </div>
-        )}
-
-        <div className="mb-3">
-          <p className="text-sm font-semibold text-gray-700 text-center mb-3">Pay {amt} via</p>
-          <div className="grid grid-cols-2 gap-3">
-            <button
-              onClick={handlePhonePe}
-              className="flex flex-col items-center justify-center bg-purple-600 text-white rounded-2xl p-4 font-bold shadow-md active:scale-95 transition"
-            >
-              <span className="text-2xl mb-1">📱</span>
-              <span className="text-sm">PhonePe</span>
-            </button>
-            <button
-              onClick={handleGPay}
-              className="flex flex-col items-center justify-center bg-blue-600 text-white rounded-2xl p-4 font-bold shadow-md active:scale-95 transition"
-            >
-              <span className="text-2xl mb-1">💳</span>
-              <span className="text-sm">Google Pay</span>
-            </button>
-            <button
-              onClick={handlePaytm}
-              className="flex flex-col items-center justify-center bg-blue-500 text-white rounded-2xl p-4 font-bold shadow-md active:scale-95 transition"
-            >
-              <span className="text-2xl mb-1">💰</span>
-              <span className="text-sm">Paytm</span>
-            </button>
-            <button
-              onClick={handleAnyUPI}
-              className="flex flex-col items-center justify-center bg-gray-800 text-white rounded-2xl p-4 font-bold shadow-md active:scale-95 transition"
-            >
-              <span className="text-2xl mb-1">🏦</span>
-              <span className="text-sm">Any UPI App</span>
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <button
-        onClick={() => { stopTimer(); setStep("upload"); }}
-        className="w-full py-3.5 bg-gradient-to-r from-red-700 to-black text-white rounded-xl font-black shadow text-base"
-      >
-        ✅ I've Paid — Upload Screenshot →
       </button>
     </div>
   );
@@ -399,26 +240,18 @@ function DepositPage({ onBack }) {
         </div>
         {amt >= 10 && (
           <p className="text-xs text-center text-gray-500">
-            Pay <strong>{amt}</strong> to admin via UPI
+            Pay <strong>{amt}</strong> via UPI — instant &amp; automatic
           </p>
         )}
-        <button onClick={handleNext} disabled={!amt || amt < 10}
-          className="w-full h-12 rounded-xl bg-gradient-to-r from-red-700 to-black text-white font-black disabled:opacity-50 hover:opacity-90 transition-all">
-          Pay Now →
+        <button onClick={handlePayNow} disabled={!amt || amt < 10 || creating}
+          className="w-full h-12 rounded-xl bg-gradient-to-r from-red-700 to-black text-white font-black disabled:opacity-50 hover:opacity-90 transition-all flex items-center justify-center gap-2">
+          {creating ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+          Pay via UPI →
         </button>
       </div>
 
-      <div className="bg-yellow-50 border-2 border-yellow-400 rounded-xl p-4">
-        <p className="font-semibold text-sm text-gray-900 mb-2">⚠️ जरूरी जानकारी पढ़ें:</p>
-        <ul className="text-sm text-gray-800 space-y-1">
-          <li>✅ आप जिस नाम से <strong>KYC</strong> कर रखे हैं, उसी नाम से deposit करें।</li>
-          <li>⏱️ QR code generate होने के बाद <strong>3 मिनट के अंदर</strong> payment करें।</li>
-          <li>📱 <strong>2000 से ज़्यादा</strong> के लिए दूसरे फ़ोन से scan करें या UPI ID से payment करें।</li>
-          <li>💳 UPI ID से <strong>कितनी भी राशि</strong> payment कर सकते हैं।</li>
-        </ul>
-      </div>
       <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 text-sm text-blue-800">
-        ℹ️ Scan admin QR → Pay → Upload screenshot → Admin verifies in 5–30 min
+        ℹ️ You'll be redirected to complete the UPI payment. Your wallet is credited automatically — no screenshot needed.
       </div>
 
       {pendingList.length > 0 && (
@@ -427,7 +260,7 @@ function DepositPage({ onBack }) {
             <p className="text-xs font-bold text-gray-600 uppercase tracking-wide">Pending Deposits</p>
           </div>
           {pendingList.map(d => (
-            <div key={d._id} className="flex items-center justify-between px-4 py-3 border-b border-gray-50 last:border-0">
+            <div key={d._id || d.id} className="flex items-center justify-between px-4 py-3 border-b border-gray-50 last:border-0">
               <div>
                 <p className="text-sm font-semibold text-gray-900">{d.amount}</p>
                 <p className="text-xs text-gray-400">{new Date(d.createdAt || d.created_at).toLocaleString("en-IN")}</p>
@@ -445,9 +278,17 @@ function DepositPage({ onBack }) {
 export default function Wallet() {
   const { user, refresh } = useAuth();
   const nav = useNavigate();
-  const [depositOpen, setDepositOpen] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const imbOrderId = searchParams.get("imb_order_id");
+  const [depositOpen, setDepositOpen] = useState(Boolean(imbOrderId));
   const [redeemOpen, setRedeemOpen] = useState(false);
   const [withdrawOpen, setWithdrawOpen] = useState(false);
+
+  // Strip imb_order_id from the URL once read, so a refresh doesn't re-poll
+  // a stale order.
+  useEffect(() => {
+    if (imbOrderId) setSearchParams({}, { replace: true });
+  }, [imbOrderId]); // eslint-disable-line
 
   const w = user?.wallet || {};
 
@@ -485,7 +326,7 @@ export default function Wallet() {
   ];
 
   if (depositOpen) {
-    return <DepositPage onBack={() => { setDepositOpen(false); refresh(); }} />;
+    return <DepositPage initialOrderId={imbOrderId} onBack={() => { setDepositOpen(false); refresh(); }} />;
   }
 
   return (

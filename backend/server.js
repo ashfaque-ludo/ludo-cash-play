@@ -81,6 +81,10 @@ app.use("/api/owner", adminLimiter);
 app.use("/api/auth",require("./routes/auth"));
 app.use("/api/public",require("./routes/public"));
 app.use("/api/wallet",auth,require("./routes/wallet"));
+// Webhook is mounted first and unauthenticated — IMB calls it directly with
+// no login token. It fully handles POST / itself, so the request never falls
+// through to the auth-protected mount below.
+app.use("/api/payments/imb/webhook",require("./routes/imbWebhook"));
 app.use("/api/payments/imb",auth,require("./routes/imb"));
 app.use("/api/matches",require("./middleware/optionalAuth"),require("./routes/matches"));
 app.use("/api/referral",auth,require("./routes/referral"));
@@ -94,6 +98,7 @@ const adm=[auth,requireRole("support_agent"),attachCan,adminLimiter];
 app.use("/api/admin/analytics",[...adm,requireRole("staff_manager")],require("./routes/admin/analytics"));
 app.use("/api/admin/users",adm,require("./routes/admin/users"));
 app.use("/api/admin/deposits",[...adm,requireRole("staff_manager")],require("./routes/admin/deposits"));
+app.use("/api/admin/payments/imb",[...adm,requireRole("staff_manager")],require("./routes/admin/imbPayments"));
 app.use("/api/admin/withdrawals",[...adm,requireRole("staff_manager")],require("./routes/admin/withdrawals"));
 app.use("/api/admin/matches",adm,require("./routes/admin/matches"));
 app.use("/api/admin/screenshots",adm,require("./routes/admin/screenshots"));

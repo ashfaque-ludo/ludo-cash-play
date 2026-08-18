@@ -1,7 +1,8 @@
 const router = require("express").Router();
 const { v4: uuidv4 } = require("uuid");
 const Transaction = require("../models/Transaction");
-const { createImbOrder } = require("../utils/imbService");
+const { createImbOrder, checkImbOrderStatus } = require("../utils/imbService");
+const { creditImbOrderIfPaid } = require("../utils/imbCredit");
 
 const MIN_AMOUNT = 10;
 const MAX_AMOUNT = 60000;
@@ -14,11 +15,9 @@ function normalizeMobile(v) {
 // ── POST /create-order ────────────────────────────────────────────────────────
 // Creates a pending deposit record, then asks IMB to create a payment order.
 // IMPORTANT: this only records the ORDER as pending. Coins are credited only
-// when the deposit is later confirmed genuine — currently via the existing
-// admin "Pending Deposits" review flow (routes/admin/deposits.js), which is
-// already idempotent (it refuses to re-process a non-"pending" transaction).
-// Automatic crediting via IMB's own status check / webhook is NOT wired up
-// yet — see the report for what's still needed from IMB's documentation.
+// when IMB confirms the payment via POST /api/payments/imb/webhook
+// (routes/imbWebhook.js), which atomically flips this same transaction from
+// "pending" to "completed" keyed on gateway_order_id — never here.
 router.post("/create-order", async (req, res) => {
   try {
     const amount = parseFloat(req.body.amount);
@@ -96,9 +95,8 @@ router.post("/create-order", async (req, res) => {
 });
 
 // ── GET /order/:order_id ──────────────────────────────────────────────────────
-// Returns OUR OWN record's status (not a live IMB check — see report). Lets
-// the frontend poll while waiting for admin verification, same pattern as
-// the existing /wallet/payment-status/:transaction_id route.
+// Returns OUR OWN record's status. The frontend polls this while waiting for
+// IMB's webhook to land and flip the transaction to "completed"/"failed".
 router.get("/order/:order_id", async (req, res) => {
   const tx = await Transaction.findOne({
     gateway_order_id: req.params.order_id,
@@ -112,6 +110,54 @@ router.get("/order/:order_id", async (req, res) => {
     created_at: tx.createdAt,
     reviewed_at: tx.reviewed_at,
   });
+});
+
+// ── GET /status/:order_id ─────────────────────────────────────────────────────
+// Backup verification for when the webhook is missed. Only re-queries IMB's
+// Check Status API if our own record is still "pending" — terminal
+// transactions never need re-checking. Per IMB's docs, success means
+// status === "COMPLETED" && result.status === "SUCCESS"; an explicit
+// status === "ERROR" is the only case we treat as failed — anything else
+// (still processing on IMB's side) is left "pending" rather than guessed at.
+router.get("/status/:order_id", async (req, res) => {
+  try {
+    const tx = await Transaction.findOne({
+      gateway: "imb", gateway_order_id: req.params.order_id, user: req.user._id,
+    });
+    if (!tx) return res.status(404).json({ detail: "Order not found." });
+
+    if (tx.status === "pending") {
+      try {
+        const body = await checkImbOrderStatus(tx.gateway_order_id);
+        const result = body.result || {};
+        const success = body.status === "COMPLETED" && result.status === "SUCCESS";
+        const isError = body.status === "ERROR";
+        await creditImbOrderIfPaid({
+          order_id: tx.gateway_order_id,
+          success,
+          shouldMarkFailed: isError,
+          result,
+          message: body.message || "",
+          req,
+          source: "check-status",
+        });
+      } catch (e) {
+        console.error("[IMB] status check error:", e.message);
+        // Fall through to return our last-known record below.
+      }
+    }
+
+    const fresh = await Transaction.findById(tx._id);
+    res.json({
+      order_id: fresh.gateway_order_id,
+      status: fresh.status,
+      amount: fresh.amount,
+      created_at: fresh.createdAt,
+      reviewed_at: fresh.reviewed_at,
+    });
+  } catch (e) {
+    res.status(500).json({ detail: "Server error." });
+  }
 });
 
 module.exports = router;

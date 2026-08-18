@@ -15,7 +15,7 @@ router.get("/", async (req,res)=>{
       Match.countDocuments({status:"ended"}),
       Transaction.countDocuments({type:"deposit",status:"pending"}),
       Transaction.countDocuments({type:"withdrawal",status:"pending"}),
-      Transaction.aggregate([{$match:{type:"deposit",status:"approved"}},{$group:{_id:null,t:{$sum:"$amount"}}}]),
+      Transaction.aggregate([{$match:{type:"deposit",status:{$in:["approved","completed"]}}},{$group:{_id:null,t:{$sum:"$amount"}}}]),
       Transaction.aggregate([{$match:{type:"withdrawal",status:"approved"}},{$group:{_id:null,t:{$sum:"$amount"}}}]),
       Match.aggregate([{$match:{status:"ended"}},{$group:{_id:null,t:{$sum:"$commission"}}}]),
       Match.aggregate([{$match:{status:"ended",ended_at:{$gte:todayStart}}},{$group:{_id:null,t:{$sum:"$commission"}}}]),

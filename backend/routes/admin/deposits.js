@@ -60,7 +60,7 @@ router.post("/:id/approve", async (req, res) => {
     if (!tx) return res.status(404).json({ detail: "Not found." });
     if (tx.status !== "pending") return res.status(400).json({ detail: "Already processed." });
 
-    const prevApproved = await Transaction.countDocuments({ user: tx.user, type: "deposit", status: "approved" });
+    const prevApproved = await Transaction.countDocuments({ user: tx.user, type: "deposit", status: { $in: ["approved", "completed"] } });
 
     tx.status = "approved";
     tx.reviewed_by = req.user._id;

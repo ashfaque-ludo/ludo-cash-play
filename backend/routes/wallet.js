@@ -1,37 +1,14 @@
 const router = require("express").Router();
 const { v4: uuidv4 } = require("uuid");
 const QRCode = require("qrcode");
-const multer = require("multer");
-const path = require("path");
-const fs = require("fs");
 const User = require("../models/User");
 const Transaction = require("../models/Transaction");
 const PendingPayment = require("../models/PendingPayment");
 const Promo = require("../models/Promo");
-const { validators, handleValidation } = require("../middleware/validators");
 
 // Admin UPI (falls back to env or default)
 const ADMIN_UPI = process.env.ADMIN_UPI_ID || "myakadda@upi";
 const ADMIN_UPI_NAME = process.env.ADMIN_UPI_NAME || "MyAkadda";
-
-// ── Deposit screenshot upload (multer — legacy) ───────────────────────────────
-const depositDir = path.join(__dirname, "../uploads/deposits");
-if (!fs.existsSync(depositDir)) fs.mkdirSync(depositDir, { recursive: true });
-
-const depositUpload = multer({
-  storage: multer.diskStorage({
-    destination: depositDir,
-    filename: (req, file, cb) => {
-      const ext = path.extname(file.originalname).toLowerCase();
-      cb(null, `dep_${Date.now()}_${req.user._id}${ext}`);
-    },
-  }),
-  fileFilter: (req, file, cb) => {
-    if (/\.(jpe?g|png|webp)$/i.test(file.originalname)) cb(null, true);
-    else cb(new Error("Only JPG/PNG/WEBP allowed"));
-  },
-  limits: { fileSize: 5 * 1024 * 1024 },
-});
 
 // ── GET /wallet ───────────────────────────────────────────────────────────────
 router.get("/", async (req, res) => {
@@ -115,53 +92,6 @@ router.get("/payment-status/:transaction_id", async (req, res) => {
     });
   } catch (e) {
     res.status(500).json({ detail: "Server error." });
-  }
-});
-
-// ── POST /wallet/deposit (JSON — legacy) ─────────────────────────────────────
-router.post("/deposit", validators.amount, handleValidation, async (req, res) => {
-  try {
-    const { amount, method = "UPI", upi_id = "", screenshot = "" } = req.body;
-    const u = req.user;
-    const tx = await Transaction.create({
-      user: u._id,
-      user_email: u.email || "",
-      user_phone: u.phone || "",
-      type: "deposit", amount, method, upi_id, screenshot,
-    });
-    res.status(201).json({ ok: true, transaction: { id: tx._id, amount, status: "pending" } });
-  } catch (e) {
-    res.status(500).json({ detail: e.message || "Server error." });
-  }
-});
-
-// ── POST /wallet/deposit-screenshot ──────────────────────────────────────────
-router.post("/deposit-screenshot", depositUpload.single("screenshot"), async (req, res) => {
-  try {
-    console.log(`[DEPOSIT] Request from user: ${req.user?.phone || req.user?._id}`);
-    console.log(`[DEPOSIT] File: ${req.file?.filename}`);
-    console.log(`[DEPOSIT] Amount: ${req.body.amount}`);
-
-    if (!req.file) return res.status(400).json({ detail: "Screenshot required." });
-    const amt = parseFloat(req.body.amount);
-    if (!amt || amt < 10 || amt > 100000)
-      return res.status(400).json({ detail: "Amount must be 10–1,00,000." });
-
-    const screenshot_url = `/uploads/deposits/${req.file.filename}`;
-    const u = req.user;
-    const tx = await Transaction.create({
-      user: u._id, user_email: u.email || "", user_phone: u.phone || "",
-      type: "deposit", status: "pending", amount: amt, method: "UPI",
-      upi_id: (req.body.upi_id || "").trim(),
-      screenshot: screenshot_url, screenshot_url,
-    });
-
-    console.log(`[DEPOSIT] Created transaction ${tx._id} for user ${u.phone}, amount ₹${amt}`);
-
-    res.json({ ok: true, message: "Screenshot submitted. Admin will verify and credit within 5–30 minutes.", deposit_id: tx._id });
-  } catch (e) {
-    console.error("[DEPOSIT] Error:", e.message);
-    res.status(500).json({ detail: e.message || "Upload failed." });
   }
 });
 

@@ -12,7 +12,7 @@ import DepositsTab from "@/components/admin/DepositsTab";
 
 const TABS = [
   { id: "dashboard", label: "Dashboard", icon: BarChart3 },
-  { id: "deposits", label: "💰 Deposits", icon: CreditCard },
+  { id: "deposits", label: "💰 Deposit History", icon: CreditCard },
   { id: "matches", label: "⚔️ Matches", icon: Activity },
   { id: "admins", label: "Admin Management", icon: Users },
   { id: "settings", label: "Platform Settings", icon: Settings },
