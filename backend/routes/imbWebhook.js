@@ -30,10 +30,15 @@ function parseResult(raw) {
 // couldn't fully process is never retried into a storm — everything is logged
 // to WebhookLog for debugging instead.
 router.post("/", async (req, res) => {
+  console.log("Webhook hit:", req.body);
   const { status, order_id, message } = req.body || {};
   const result = parseResult(req.body?.result);
   let outcome = "unknown";
   let error = "";
+
+  // Unconditional — so a hit on this route is never invisible in Render logs,
+  // whether or not the payload turns out to be valid/matched.
+  console.log(`[IMB webhook] received: order_id=${order_id}, status=${status}, txnStatus=${result?.txnStatus}`);
 
   try {
     const success = status === "SUCCESS" && result.txnStatus === "COMPLETED";

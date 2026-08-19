@@ -80,6 +80,11 @@ router.post("/create-order", async (req, res) => {
       imbResponse.data?.payment_url || imbResponse.data?.url ||
       imbResponse.result?.payment_url || null;
 
+    // Render logs won't show MongoDB contents, so surface the one line most
+    // needed to debug a "payment succeeded but wallet never credited" report
+    // without needing DB access at all.
+    console.log(`[IMB] Order created: order_id=${orderId}, payment_url=${paymentUrl}`);
+
     res.json({
       ok: true,
       order_id: orderId,
