@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { api, fmtINR } from "@/lib/api";
 import { toast } from "sonner";
-import { CheckCircle, XCircle, Loader2 } from "lucide-react";
+import { XCircle, Loader2 } from "lucide-react";
 
 const QUICK_AMOUNTS = [100, 250, 500, 2000];
 // How long to keep polling for the IMB webhook to land after redirect-back.
@@ -80,6 +80,7 @@ function RedeemModal({ balance, onClose, onSuccess }) {
 // ── Deposit Flow (IMB — automatic, no screenshot) ────────────────────────────
 function DepositPage({ onBack, initialOrderId }) {
   const { refresh } = useAuth();
+  const nav = useNavigate();
   // steps: amount → checking (after IMB redirect back) → result
   const [step, setStep] = useState(initialOrderId ? "checking" : "amount");
   const [amount, setAmount] = useState("");
@@ -125,8 +126,8 @@ function DepositPage({ onBack, initialOrderId }) {
         if (status === "completed") {
           clearInterval(poll);
           await refresh();
-          setResult({ ok: true, amount: orderAmount });
-          setStep("result");
+          toast.success(`Payment successful! ${fmtINR(orderAmount)} added to your Deposit wallet.`);
+          nav("/", { replace: true });
         } else if (status === "failed") {
           clearInterval(poll);
           setResult({ ok: false, amount: orderAmount });
@@ -179,15 +180,7 @@ function DepositPage({ onBack, initialOrderId }) {
   if (step === "result") return (
     <div className="p-4 space-y-4">
       <div className="flex flex-col items-center py-6 text-center">
-        {result?.ok === true ? (
-          <>
-            <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mb-4">
-              <CheckCircle className="w-12 h-12 text-green-500" />
-            </div>
-            <h2 className="text-xl font-black text-gray-900 mb-1">Payment Successful!</h2>
-            <p className="text-gray-500 text-sm">{fmtINR(result.amount)} added to your Deposit wallet.</p>
-          </>
-        ) : result?.ok === false ? (
+        {result?.ok === false ? (
           <>
             <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mb-4">
               <XCircle className="w-12 h-12 text-red-500" />
