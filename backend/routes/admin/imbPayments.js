@@ -2,6 +2,7 @@ const router = require("express").Router();
 const Transaction = require("../../models/Transaction");
 const { checkImbOrderStatus } = require("../../utils/imbService");
 const { creditImbOrderIfPaid } = require("../../utils/imbCredit");
+const { evaluateImbStatus } = require("../../utils/imbStatus");
 
 // GET /api/admin/payments/imb/verify/:order_id — manually re-check a specific
 // IMB order against IMB's own Check Status API. For when an admin suspects
@@ -20,16 +21,14 @@ router.get("/verify/:order_id", async (req, res) => {
       return res.status(502).json({ detail: e.message || "IMB status check failed." });
     }
 
-    const result = body.result || {};
-    const success = body.status === "COMPLETED" && result.status === "SUCCESS";
-    const isError = body.status === "ERROR";
+    const { success, failed, result } = evaluateImbStatus(body);
 
     let outcome = "no_change";
     if (tx.status === "pending") {
       const r = await creditImbOrderIfPaid({
         order_id: tx.gateway_order_id,
         success,
-        shouldMarkFailed: isError,
+        shouldMarkFailed: failed,
         result,
         message: body.message || "",
         req,

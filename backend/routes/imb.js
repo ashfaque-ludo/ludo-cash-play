@@ -3,6 +3,7 @@ const { v4: uuidv4 } = require("uuid");
 const Transaction = require("../models/Transaction");
 const { createImbOrder, checkImbOrderStatus } = require("../utils/imbService");
 const { creditImbOrderIfPaid } = require("../utils/imbCredit");
+const { evaluateImbStatus } = require("../utils/imbStatus");
 
 const MIN_AMOUNT = 10;
 const MAX_AMOUNT = 60000;
@@ -120,10 +121,8 @@ router.get("/order/:order_id", async (req, res) => {
 // ── GET /status/:order_id ─────────────────────────────────────────────────────
 // Backup verification for when the webhook is missed. Only re-queries IMB's
 // Check Status API if our own record is still "pending" — terminal
-// transactions never need re-checking. Per IMB's docs, success means
-// status === "COMPLETED" && result.status === "SUCCESS"; an explicit
-// status === "ERROR" is the only case we treat as failed — anything else
-// (still processing on IMB's side) is left "pending" rather than guessed at.
+// transactions never need re-checking. See utils/imbStatus.js for how the
+// response is classified success/failed/still-pending.
 router.get("/status/:order_id", async (req, res) => {
   try {
     const tx = await Transaction.findOne({
@@ -134,13 +133,11 @@ router.get("/status/:order_id", async (req, res) => {
     if (tx.status === "pending") {
       try {
         const body = await checkImbOrderStatus(tx.gateway_order_id);
-        const result = body.result || {};
-        const success = body.status === "COMPLETED" && result.status === "SUCCESS";
-        const isError = body.status === "ERROR";
+        const { success, failed, result } = evaluateImbStatus(body);
         await creditImbOrderIfPaid({
           order_id: tx.gateway_order_id,
           success,
-          shouldMarkFailed: isError,
+          shouldMarkFailed: failed,
           result,
           message: body.message || "",
           req,

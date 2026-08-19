@@ -1,6 +1,7 @@
 const router = require("express").Router();
 const WebhookLog = require("../models/WebhookLog");
 const { creditImbOrderIfPaid } = require("../utils/imbCredit");
+const { evaluateImbStatus } = require("../utils/imbStatus");
 
 function parseResult(raw) {
   if (!raw) return {};
@@ -15,10 +16,19 @@ function parseResult(raw) {
 //   status: "SUCCESS" | "FAILED", order_id, message,
 //   result: { txnStatus: "COMPLETED" | "PENDING", amount, date, utr, customer_mobile, remark1, remark2 }
 //
-// Crediting happens only when status === "SUCCESS" && result.txnStatus === "COMPLETED",
-// via the shared idempotent helper in utils/imbCredit.js (also used by the
-// Check Status backup path in routes/imb.js and routes/admin/imbPayments.js,
-// for when this webhook never arrives).
+// Crediting happens when utils/imbStatus.js classifies the payload as
+// success (see that file for why it checks multiple fields rather than one
+// hardcoded combination), via the shared idempotent helper in
+// utils/imbCredit.js (also used by the Check Status backup path in
+// routes/imb.js and routes/admin/imbPayments.js, for when this webhook
+// never arrives — which, as of 2026-08-19, is every single real deposit so
+// far; see IMB_WEBHOOK_NOT_CONFIGURED note below).
+//
+// IMPORTANT: create-order (utils/imbService.js) never sends IMB a
+// webhook/callback URL — there's no such param in their API. If this route
+// is meant to receive server-to-server callbacks, that URL must be
+// registered in IMB's merchant dashboard directly; until then, the Check
+// Status backup path is the only thing crediting deposits.
 //
 // IMB's docs (as given to us) don't describe an IP whitelist or signature to
 // verify the caller — order_id is a random per-order token we generated and is
@@ -41,7 +51,7 @@ router.post("/", async (req, res) => {
   console.log(`[IMB webhook] received: order_id=${order_id}, status=${status}, txnStatus=${result?.txnStatus}`);
 
   try {
-    const success = status === "SUCCESS" && result.txnStatus === "COMPLETED";
+    const { success } = evaluateImbStatus({ status, result });
     // Any non-success webhook delivery is a definitive terminal state — IMB
     // only pushes this webhook once payment has resolved one way or another.
     const r = await creditImbOrderIfPaid({
