@@ -16,7 +16,7 @@ const TABS = [
   { id: "matches", label: "⚔️ Matches", icon: Activity },
   { id: "admins", label: "Admin Management", icon: Users },
   { id: "settings", label: "Platform Settings", icon: Settings },
-  { id: "payment", label: "Payment QR", icon: CreditCard },
+  { id: "payment", label: "Contact Settings", icon: CreditCard },
   { id: "logs", label: "Activity Log", icon: Activity },
   { id: "users", label: "User Management", icon: Shield },
   { id: "danger", label: "⚠ Danger Zone", icon: Shield },
@@ -82,7 +82,7 @@ export default function OwnerPanel() {
         {activeTab === "matches" && <OwnerMatchesTab />}
         {activeTab === "admins" && <AdminsTab />}
         {activeTab === "settings" && <SettingsTab />}
-        {activeTab === "payment" && <PaymentQRTab />}
+        {activeTab === "payment" && <ContactSettingsTab />}
         {activeTab === "logs" && <LogsTab />}
         {activeTab === "users" && <UsersTab />}
         {activeTab === "danger" && <DangerZoneTab />}
@@ -754,51 +754,23 @@ function InputField({ label, placeholder, value, onChange, type = "text" }) {
   );
 }
 
-function PaymentQRTab() {
-  const [form, setForm] = useState({ admin_upi_id: "", admin_upi_name: "", whatsapp_number: "", support_email: "" });
-  const [qrImage, setQrImage] = useState("");
-  const [qrUpdatedAt, setQrUpdatedAt] = useState(null);
-  const [qrUploading, setQrUploading] = useState(false);
-  const [qrPreview, setQrPreview] = useState(null);
+// Deposits are IMB-only now (routes/imb.js) — no UPI ID / QR code config
+// needed. This tab just edits the contact details used site-wide (WhatsApp
+// floating button, footer, Support page).
+function ContactSettingsTab() {
+  const [form, setForm] = useState({ whatsapp_number: "", support_email: "" });
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
     try {
       const r = await api.get("/admin/payment-settings");
       setForm({
-        admin_upi_id: r.data.admin_upi_id || "",
-        admin_upi_name: r.data.admin_upi_name || "",
         whatsapp_number: r.data.whatsapp_number || "",
         support_email: r.data.support_email || "",
       });
-      setQrImage(r.data.admin_qr_image || "");
-      setQrUpdatedAt(r.data.admin_qr_updated_at || null);
     } catch {}
   }, []);
   useEffect(() => { load(); }, [load]);
-
-  const handleQrFile = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (file.size > 5 * 1024 * 1024) { toast.error("Max 5MB"); return; }
-    const reader = new FileReader();
-    reader.onloadend = () => setQrPreview(reader.result);
-    reader.readAsDataURL(file);
-    setQrUploading(true);
-    try {
-      const fd = new FormData();
-      fd.append("qr_image", file);
-      const { data } = await api.post("/admin/payment-settings/upload-qr", fd, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
-      setQrImage(data.url);
-      setQrUpdatedAt(data.updated_at);
-      toast.success("QR uploaded!");
-    } catch (err) {
-      toast.error(formatApiError(err.response?.data?.detail) || "Upload failed");
-      setQrPreview(null);
-    } finally { setQrUploading(false); }
-  };
 
   const save = async () => {
     setBusy(true);
@@ -810,33 +782,11 @@ function PaymentQRTab() {
     } finally { setBusy(false); }
   };
 
-  const displayQr = qrPreview || qrImage;
-
   return (
     <div className="mt-6 space-y-6 max-w-xl">
-      <div className="bg-[#1A1A1A] border border-white/10 rounded-2xl p-5">
-        <h3 className="text-lg font-bold text-yellow-400 mb-4">Payment QR Code</h3>
-        <div className="mb-4">
-          {displayQr ? (
-            <img src={displayQr} alt="QR" className="w-48 h-48 rounded-xl border-2 border-yellow-500/30 object-contain bg-white p-2" />
-          ) : (
-            <div className="w-48 h-48 rounded-xl border-2 border-dashed border-slate-600 flex items-center justify-center text-slate-400 text-sm">No QR uploaded</div>
-          )}
-          {qrUpdatedAt && <p className="text-xs text-slate-400 mt-2">Updated: {new Date(qrUpdatedAt).toLocaleString()}</p>}
-        </div>
-        <label className="block">
-          <span className="text-sm text-slate-300 font-medium mb-2 block">Upload New QR (JPG/PNG/WEBP, max 2MB):</span>
-          <input type="file" accept="image/jpeg,image/png,image/webp" onChange={handleQrFile} disabled={qrUploading}
-            className="block w-full text-sm text-slate-300 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-yellow-500 file:text-black file:font-semibold disabled:opacity-50" />
-        </label>
-        {qrUploading && <p className="text-yellow-400 text-sm mt-2 animate-pulse">Uploading…</p>}
-      </div>
-
       <div className="bg-[#1A1A1A] border border-white/10 rounded-2xl p-5 space-y-4">
-        <h3 className="text-lg font-bold text-yellow-400">UPI & Contact Settings</h3>
+        <h3 className="text-lg font-bold text-yellow-400">Contact Settings</h3>
         {[
-          { key: "admin_upi_id", label: "UPI ID", placeholder: "yourname@upi" },
-          { key: "admin_upi_name", label: "Merchant Name", placeholder: "MyAkadda" },
           { key: "whatsapp_number", label: "WhatsApp (with country code)", placeholder: "919876543210" },
           { key: "support_email", label: "Support Email", placeholder: "support@myakadda.com" },
         ].map(({ key, label, placeholder }) => (

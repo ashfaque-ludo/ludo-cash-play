@@ -1,98 +1,12 @@
 const router = require("express").Router();
-const { v4: uuidv4 } = require("uuid");
-const QRCode = require("qrcode");
 const User = require("../models/User");
 const Transaction = require("../models/Transaction");
-const PendingPayment = require("../models/PendingPayment");
 const Promo = require("../models/Promo");
-
-// Admin UPI (falls back to env or default)
-const ADMIN_UPI = process.env.ADMIN_UPI_ID || "myakadda@upi";
-const ADMIN_UPI_NAME = process.env.ADMIN_UPI_NAME || "MyAkadda";
 
 // ── GET /wallet ───────────────────────────────────────────────────────────────
 router.get("/", async (req, res) => {
   const user = await User.findById(req.user._id);
   res.json({ wallet: user.wallet });
-});
-
-// ── POST /wallet/create-payment-order ────────────────────────────────────────
-// Generates a dynamic UPI QR code and schedules auto-credit after 30 seconds.
-router.post("/create-payment-order", async (req, res) => {
-  try {
-    const amount = parseFloat(req.body.amount);
-    if (!amount || amount < 10)   return res.status(400).json({ detail: "Minimum deposit is 10." });
-    if (amount > 60000)            return res.status(400).json({ detail: "Maximum deposit is 60,000." });
-
-    const txnId = uuidv4().replace(/-/g, "").slice(0, 20).toUpperCase();
-    const upiUrl = `upi://pay?pa=${ADMIN_UPI}&pn=${encodeURIComponent(ADMIN_UPI_NAME)}&am=${amount}&tn=${txnId}&cu=INR`;
-    const qrImage = await QRCode.toDataURL(upiUrl, { width: 400, margin: 2 });
-
-    const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 min expiry
-
-    const payment = await PendingPayment.create({
-      user: req.user._id,
-      amount,
-      transaction_id: txnId,
-      upi_url: upiUrl,
-      qr_image: qrImage,
-      expires_at: expiresAt,
-    });
-
-    res.json({
-      ok: true,
-      transaction_id: txnId,
-      qr_image: qrImage,
-      upi_url: upiUrl,
-      amount,
-      expires_at: expiresAt,
-    });
-  } catch (e) {
-    console.error("create-payment-order error:", e.message);
-    res.status(500).json({ detail: e.message || "Server error." });
-  }
-});
-
-// ── GET /wallet/payment-info?amount=X  — static QR for admin UPI ─────────────
-router.get("/payment-info", async (req, res) => {
-  try {
-    const amount = parseFloat(req.query.amount) || 0;
-    const txnRef = `LCP${Date.now()}`;
-    const upiUrl = amount > 0
-      ? `upi://pay?pa=${ADMIN_UPI}&pn=${encodeURIComponent(ADMIN_UPI_NAME)}&am=${amount}&tn=${txnRef}&cu=INR`
-      : `upi://pay?pa=${ADMIN_UPI}&pn=${encodeURIComponent(ADMIN_UPI_NAME)}&cu=INR`;
-    const qrImage = await QRCode.toDataURL(upiUrl, { width: 400, margin: 2 });
-    res.json({ upi_id: ADMIN_UPI, merchant_name: ADMIN_UPI_NAME, upi_url: upiUrl, qr_image: qrImage, txn_ref: txnRef });
-  } catch (e) {
-    res.status(500).json({ detail: "Failed to generate payment QR." });
-  }
-});
-
-// ── GET /wallet/payment-status/:transaction_id ────────────────────────────────
-router.get("/payment-status/:transaction_id", async (req, res) => {
-  try {
-    const payment = await PendingPayment.findOne({
-      transaction_id: req.params.transaction_id,
-      user: req.user._id,
-    });
-    if (!payment) return res.status(404).json({ detail: "Payment not found." });
-
-    // Auto-expire if past expiry and still pending
-    if (payment.status === "pending" && new Date() > payment.expires_at) {
-      payment.status = "expired";
-      await payment.save();
-    }
-
-    res.json({
-      status: payment.status,
-      amount: payment.amount,
-      transaction_id: payment.transaction_id,
-      completed_at: payment.completed_at,
-      expires_at: payment.expires_at,
-    });
-  } catch (e) {
-    res.status(500).json({ detail: "Server error." });
-  }
 });
 
 // ── POST /wallet/withdraw ─────────────────────────────────────────────────────

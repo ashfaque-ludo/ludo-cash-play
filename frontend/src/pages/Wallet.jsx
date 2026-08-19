@@ -290,6 +290,23 @@ export default function Wallet() {
     if (imbOrderId) setSearchParams({}, { replace: true });
   }, [imbOrderId]); // eslint-disable-line
 
+  // Backup for a missed webhook: every time the Wallet page itself loads (not
+  // just the Add Money sub-page), silently re-check any still-pending IMB
+  // order against IMB's Check Status API so the balance is never stuck
+  // waiting on a webhook that never arrived.
+  useEffect(() => {
+    (async () => {
+      try {
+        const r = await api.get("/wallet/deposits");
+        const pending = (r.data.deposits || []).filter(d => d.status === "pending" && d.gateway === "imb" && d.gateway_order_id);
+        if (pending.length) {
+          await Promise.all(pending.map(d => api.get(`/payments/imb/status/${d.gateway_order_id}`).catch(() => {})));
+          refresh();
+        }
+      } catch {}
+    })();
+  }, []); // eslint-disable-line
+
   const w = user?.wallet || {};
 
   const walletCards = [

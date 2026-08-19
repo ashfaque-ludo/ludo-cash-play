@@ -58,16 +58,13 @@ router.get('/payment-info', async (req, res) => {
     res.set('Pragma', 'no-cache');
     res.set('Expires', '0');
     _cache.delete('payment_info'); // bust any in-memory cache
-    const [admin_upi_id, admin_upi_name, admin_qr_image, whatsapp_number, support_email, announcement, support_whatsapp] = await Promise.all([
-      Config.get('admin_upi_id', 'myakadda@upi'),
-      Config.get('admin_upi_name', 'MyAkadda'),
-      Config.get('admin_qr_image', ''),
+    const [whatsapp_number, support_email, announcement, support_whatsapp] = await Promise.all([
       Config.get('whatsapp_number', '919090000000'),
       Config.get('support_email', 'support@myakadda.com'),
       Config.get('announcement', ''),
       Config.get('support_whatsapp', '918930988948'),
     ]);
-    res.json({ admin_upi_id, admin_upi_name, admin_qr_image, whatsapp_number, support_email, announcement, support_whatsapp });
+    res.json({ whatsapp_number, support_email, announcement, support_whatsapp });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

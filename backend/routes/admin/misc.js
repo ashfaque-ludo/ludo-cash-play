@@ -7,22 +7,6 @@ const StakeTable=require("../../models/StakeTable");
 const Config=require("../../models/Config");
 const {logActivity}=require("../../middleware/activityLogger");
 const SupportTicket=require("../../models/SupportTicket");
-const multer=require("multer");
-const path=require("path");
-const fs=require("fs");
-
-const qrDir=path.join(__dirname,"../../uploads/qr_codes");
-if(!fs.existsSync(qrDir)) fs.mkdirSync(qrDir,{recursive:true});
-
-const qrUpload=multer({
-  storage:multer.memoryStorage(),
-  limits:{fileSize:2*1024*1024},
-  fileFilter:(req,file,cb)=>{
-    const ok=[".jpg",".jpeg",".png",".webp"];
-    if(ok.includes(path.extname(file.originalname).toLowerCase())) cb(null,true);
-    else cb(new Error("Only JPG/PNG/WEBP allowed"));
-  },
-});
 
 router.get("/promos", async (req,res)=>{ res.json({promos:await Promo.find().sort({createdAt:-1})}); });
 router.post("/promos", async (req,res)=>{
@@ -94,44 +78,25 @@ router.post("/referral-settings", async (req,res)=>{
   res.json({ ok:true });
 });
 
-// Payment settings (UPI, QR, WhatsApp, email)
+// Contact settings (WhatsApp, support email) — used site-wide by the
+// floating WhatsApp button, footer, Support page, etc. Deposits are IMB-only
+// now (see routes/imb.js) so no UPI ID / QR code config is needed here.
 router.get("/payment-settings", async (req,res)=>{
-  const [admin_upi_id, admin_upi_name, admin_qr_image, whatsapp_number, support_email, admin_qr_updated_at, support_whatsapp] = await Promise.all([
-    Config.get("admin_upi_id", "myakadda@upi"),
-    Config.get("admin_upi_name", "MyAkadda"),
-    Config.get("admin_qr_image", ""),
+  const [whatsapp_number, support_email, support_whatsapp] = await Promise.all([
     Config.get("whatsapp_number", "919090000000"),
     Config.get("support_email", "support@myakadda.com"),
-    Config.get("admin_qr_updated_at", null),
     Config.get("support_whatsapp", "918930988948"),
   ]);
-  res.json({ admin_upi_id, admin_upi_name, admin_qr_image, whatsapp_number, support_email, admin_qr_updated_at, support_whatsapp });
+  res.json({ whatsapp_number, support_email, support_whatsapp });
 });
 router.post("/payment-settings", async (req,res)=>{
   if(!req.can("admin")) return res.status(403).json({detail:"admin or above required."});
-  const { admin_upi_id, admin_upi_name, admin_qr_image, whatsapp_number, support_email, support_whatsapp } = req.body;
-  if (admin_upi_id !== undefined) await Config.set("admin_upi_id", admin_upi_id.trim());
-  if (admin_upi_name !== undefined) await Config.set("admin_upi_name", admin_upi_name.trim());
-  if (admin_qr_image !== undefined) await Config.set("admin_qr_image", admin_qr_image.trim());
+  const { whatsapp_number, support_email, support_whatsapp } = req.body;
   if (whatsapp_number !== undefined) await Config.set("whatsapp_number", String(whatsapp_number).replace(/\D/g,""));
   if (support_email !== undefined) await Config.set("support_email", support_email.trim().toLowerCase());
   if (support_whatsapp !== undefined) await Config.set("support_whatsapp", String(support_whatsapp).replace(/\D/g,""));
-  await logActivity(req,"payment_settings_updated","",{ admin_upi_id, admin_upi_name });
+  await logActivity(req,"payment_settings_updated","",{ whatsapp_number, support_email });
   res.json({ ok:true });
-});
-
-// QR image file upload — stored as base64 data URL in MongoDB so it survives server restarts
-router.post("/payment-settings/upload-qr", qrUpload.single("qr_image"), async (req,res)=>{
-  try {
-    if(!req.can("admin")) return res.status(403).json({detail:"admin or above required."});
-    if(!req.file) return res.status(400).json({detail:"No file uploaded."});
-    const base64=`data:${req.file.mimetype};base64,${req.file.buffer.toString("base64")}`;
-    const ts=new Date().toISOString();
-    await Config.set("admin_qr_image",base64);
-    await Config.set("admin_qr_updated_at",ts);
-    await logActivity(req,"payment_qr_uploaded","base64",{size:req.file.size});
-    res.json({ok:true,url:base64,updated_at:ts});
-  }catch(err){ res.status(500).json({detail:err.message||"Upload failed."}); }
 });
 
 // Commission settings
