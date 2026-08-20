@@ -150,7 +150,7 @@ router.get("/running", async (req, res) => {
     const running = await Match.find({ status: { $in: ["in_progress", "awaiting_review", "disputed"] } })
       .sort({ createdAt: -1 }).limit(50).lean();
     const real = running.map(m => redactForSpectator(serializeMatch(m)));
-    const MIN_SHOWN = 8;
+    const MIN_SHOWN = 50;
     const matches = real.length >= MIN_SHOWN ? real : [...real, ...simulatedBattles(MIN_SHOWN - real.length)];
     res.json({ matches });
   } catch (e) { res.status(500).json({ detail: "Server error." }); }

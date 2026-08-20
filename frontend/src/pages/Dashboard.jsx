@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { api, fmtINR } from "@/lib/api";
 import { toast } from "sonner";
-import { Users, Swords, Loader2 } from "lucide-react";
+import { Users, Swords, Loader2, UserRound } from "lucide-react";
 import AnnouncementBar from "@/components/AnnouncementBar";
 
 const COMMISSION = 0.05; // 5%
@@ -16,8 +16,8 @@ function Avatar({ name, size = "w-9 h-9" }) {
   const colors = ["bg-red-500","bg-blue-500","bg-green-500","bg-purple-500","bg-orange-500"];
   const idx = (name?.charCodeAt(0) || 0) % colors.length;
   return (
-    <div className={`${size} ${colors[idx]} rounded-full flex items-center justify-center text-white font-bold text-sm shrink-0`}>
-      {(name || "?")[0].toUpperCase()}
+    <div className={`${size} ${colors[idx]} rounded-full flex items-center justify-center shrink-0`}>
+      <UserRound className="w-[60%] h-[60%] text-white" strokeWidth={2.5} fill="currentColor" />
     </div>
   );
 }
@@ -57,13 +57,23 @@ function BattleCard({ match, onPlay }) {
 function RunningCard({ match }) {
   const [p1, p2] = match.players || [];
   return (
-    <div className="bg-white border border-gray-200 rounded-xl p-3 flex items-center gap-2 shadow-sm">
-      <Avatar name={p1?.name || "A"} />
-      <div className="flex-1 text-center">
-        <div className="text-xs font-black text-red-700 tracking-widest">VS</div>
-        <div className="text-xs text-green-600 font-bold">Prize: {prize(match.stake || 0)}</div>
+    <div className="bg-gradient-to-r from-purple-50 via-white to-orange-50 border border-purple-200 rounded-2xl p-3 flex items-center justify-between shadow-sm">
+      <div className="flex flex-col items-center gap-1 w-20">
+        <Avatar name={p1?.name || "A"} size="w-11 h-11" />
+        <span className="text-[11px] font-bold text-gray-800 truncate max-w-[76px]">{p1?.name || "Player 1"}</span>
       </div>
-      <Avatar name={p2?.name || "B"} />
+
+      <div className="flex flex-col items-center gap-1 shrink-0">
+        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-red-600 via-orange-500 to-amber-400 flex items-center justify-center shadow-md">
+          <span className="text-white text-xs font-black tracking-wider">VS</span>
+        </div>
+        <span className="text-xs font-black text-green-600">{prize(match.stake || 0)}</span>
+      </div>
+
+      <div className="flex flex-col items-center gap-1 w-20">
+        <Avatar name={p2?.name || "B"} size="w-11 h-11" />
+        <span className="text-[11px] font-bold text-gray-800 truncate max-w-[76px]">{p2?.name || "Player 2"}</span>
+      </div>
     </div>
   );
 }
