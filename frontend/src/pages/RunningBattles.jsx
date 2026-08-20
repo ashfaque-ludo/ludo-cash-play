@@ -6,8 +6,50 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Dice5, Crown, ArrowRight, RefreshCw, Clock, Zap, AlertTriangle } from "lucide-react";
+import { Dice5, Crown, ArrowRight, RefreshCw, Clock, Zap, AlertTriangle, UserRound } from "lucide-react";
 import { toast } from "sonner";
+
+const AVATAR_COLORS = ["bg-red-500","bg-blue-500","bg-green-500","bg-purple-500","bg-orange-500","bg-pink-500","bg-cyan-500"];
+
+function SpectateAvatar({ name, size = "w-10 h-10" }) {
+  const idx = (name?.charCodeAt(0) || 0) % AVATAR_COLORS.length;
+  return (
+    <div className={`${size} ${AVATAR_COLORS[idx]} rounded-full flex items-center justify-center shrink-0 ring-2 ring-white/10`}>
+      <UserRound className="w-[60%] h-[60%] text-white" strokeWidth={2.5} fill="currentColor" />
+    </div>
+  );
+}
+
+function SpectateCard({ b }) {
+  const [p1, p2] = b.players || [];
+  return (
+    <div className="rounded-2xl p-4 bg-gradient-to-br from-purple-500/15 via-white/5 to-orange-500/15 border border-white/10 flex items-center justify-between gap-4">
+      <div className="flex items-center gap-4 flex-1 min-w-0">
+        <div className="flex flex-col items-center gap-1 w-16 shrink-0">
+          <SpectateAvatar name={p1?.name || "A"} />
+          <span className="text-[11px] font-bold text-white truncate max-w-[64px]">{p1?.name || "Player 1"}</span>
+        </div>
+        <div className="flex flex-col items-center gap-1 shrink-0">
+          <div className="w-9 h-9 rounded-full bg-gradient-to-br from-red-600 via-orange-500 to-amber-400 flex items-center justify-center shadow-md">
+            <span className="text-white text-[10px] font-black tracking-wider">VS</span>
+          </div>
+        </div>
+        <div className="flex flex-col items-center gap-1 w-16 shrink-0">
+          <SpectateAvatar name={p2?.name || "B"} />
+          <span className="text-[11px] font-bold text-white truncate max-w-[64px]">{p2?.name || "Player 2"}</span>
+        </div>
+        <div className="ml-2 min-w-0">
+          <div className="text-sm font-bold text-white truncate">{b.label}</div>
+          <div className="text-xs mt-0.5">
+            <span className="text-slate-400">Entry {fmtINR(b.stake)}</span>{" "}
+            <span className="text-emerald-400 font-bold">Prize {fmtINR(b.prize || b.prize_pool)}</span>
+          </div>
+        </div>
+      </div>
+      <Badge variant="outline" className="text-xs border-slate-500/30 text-slate-300 shrink-0">Spectate only</Badge>
+    </div>
+  );
+}
 
 const STATUS_CONFIG = {
   in_progress:    { label: "In Progress",      color: "border-blue-500/30 text-blue-300",    bg: "bg-blue-500/10" },
@@ -156,22 +198,7 @@ export default function RunningBattles() {
             <div className="text-slate-500 text-sm">No other battles in progress right now.</div>
           ) : (
             <div className="space-y-3">
-              {spectate.filter(b => !matches.some(m => m.id === b.id)).map(b => (
-                <Card key={b.id} className="glass border-white/10 text-white opacity-80">
-                  <CardContent className="p-4 flex items-center justify-between">
-                    <div>
-                      <div className="font-bold">{b.label}</div>
-                      <div className="text-sm text-slate-400">
-                        Entry: {fmtINR(b.stake)} · Prize: {fmtINR(b.prize || b.prize_pool)}
-                      </div>
-                      <div className="text-xs text-slate-500 mt-0.5">
-                        {(b.players || []).map(p => p.name).filter(Boolean).join(" vs ") || "Players in match"}
-                      </div>
-                    </div>
-                    <Badge variant="outline" className="text-xs border-slate-500/30 text-slate-300">Spectate only</Badge>
-                  </CardContent>
-                </Card>
-              ))}
+              {spectate.filter(b => !matches.some(m => m.id === b.id)).map(b => <SpectateCard key={b.id} b={b} />)}
             </div>
           )}
         </div>

@@ -15,9 +15,47 @@ import {
 import {
   Dice5, Trophy, Crown, Zap, ShieldCheck, Smartphone, Download,
   ArrowRight, Wallet, Users, Sparkles, ChevronRight, Star, Award,
-  Play, Swords, PenLine, ChevronDown, RefreshCw,
+  Play, Swords, PenLine, ChevronDown, RefreshCw, UserRound,
 } from "lucide-react";
 import { toast } from "sonner";
+
+const AVATAR_COLORS = ["bg-red-500","bg-blue-500","bg-green-500","bg-purple-500","bg-orange-500","bg-pink-500","bg-cyan-500"];
+
+function LiveAvatar({ name, size = "w-10 h-10" }) {
+  const idx = (name?.charCodeAt(0) || 0) % AVATAR_COLORS.length;
+  return (
+    <div className={`${size} ${AVATAR_COLORS[idx]} rounded-full flex items-center justify-center shrink-0 ring-2 ring-white/10`}>
+      <UserRound className="w-[60%] h-[60%] text-white" strokeWidth={2.5} fill="currentColor" />
+    </div>
+  );
+}
+
+function LiveBattleCard({ b }) {
+  const [p1, p2] = b.players || [];
+  return (
+    <div className="rounded-2xl p-4 min-w-[240px] sm:min-w-0 flex-shrink-0 bg-gradient-to-br from-purple-500/15 via-white/5 to-orange-500/15 border border-white/10" data-testid={`live-battle-${b.id}`}>
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex flex-col items-center gap-1 w-16">
+          <LiveAvatar name={p1?.name || "A"} />
+          <span className="text-[11px] font-bold text-white truncate max-w-[64px]">{p1?.name || "Player 1"}</span>
+        </div>
+        <div className="flex flex-col items-center gap-1 shrink-0">
+          <div className="w-9 h-9 rounded-full bg-gradient-to-br from-red-600 via-orange-500 to-amber-400 flex items-center justify-center shadow-md">
+            <span className="text-white text-[10px] font-black tracking-wider">VS</span>
+          </div>
+        </div>
+        <div className="flex flex-col items-center gap-1 w-16">
+          <LiveAvatar name={p2?.name || "B"} />
+          <span className="text-[11px] font-bold text-white truncate max-w-[64px]">{p2?.name || "Player 2"}</span>
+        </div>
+      </div>
+      <div className="flex items-center justify-center gap-3 mt-3 pt-3 border-t border-white/10 text-xs">
+        <span className="text-slate-400">Entry <span className="text-white font-semibold">{fmtINR(b.stake)}</span></span>
+        <span className="text-emerald-400 font-bold">Prize {fmtINR(b.prize || b.prize_pool)}</span>
+      </div>
+    </div>
+  );
+}
 
 function CountUp({ value, fmt = (n) => n.toLocaleString("en-IN"), suffix = "", duration = 1400 }) {
   const [display, setDisplay] = useState(0);
@@ -492,8 +530,8 @@ function MarketingHome() {
       </section>
 
       {/* LIVE BATTLES — real in-progress matches, redacted (no room code, no
-          emails), spectate-only. Only renders when battles are genuinely
-          running — an honest reflection of real activity, not a fixed claim. */}
+          emails), floored with simulated battles by the backend so the
+          section always has activity to show. */}
       {liveBattles.length > 0 && (
         <section className="relative py-16 border-b border-white/5" data-testid="live-battles-section">
           <div className="max-w-7xl mx-auto px-6 lg:px-12">
@@ -503,22 +541,7 @@ function MarketingHome() {
               <div className="text-sm text-slate-400">{liveBattles.length} battle{liveBattles.length !== 1 ? "s" : ""} in progress</div>
             </div>
             <div className="flex gap-4 overflow-x-auto pb-2 -mx-6 px-6 sm:mx-0 sm:px-0 sm:grid sm:grid-cols-2 lg:grid-cols-4">
-              {liveBattles.slice(0, 8).map((b) => (
-                <div key={b.id} className="glass rounded-2xl p-4 min-w-[220px] sm:min-w-0 flex-shrink-0" data-testid={`live-battle-${b.id}`}>
-                  <div className="flex items-center justify-between">
-                    <div className="text-lg font-black text-white">{fmtINR(b.stake)}</div>
-                    <span className="text-[10px] bg-emerald-500/15 text-emerald-300 px-2 py-0.5 rounded-full font-semibold uppercase tracking-wide">
-                      {(b.status || "in_progress").replace(/_/g, " ")}
-                    </span>
-                  </div>
-                  <div className="text-xs text-slate-400 mt-1">
-                    Prize <span className="text-emerald-400 font-semibold">{fmtINR(b.prize || b.prize_pool)}</span>
-                  </div>
-                  <div className="text-xs text-slate-500 mt-2 truncate">
-                    {(b.players || []).map(p => p.name).filter(Boolean).join(" vs ") || "2 players"}
-                  </div>
-                </div>
-              ))}
+              {liveBattles.slice(0, 24).map((b) => <LiveBattleCard key={b.id} b={b} />)}
             </div>
           </div>
         </section>
