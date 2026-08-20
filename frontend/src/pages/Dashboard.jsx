@@ -29,23 +29,24 @@ function BattleCard({ match, onPlay }) {
   const isOwn = match.isOwn;
 
   return (
-    <div className="bg-white border border-gray-200 rounded-xl p-3 flex items-center gap-3 shadow-sm">
-      <Avatar name={challenger?.name || "R"} />
+    <div className="bg-gradient-to-r from-purple-50 via-white to-orange-50 border border-purple-200 rounded-2xl p-3 flex items-center gap-3 shadow-sm">
+      <div className="flex flex-col items-center gap-1 w-16 shrink-0">
+        <Avatar name={challenger?.name || "R"} size="w-11 h-11" />
+        <span className="text-[11px] font-bold text-gray-800 truncate max-w-[64px]">{challenger?.name || "Player"}</span>
+      </div>
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-bold text-gray-900 truncate">
-          Challenge from {challenger?.name || "Player"}
-        </p>
+        <p className="text-sm font-bold text-gray-900 truncate">Challenge</p>
         <div className="flex gap-3 mt-0.5">
           <span className="text-xs text-gray-500">Entry: <span className="font-semibold text-gray-700">{fee}</span></span>
-          <span className="text-xs text-gray-500">Prize: <span className="font-semibold text-green-600">{p}</span></span>
+          <span className="text-xs text-green-600 font-bold">Prize: {p}</span>
         </div>
       </div>
       {isOwn ? (
-        <span className="text-xs bg-gray-100 text-gray-500 px-3 py-1.5 rounded-lg font-medium">Waiting…</span>
+        <span className="text-xs bg-gray-100 text-gray-500 px-3 py-1.5 rounded-lg font-medium shrink-0">Waiting…</span>
       ) : (
         <button
           onClick={() => onPlay(match)}
-          className="bg-gradient-to-r from-red-700 to-black text-white text-xs font-bold px-4 py-1.5 rounded-lg hover:opacity-90 transition-all"
+          className="bg-gradient-to-br from-red-600 via-orange-500 to-amber-400 text-white text-xs font-bold px-4 py-1.5 rounded-lg hover:opacity-90 transition-all shrink-0 shadow-md"
         >
           Play
         </button>
