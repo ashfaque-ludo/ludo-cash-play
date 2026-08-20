@@ -118,9 +118,7 @@ export default function Dashboard() {
     return () => clearInterval(poll);
   }, [user, loadBattles]);
 
-  // Public spectate feed (real in-progress matches from other users, floored
-  // with simulated battles by the backend) — keeps Running Battles from ever
-  // looking empty, same fallback Home.jsx / RunningBattles.jsx already use.
+  // Public spectate feed — real in-progress matches from other users, redacted.
   const loadSpectate = useCallback(async () => {
     try {
       const r = await api.get("/matches/running");
