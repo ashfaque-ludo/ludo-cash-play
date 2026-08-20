@@ -3,6 +3,10 @@ const User = require("../models/User");
 const Transaction = require("../models/Transaction");
 const Promo = require("../models/Promo");
 
+// Temporarily disabled — re-enable by flipping this to true when KYC
+// enforcement resumes.
+const KYC_ENFORCED = false;
+
 // ── GET /wallet ───────────────────────────────────────────────────────────────
 router.get("/", async (req, res) => {
   const user = await User.findById(req.user._id);
@@ -22,7 +26,7 @@ router.post("/withdraw", async (req, res) => {
       return res.status(403).json({ detail: 'Your wallet is frozen. Contact support.' });
     }
 
-    if (user.kyc_status !== "approved") {
+    if (KYC_ENFORCED && user.kyc_status !== "approved") {
       return res.status(403).json({ detail: "Complete KYC verification before withdrawing.", kyc_required: true });
     }
 

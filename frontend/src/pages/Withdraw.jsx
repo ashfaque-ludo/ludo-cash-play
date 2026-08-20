@@ -5,6 +5,10 @@ import { api, fmtINR } from "@/lib/api";
 import { toast } from "sonner";
 
 
+// Temporarily disabled — re-enable by flipping this to true when KYC
+// enforcement resumes.
+const KYC_ENFORCED = false;
+
 const STATUS_STYLE = {
   pending:  "bg-amber-100 text-amber-700",
   approved: "bg-green-100 text-green-700",
@@ -37,7 +41,7 @@ export default function Withdraw() {
 
   const w = user?.wallet || {};
   const withdrawable = (w.winning || 0) + (w.referral || 0);
-  const kycApproved = kycStatus === "approved";
+  const kycApproved = !KYC_ENFORCED || kycStatus === "approved";
 
   const handleWithdraw = async () => {
     const amt = parseFloat(amount);
