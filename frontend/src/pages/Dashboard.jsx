@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { api, fmtINR } from "@/lib/api";
@@ -73,6 +73,7 @@ export default function Dashboard() {
   const nav = useNavigate();
   const [openBattles, setOpenBattles] = useState([]);
   const [runningBattles, setRunningBattles] = useState([]);
+  const [spectateBattles, setSpectateBattles] = useState([]);
   const [createAmt, setCreateAmt] = useState("");
   const [creating, setCreating] = useState(false);
   const [joining, setJoining] = useState(null);
@@ -105,6 +106,27 @@ export default function Dashboard() {
     const poll = setInterval(() => { if (user) loadBattles(); }, 5000);
     return () => clearInterval(poll);
   }, [user, loadBattles]);
+
+  // Public spectate feed (real in-progress matches from other users, floored
+  // with simulated battles by the backend) — keeps Running Battles from ever
+  // looking empty, same fallback Home.jsx / RunningBattles.jsx already use.
+  const loadSpectate = useCallback(async () => {
+    try {
+      const r = await api.get("/matches/running");
+      setSpectateBattles(r.data.matches || []);
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    loadSpectate();
+    const poll = setInterval(loadSpectate, 8000);
+    return () => clearInterval(poll);
+  }, [loadSpectate]);
+
+  const allRunning = useMemo(() => {
+    const ownIds = new Set(runningBattles.map(m => m._id || m.id));
+    return [...runningBattles, ...spectateBattles.filter(b => !ownIds.has(b.id))];
+  }, [runningBattles, spectateBattles]);
 
   if (!user || user === false) return null;
 
@@ -239,14 +261,14 @@ export default function Dashboard() {
         </div>
 
         {/* Running Battles */}
-        {runningBattles.length > 0 && (
+        {allRunning.length > 0 && (
           <div>
             <h2 className="font-black text-gray-900 flex items-center gap-2 mb-2">
               ⚡ Running Battles
-              <span className="bg-green-600 text-white text-xs px-2 py-0.5 rounded-full">{runningBattles.length}</span>
+              <span className="bg-green-600 text-white text-xs px-2 py-0.5 rounded-full">{allRunning.length}</span>
             </h2>
             <div className="space-y-2">
-              {runningBattles.map(m => (
+              {allRunning.map(m => (
                 <RunningCard key={m._id || m.id} match={m} />
               ))}
             </div>
