@@ -177,8 +177,8 @@ function BattleHub({ user }) {
 
   const handleCreate = async () => {
     const stake = parseInt(amount) || 0;
-    if (stake < 10) return toast.error("Minimum 10");
-    if (stake > 50000) return toast.error("Maximum 50,000");
+    if (stake < 100) return toast.error("Minimum 100");
+    if (stake > 25000) return toast.error("Maximum 25,000");
     if (total < stake) return toast.error("Insufficient balance");
     setBusy(true);
     try {
@@ -282,13 +282,13 @@ function BattleHub({ user }) {
               inputMode="numeric"
               value={amount}
               onChange={(e) => setAmount(e.target.value.replace(/\D/g, '').slice(0, 5))}
-              placeholder="Enter Amount"
+              placeholder="Enter Amount (100–25000)"
               className="flex-1 bg-transparent outline-none py-3 text-gray-900 text-lg font-bold"
             />
           </div>
           <button
             onClick={handleCreate}
-            disabled={!amount || parseInt(amount) < 10 || busy}
+            disabled={!amount || parseInt(amount) < 100 || busy}
             className="px-6 py-3 bg-gray-900 hover:bg-black text-white rounded-xl font-bold disabled:opacity-50"
           >
             {busy ? "..." : "Set"}

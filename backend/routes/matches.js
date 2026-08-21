@@ -217,8 +217,8 @@ const handleCreate = async (req, res) => {
     if (isCustom) {
       if (!Number.isInteger(stakeAmount) || stakeAmount % 10 !== 0)
         return res.status(400).json({ detail: "Custom stake must be a whole number and multiple of 10." });
-      if (stakeAmount < 10 || stakeAmount > 50000)
-        return res.status(400).json({ detail: "Custom stake must be between 10 and 50,000." });
+      if (stakeAmount < 100 || stakeAmount > 25000)
+        return res.status(400).json({ detail: "Custom stake must be between 100 and 25,000." });
       label = `Custom ${stakeAmount}`;
       tier = "custom";
     } else {

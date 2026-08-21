@@ -145,8 +145,8 @@ export default function Dashboard() {
 
   const handleCreate = async () => {
     const stake = parseInt(createAmt);
-    if (!stake || stake < 10) return toast.error("Minimum 10");
-    if (stake > 50000) return toast.error("Maximum 50,000");
+    if (!stake || stake < 100) return toast.error("Minimum 100");
+    if (stake > 25000) return toast.error("Maximum 25,000");
     if (total < stake) return toast.error("Insufficient balance. Add money first.");
 
     // Show the battle in the list immediately so it doesn't feel like a
@@ -221,7 +221,7 @@ export default function Dashboard() {
                 inputMode="numeric"
                 value={createAmt}
                 onChange={e => setCreateAmt(e.target.value.replace(/\D/g,""))}
-                placeholder="Enter amount (10–50000)"
+                placeholder="Enter amount (100–25000)"
                 className="w-full h-11 pl-7 pr-3 rounded-xl bg-gray-50 border border-gray-300 text-gray-900 outline-none focus:border-red-600 focus:ring-2 focus:ring-red-100 transition-all"
               />
             </div>
@@ -233,7 +233,7 @@ export default function Dashboard() {
               {creating ? <Loader2 className="w-4 h-4 animate-spin" /> : "Set"}
             </button>
           </div>
-          <p className="text-xs text-gray-400 mt-2 text-center">Min 10 · Max 50,000 · Winner gets 95% of prize pool</p>
+          <p className="text-xs text-gray-400 mt-2 text-center">Min 100 · Max 25,000 · Winner gets 95% of prize pool</p>
         </div>
 
         {/* Open Battles */}
