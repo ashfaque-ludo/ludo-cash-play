@@ -20,12 +20,16 @@ export default function Withdraw() {
   const [method, setMethod] = useState("upi");
   const [amount, setAmount] = useState("");
   const [upiId, setUpiId] = useState("");
-  const [accNo, setAccNo] = useState("");
-  const [ifsc, setIfsc] = useState("");
-  const [holder, setHolder] = useState("");
+  const [qrFile, setQrFile] = useState(null);
+  const [qrPreview, setQrPreview] = useState("");
   const [loading, setLoading] = useState(false);
   const [history, setHistory] = useState([]);
   const [kycStatus, setKycStatus] = useState(null);
+
+  const onQrSelect = (file) => {
+    setQrFile(file);
+    setQrPreview(file ? URL.createObjectURL(file) : "");
+  };
 
   const loadHistory = useCallback(async () => {
     try {
@@ -49,22 +53,21 @@ export default function Withdraw() {
     if (amt > 50000) return toast.error("Maximum withdrawal 50,000");
     if (amt > withdrawable) return toast.error(`Insufficient balance. Withdrawable: ${withdrawable}`);
     if (method === "upi" && !upiId.trim()) return toast.error("Enter your UPI ID");
-    if (method === "bank" && (!accNo.trim() || !ifsc.trim() || !holder.trim())) {
-      return toast.error("Fill all bank details");
-    }
+    if (method === "qr" && !qrFile) return toast.error("Upload your QR code image");
 
     setLoading(true);
     try {
-      const payload = { amount: amt, method };
-      if (method === "upi") payload.upi_id = upiId.trim();
-      else {
-        payload.account_number = accNo.trim();
-        payload.ifsc = ifsc.trim().toUpperCase();
-        payload.account_holder = holder.trim();
+      if (method === "qr") {
+        const fd = new FormData();
+        fd.append("amount", amt);
+        fd.append("method", "qr");
+        fd.append("qr_code", qrFile);
+        await api.post("/wallet/withdraw", fd, { headers: { "Content-Type": "multipart/form-data" } });
+      } else {
+        await api.post("/wallet/withdraw", { amount: amt, method: "upi", upi_id: upiId.trim() });
       }
-      await api.post("/wallet/withdraw", payload);
       toast.success("Withdrawal initiated! Processing in ~60 seconds.");
-      setAmount(""); setUpiId(""); setAccNo(""); setIfsc(""); setHolder("");
+      setAmount(""); setUpiId(""); onQrSelect(null);
       refresh();
       loadHistory();
     } catch (e) {
@@ -121,7 +124,7 @@ export default function Withdraw() {
         <div>
           <label className="text-xs font-bold text-gray-600 uppercase tracking-wide block mb-2">Payment Method</label>
           <div className="grid grid-cols-2 gap-2">
-            {[{id:"upi",label:"📱 UPI"},{id:"bank",label:"🏦 Bank Transfer"}].map(m => (
+            {[{id:"upi",label:"📱 Add UPI ID"},{id:"qr",label:"🔳 Add QR Code"}].map(m => (
               <button key={m.id} onClick={() => setMethod(m.id)}
                 className={`py-2.5 rounded-xl font-bold border-2 transition-all text-sm ${
                   method === m.id ? "bg-red-700 text-white border-red-700" : "bg-white text-gray-600 border-gray-200"
@@ -142,27 +145,27 @@ export default function Withdraw() {
           </div>
         )}
 
-        {/* Bank fields */}
-        {method === "bank" && (
-          <div className="space-y-3">
-            <div>
-              <label className="text-xs font-bold text-gray-600 uppercase tracking-wide block mb-1.5">Account Holder Name</label>
-              <input value={holder} onChange={e => setHolder(e.target.value)}
-                placeholder="As per bank records"
-                className="w-full h-11 px-3 rounded-xl bg-gray-50 border border-gray-300 text-gray-900 outline-none focus:border-red-600 focus:ring-2 focus:ring-red-100 transition-all" />
-            </div>
-            <div>
-              <label className="text-xs font-bold text-gray-600 uppercase tracking-wide block mb-1.5">Account Number</label>
-              <input value={accNo} onChange={e => setAccNo(e.target.value.replace(/\D/g,""))}
-                inputMode="numeric" placeholder="e.g. 123456789012"
-                className="w-full h-11 px-3 rounded-xl bg-gray-50 border border-gray-300 text-gray-900 outline-none focus:border-red-600 focus:ring-2 focus:ring-red-100 transition-all" />
-            </div>
-            <div>
-              <label className="text-xs font-bold text-gray-600 uppercase tracking-wide block mb-1.5">IFSC Code</label>
-              <input value={ifsc} onChange={e => setIfsc(e.target.value.toUpperCase())}
-                placeholder="e.g. SBIN0001234"
-                className="w-full h-11 px-3 rounded-xl bg-gray-50 border border-gray-300 text-gray-900 font-mono outline-none focus:border-red-600 focus:ring-2 focus:ring-red-100 transition-all" />
-            </div>
+        {/* QR code upload */}
+        {method === "qr" && (
+          <div>
+            <label className="text-xs font-bold text-gray-600 uppercase tracking-wide block mb-1.5">Your Payment QR Code</label>
+            <label
+              className="relative flex flex-col items-center justify-center gap-2 border-2 border-dashed rounded-xl cursor-pointer overflow-hidden py-6"
+              style={{ borderColor: qrFile ? "#dc2626" : "#d1d5db", minHeight: 120 }}>
+              <input type="file" accept="image/*" className="hidden"
+                onChange={e => onQrSelect(e.target.files[0] || null)} />
+              {qrPreview ? (
+                <img src={qrPreview} alt="QR preview" className="max-h-40 object-contain" />
+              ) : (
+                <>
+                  <span className="text-3xl">🔳</span>
+                  <span className="text-xs text-gray-500">Tap to upload your UPI/QR code image</span>
+                </>
+              )}
+            </label>
+            <p className="text-xs text-gray-400 mt-1.5">
+              Upload the QR code from your UPI app (Paytm, PhonePe, GPay, etc.) — admin will scan it to send your payout.
+            </p>
           </div>
         )}
 

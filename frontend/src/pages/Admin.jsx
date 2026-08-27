@@ -332,6 +332,7 @@ function WithdrawalsTab(){
   const [rows, setRows] = useState([]);
   const [status, setStatus] = useState("pending");
   const [rejectState, setRejectState] = useState({ id: null, reason: "" });
+  const [zoomedUrl, setZoomedUrl] = useState(null);
   const load = useCallback(async () => { try { const r = await api.get(`/admin/withdrawals?status=${status}`); setRows(r.data.withdrawals); } catch {} }, [status]);
   useEffect(()=>{ load(); }, [load]);
 
@@ -369,7 +370,8 @@ function WithdrawalsTab(){
           <TableHeader><TableRow className="border-gray-200">
             <TableHead>User</TableHead>
             <TableHead>Amount</TableHead>
-            <TableHead>UPI ID</TableHead>
+            <TableHead>Method</TableHead>
+            <TableHead>Payment Details</TableHead>
             <TableHead>Requested</TableHead>
             <TableHead>Status</TableHead>
             <TableHead>Actions</TableHead>
@@ -383,7 +385,19 @@ function WithdrawalsTab(){
                     <div className="text-xs text-gray-400">{d.user?.email || d.user_email}</div>
                   </TableCell>
                   <TableCell className="font-bold text-red-700">{fmtINR(d.amount)}</TableCell>
-                  <TableCell className="text-gray-600 font-mono text-sm">{d.upi_id}</TableCell>
+                  <TableCell className="text-xs font-bold uppercase text-gray-500">{d.method}</TableCell>
+                  <TableCell>
+                    {d.qr_code_url ? (
+                      <img src={d.qr_code_url} alt="Withdrawal QR" onClick={() => setZoomedUrl(d.qr_code_url)}
+                        className="w-12 h-12 object-cover rounded-lg border border-gray-200 cursor-zoom-in" />
+                    ) : d.upi_id ? (
+                      <span className="text-gray-600 font-mono text-sm">{d.upi_id}</span>
+                    ) : d.account_number ? (
+                      <span className="text-gray-600 text-xs">{d.account_holder} · {d.account_number} · {d.ifsc}</span>
+                    ) : (
+                      <span className="text-gray-300 text-xs">—</span>
+                    )}
+                  </TableCell>
                   <TableCell className="text-xs text-gray-400">{new Date(d.created_at).toLocaleString("en-IN")}</TableCell>
                   <TableCell>
                     <Badge variant="outline" className={`uppercase text-xs font-bold px-2 py-0.5 ${d.status==="approved" ? "border-emerald-500/40 text-emerald-300" : d.status==="rejected" ? "border-red-500/40 text-red-300" : "border-amber-500/40 text-amber-300"}`}>
@@ -400,7 +414,7 @@ function WithdrawalsTab(){
                 </TableRow>
                 {rejectState.id === d.id && (
                   <TableRow className="border-gray-100 bg-red-500/5">
-                    <TableCell colSpan={6} className="py-3">
+                    <TableCell colSpan={7} className="py-3">
                       <div className="flex gap-2 flex-wrap items-center">
                         <Input value={rejectState.reason} onChange={e=>setRejectState(p=>({...p,reason:e.target.value}))}
                           placeholder="Rejection reason (required)" className="flex-1 bg-gray-50 border-red-400 text-gray-900 min-w-[220px]" data-testid="wd-reject-reason" />
@@ -412,10 +426,17 @@ function WithdrawalsTab(){
                 )}
               </React.Fragment>
             ))}
-            {rows.length === 0 && <TableRow><TableCell colSpan={6} className="text-center text-gray-500 py-6">No {status} withdrawals.</TableCell></TableRow>}
+            {rows.length === 0 && <TableRow><TableCell colSpan={7} className="text-center text-gray-500 py-6">No {status} withdrawals.</TableCell></TableRow>}
           </TableBody>
         </Table>
       </CardContent>
+
+      {zoomedUrl && (
+        <div onClick={() => setZoomedUrl(null)} className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 cursor-zoom-out p-4">
+          <img src={zoomedUrl} alt="Withdrawal QR zoom" className="max-w-[95vw] max-h-[90vh] rounded-xl object-contain" />
+          <button onClick={() => setZoomedUrl(null)} className="fixed top-5 right-5 bg-white/10 rounded-full w-9 h-9 grid place-items-center text-white text-lg">✕</button>
+        </div>
+      )}
     </Card>
   );
 }
@@ -427,6 +448,7 @@ function MatchesTab({ actor }){
   const [editMatch, setEditMatch] = useState(null);
   const [editForm, setEditForm] = useState({ label: "", stake: "", status: "", cancel_reason: "" });
   const [clearing, setClearing] = useState(false);
+  const [processingId, setProcessingId] = useState(null);
   const BACKEND = process.env.REACT_APP_BACKEND_URL || "";
   const toAbsUrl = (u) => !u ? "" : (u.startsWith("http") || u.startsWith("data:")) ? u : `${BACKEND}${u}`;
 
@@ -434,16 +456,25 @@ function MatchesTab({ actor }){
   useEffect(()=>{ load(); /* eslint-disable-line */ }, [status]);
   const canDecide = ["admin","super_admin"].includes(actor.role);
 
+  // processingId blocks a second click on the same match while the first
+  // decide/resolve call is still in flight — the server also guards this
+  // atomically, but disabling the button avoids the extra round-trip.
   const decide = async (m, winner_id, cancel) => {
+    if (processingId === m.id) return;
+    setProcessingId(m.id);
     try { await api.post(`/admin/matches/${m.id}/decide`, { winner_id, cancel }); toast.success("Match resolved"); load(); }
     catch (e) { toast.error(formatApiError(e.response?.data?.detail) || e.message); }
+    finally { setProcessingId(null); }
   };
 
   const resolve = async (m, winner) => {
+    if (processingId === m.id) return;
     const labels = { player1: (m.players||[])[0]?.name || "Player 1", player2: (m.players||[])[1]?.name || "Player 2", both: "Both (Refund)" };
     if (!window.confirm(`Give amount to ${labels[winner]}?`)) return;
+    setProcessingId(m.id);
     try { await api.post(`/admin/matches/${m.id}/resolve`, { winner }); toast.success("Resolved!"); load(); }
     catch (e) { toast.error(formatApiError(e.response?.data?.detail) || e.message); }
+    finally { setProcessingId(null); }
   };
 
   const openEdit = (m) => {
@@ -597,16 +628,16 @@ function MatchesTab({ actor }){
                       <div className="flex gap-2 flex-wrap">
                         {isReview ? (
                           <>
-                            <Button size="sm" onClick={() => resolve(m, "player1")} className="rounded-full bg-blue-600 text-white font-bold">Give P1</Button>
-                            <Button size="sm" onClick={() => resolve(m, "player2")} className="rounded-full bg-purple-600 text-white font-bold">Give P2</Button>
-                            <Button size="sm" onClick={() => resolve(m, "both")} className="rounded-full bg-green-600 text-white font-bold">Refund Both</Button>
+                            <Button size="sm" disabled={processingId === m.id} onClick={() => resolve(m, "player1")} className="rounded-full bg-blue-600 text-white font-bold disabled:opacity-50">Give P1</Button>
+                            <Button size="sm" disabled={processingId === m.id} onClick={() => resolve(m, "player2")} className="rounded-full bg-purple-600 text-white font-bold disabled:opacity-50">Give P2</Button>
+                            <Button size="sm" disabled={processingId === m.id} onClick={() => resolve(m, "both")} className="rounded-full bg-green-600 text-white font-bold disabled:opacity-50">Refund Both</Button>
                           </>
                         ) : (
                           <>
                             {(m.players || []).map(p => (
-                              <Button key={p.id} size="sm" onClick={() => decide(m, p.id, false)} variant="outline" className="rounded-full border-emerald-500/30 text-emerald-600" data-testid={`decide-${m.id}-${p.id}`}>{p.name} won</Button>
+                              <Button key={p.id} size="sm" disabled={processingId === m.id} onClick={() => decide(m, p.id, false)} variant="outline" className="rounded-full border-emerald-500/30 text-emerald-600 disabled:opacity-50" data-testid={`decide-${m.id}-${p.id}`}>{p.name} won</Button>
                             ))}
-                            <Button size="sm" onClick={() => decide(m, null, true)} variant="outline" className="rounded-full border-red-500/30 text-red-600" data-testid={`cancel-match-${m.id}`}>Cancel</Button>
+                            <Button size="sm" disabled={processingId === m.id} onClick={() => decide(m, null, true)} variant="outline" className="rounded-full border-red-500/30 text-red-600 disabled:opacity-50" data-testid={`cancel-match-${m.id}`}>Cancel</Button>
                           </>
                         )}
                       </div>

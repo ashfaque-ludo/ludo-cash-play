@@ -73,23 +73,37 @@ router.post("/:id/decide", async (req,res)=>{
     if(!match) return res.status(404).json({detail:"Not found."});
     if(["ended","cancelled"].includes(match.status)) return res.status(400).json({detail:"Already resolved."});
     if(cancel){
-      match.status="cancelled"; match.decided_by=req.user._id; match.decided_at=new Date(); await match.save();
-      const cancelIds=match.players.map(p=>p.user).filter(Boolean);
-      if(cancelIds.length) await User.updateMany({_id:{$in:cancelIds}},{$inc:{"wallet.deposit":match.stake}});
-      await logActivity(req,"match_cancelled",match._id.toString(),{stake:match.stake});
+      // Compare-and-swap on status so a double-click (two concurrent requests)
+      // can't both pass the "not already resolved" check above and both refund.
+      const claimed=await Match.findOneAndUpdate(
+        {_id:match._id,status:{$nin:["ended","cancelled"]}},
+        {$set:{status:"cancelled",decided_by:req.user._id,decided_at:new Date()}},
+        {new:true}
+      );
+      if(!claimed) return res.status(400).json({detail:"Already resolved."});
+      const cancelIds=claimed.players.map(p=>p.user).filter(Boolean);
+      if(cancelIds.length) await User.updateMany({_id:{$in:cancelIds}},{$inc:{"wallet.deposit":claimed.stake}});
+      await logActivity(req,"match_cancelled",claimed._id.toString(),{stake:claimed.stake});
     } else {
       const ws=match.players.find(p=>p.user.toString()===winner_id);
       if(!ws) return res.status(400).json({detail:"Player not in match."});
       const ls=match.players.find(p=>p.user.toString()!==winner_id);
-      match.winner=ws.user; match.status="ended"; match.ended_at=new Date();
-      match.decided_by=req.user._id; match.decided_at=new Date(); match.admin_resolved=true;
-      await match.save();
-      await User.findByIdAndUpdate(ws.user,{$inc:{"wallet.winning":match.prize_pool}});
-      await Transaction.create({user:ws.user,user_phone:"",type:"match_win",amount:match.prize_pool,status:"completed",description:`Won ${match.prize_pool} battle (admin approved)`,meta:{match:match._id,stake:match.stake}}).catch(()=>{});
-      if(ls) await Transaction.create({user:ls.user,user_phone:"",type:"match_loss",amount:-match.stake,status:"completed",description:`Lost ${match.stake} battle`,meta:{match:match._id,stake:match.stake}}).catch(()=>{});
-      await payReferralBonus(ws.user,match.stake,match._id);
-      if(ls) await payReferralBonus(ls.user,match.stake,match._id);
-      await logActivity(req,"match_decided",match._id.toString(),{winner:ws.email,prize:match.prize_pool});
+      // Compare-and-swap: only the first of two concurrent decide calls can
+      // flip status away from admin_review/awaiting_review, so only one ever
+      // reaches the wallet credit below — this is what prevents the double
+      // click from crediting the winner twice.
+      const claimed=await Match.findOneAndUpdate(
+        {_id:match._id,status:{$nin:["ended","cancelled"]}},
+        {$set:{winner:ws.user,status:"ended",ended_at:new Date(),decided_by:req.user._id,decided_at:new Date(),admin_resolved:true}},
+        {new:true}
+      );
+      if(!claimed) return res.status(400).json({detail:"Already resolved."});
+      await User.findByIdAndUpdate(ws.user,{$inc:{"wallet.winning":claimed.prize_pool}});
+      await Transaction.create({user:ws.user,user_phone:"",type:"match_win",amount:claimed.prize_pool,status:"completed",description:`Won ${claimed.prize_pool} battle (admin approved)`,meta:{match:claimed._id,stake:claimed.stake}}).catch(()=>{});
+      if(ls) await Transaction.create({user:ls.user,user_phone:"",type:"match_loss",amount:-claimed.stake,status:"completed",description:`Lost ${claimed.stake} battle`,meta:{match:claimed._id,stake:claimed.stake}}).catch(()=>{});
+      await payReferralBonus(ws.user,claimed.stake,claimed._id);
+      if(ls) await payReferralBonus(ls.user,claimed.stake,claimed._id);
+      await logActivity(req,"match_decided",claimed._id.toString(),{winner:ws.email,prize:claimed.prize_pool});
     }
     res.json({ok:true});
   }catch(e){res.status(500).json({detail:"Server error."});}
@@ -106,34 +120,46 @@ router.post("/:id/resolve", async (req,res)=>{
       const p=match.players[0];
       const l=match.players[1];
       if(!p) return res.status(400).json({detail:"Player 1 not found."});
-      match.winner=p.user; match.status="ended"; match.ended_at=new Date();
-      match.decided_by=req.user._id; match.decided_at=new Date(); match.admin_resolved=true;
-      await match.save();
-      await User.findByIdAndUpdate(p.user,{$inc:{"wallet.winning":match.prize_pool}});
-      await Transaction.create({user:p.user,user_phone:"",type:"match_win",amount:match.prize_pool,status:"completed",description:`Won ${match.prize_pool} battle (admin resolved)`,meta:{match:match._id,stake:match.stake}}).catch(()=>{});
-      if(l) await Transaction.create({user:l.user,user_phone:"",type:"match_loss",amount:-match.stake,status:"completed",description:`Lost ${match.stake} battle`,meta:{match:match._id,stake:match.stake}}).catch(()=>{});
-      await payReferralBonus(p.user,match.stake,match._id);
-      if(l) await payReferralBonus(l.user,match.stake,match._id);
-      await logActivity(req,"match_resolved_p1",match._id.toString(),{prize:match.prize_pool});
+      // Compare-and-swap: see /:id/decide above — prevents a double-click
+      // (two concurrent /resolve calls) from crediting the winner twice.
+      const claimed=await Match.findOneAndUpdate(
+        {_id:match._id,status:{$nin:["ended","cancelled"]}},
+        {$set:{winner:p.user,status:"ended",ended_at:new Date(),decided_by:req.user._id,decided_at:new Date(),admin_resolved:true}},
+        {new:true}
+      );
+      if(!claimed) return res.status(400).json({detail:"Already resolved."});
+      await User.findByIdAndUpdate(p.user,{$inc:{"wallet.winning":claimed.prize_pool}});
+      await Transaction.create({user:p.user,user_phone:"",type:"match_win",amount:claimed.prize_pool,status:"completed",description:`Won ${claimed.prize_pool} battle (admin resolved)`,meta:{match:claimed._id,stake:claimed.stake}}).catch(()=>{});
+      if(l) await Transaction.create({user:l.user,user_phone:"",type:"match_loss",amount:-claimed.stake,status:"completed",description:`Lost ${claimed.stake} battle`,meta:{match:claimed._id,stake:claimed.stake}}).catch(()=>{});
+      await payReferralBonus(p.user,claimed.stake,claimed._id);
+      if(l) await payReferralBonus(l.user,claimed.stake,claimed._id);
+      await logActivity(req,"match_resolved_p1",claimed._id.toString(),{prize:claimed.prize_pool});
     } else if(winner==="player2"){
       const p=match.players[1];
       const l=match.players[0];
       if(!p) return res.status(400).json({detail:"Player 2 not found."});
-      match.winner=p.user; match.status="ended"; match.ended_at=new Date();
-      match.decided_by=req.user._id; match.decided_at=new Date(); match.admin_resolved=true;
-      await match.save();
-      await User.findByIdAndUpdate(p.user,{$inc:{"wallet.winning":match.prize_pool}});
-      await Transaction.create({user:p.user,user_phone:"",type:"match_win",amount:match.prize_pool,status:"completed",description:`Won ${match.prize_pool} battle (admin resolved)`,meta:{match:match._id,stake:match.stake}}).catch(()=>{});
-      if(l) await Transaction.create({user:l.user,user_phone:"",type:"match_loss",amount:-match.stake,status:"completed",description:`Lost ${match.stake} battle`,meta:{match:match._id,stake:match.stake}}).catch(()=>{});
-      await payReferralBonus(p.user,match.stake,match._id);
-      if(l) await payReferralBonus(l.user,match.stake,match._id);
-      await logActivity(req,"match_resolved_p2",match._id.toString(),{prize:match.prize_pool});
+      const claimed=await Match.findOneAndUpdate(
+        {_id:match._id,status:{$nin:["ended","cancelled"]}},
+        {$set:{winner:p.user,status:"ended",ended_at:new Date(),decided_by:req.user._id,decided_at:new Date(),admin_resolved:true}},
+        {new:true}
+      );
+      if(!claimed) return res.status(400).json({detail:"Already resolved."});
+      await User.findByIdAndUpdate(p.user,{$inc:{"wallet.winning":claimed.prize_pool}});
+      await Transaction.create({user:p.user,user_phone:"",type:"match_win",amount:claimed.prize_pool,status:"completed",description:`Won ${claimed.prize_pool} battle (admin resolved)`,meta:{match:claimed._id,stake:claimed.stake}}).catch(()=>{});
+      if(l) await Transaction.create({user:l.user,user_phone:"",type:"match_loss",amount:-claimed.stake,status:"completed",description:`Lost ${claimed.stake} battle`,meta:{match:claimed._id,stake:claimed.stake}}).catch(()=>{});
+      await payReferralBonus(p.user,claimed.stake,claimed._id);
+      if(l) await payReferralBonus(l.user,claimed.stake,claimed._id);
+      await logActivity(req,"match_resolved_p2",claimed._id.toString(),{prize:claimed.prize_pool});
     } else if(winner==="both"){
-      match.status="cancelled"; match.decided_by=req.user._id; match.decided_at=new Date(); match.admin_resolved=true;
-      await match.save();
-      const bothIds=match.players.map(p=>p.user).filter(Boolean);
-      if(bothIds.length) await User.updateMany({_id:{$in:bothIds}},{$inc:{"wallet.deposit":match.stake}});
-      await logActivity(req,"match_refunded_both",match._id.toString(),{stake:match.stake});
+      const claimed=await Match.findOneAndUpdate(
+        {_id:match._id,status:{$nin:["ended","cancelled"]}},
+        {$set:{status:"cancelled",decided_by:req.user._id,decided_at:new Date(),admin_resolved:true}},
+        {new:true}
+      );
+      if(!claimed) return res.status(400).json({detail:"Already resolved."});
+      const bothIds=claimed.players.map(p=>p.user).filter(Boolean);
+      if(bothIds.length) await User.updateMany({_id:{$in:bothIds}},{$inc:{"wallet.deposit":claimed.stake}});
+      await logActivity(req,"match_refunded_both",claimed._id.toString(),{stake:claimed.stake});
     } else {
       return res.status(400).json({detail:"winner must be player1, player2, or both."});
     }

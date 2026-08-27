@@ -93,6 +93,9 @@ app.use("/api/kyc",auth,require("./routes/kyc"));
 app.use("/api/support",auth,require("./routes/support"));
 app.use(require("./routes/upload"));
 app.use(require("./routes/rooms"));
+// TEST-ONLY: exercises the new IMB OTP integration in isolation, alongside
+// (not replacing) the existing API-King/Firebase OTP flow used by /api/auth.
+app.use("/api/imb-otp-test", require("./routes/imbOtpTest"));
 
 const adm=[auth,requireRole("support_agent"),attachCan,adminLimiter];
 app.use("/api/admin/analytics",[...adm,requireRole("staff_manager")],require("./routes/admin/analytics"));

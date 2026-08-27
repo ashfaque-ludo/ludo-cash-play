@@ -22,6 +22,9 @@ const schema = new mongoose.Schema({
   account_number:   { type: String, default: "" },
   ifsc:             { type: String, default: "" },
   account_holder:   { type: String, default: "" },
+  // Withdrawal via QR code — user uploads their own payment QR image so the
+  // admin can scan it directly instead of typing a UPI ID.
+  qr_code_url:      { type: String, default: "" },
   reviewed_by:      { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
   reviewed_at:      { type: Date, default: null },
   admin_note:       { type: String, default: "" },

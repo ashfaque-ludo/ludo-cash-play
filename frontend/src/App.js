@@ -10,6 +10,7 @@ import Header from "@/components/Header";
 import BottomNav from "@/components/BottomNav";
 import Sidebar from "@/components/Sidebar";
 import Footer from "@/components/Footer";
+import { initTapFeedback } from "@/lib/feedback";
 import "./i18n"; // init i18next
 
 // Eagerly loaded: Login needed immediately on auth redirect
@@ -99,6 +100,9 @@ function AppLayout() {
     const iv = setInterval(load, 30000);
     return () => clearInterval(iv);
   }, []);
+
+  // Tap sound + vibration on every button/link tap, site-wide.
+  useEffect(() => initTapFeedback(), []);
 
   // Keep-alive ping to /api/health lives in index.js (runs once at app
   // bootstrap) — having it here too was firing the same request twice on
