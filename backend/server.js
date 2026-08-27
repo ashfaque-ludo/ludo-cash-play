@@ -40,8 +40,11 @@ const ALLOWED_ORIGINS = [
 app.use(cors({
   origin: (origin, callback) => {
     if (!origin) return callback(null, true);
+    // Exact allowlist only — a wildcard match on *.vercel.app would trust
+    // every free Vercel-hosted app on the internet (anyone can deploy one),
+    // and this API is credentialed (cookies), so that would let any such
+    // site make authenticated requests as a logged-in visitor.
     if (ALLOWED_ORIGINS.includes(origin)) return callback(null, true);
-    if (/\.vercel\.app$/.test(origin)) return callback(null, true);
     callback(null, false);
   },
   credentials: true,
