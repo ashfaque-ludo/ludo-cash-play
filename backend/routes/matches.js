@@ -114,11 +114,12 @@ function pseudoRand(seed) {
 }
 
 const SIM_NAMES = ["Rahul","Amit","Priya","Suresh","Neha","Vikas","Pooja","Ravi","Sneha","Manoj","Kavita","Arjun","Deepak","Anjali","Rohit","Sonia"];
-const SIM_STAKES = [50, 50, 100, 100, 250, 500];
+const SIM_STAKES = [500, 500, 1000, 1000, 2000, 5000];
 
 // Always keeps "Running Battles" looking active for guests/new users — floors
-// the list with simulated in-progress battles (heaviest on the 50/100 entry
-// tiers) when real live-match volume is low, so the table never reads empty.
+// the list with simulated in-progress battles (heaviest on the 500/1000 entry
+// tiers, running up to 5000) when real live-match volume is low, so the table
+// never reads empty.
 // User-facing pages only — the admin/owner panel always queries real match
 // counts directly and never sees this padding.
 function simulatedBattles(minCount) {
