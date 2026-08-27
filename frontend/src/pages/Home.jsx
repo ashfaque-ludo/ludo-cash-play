@@ -15,43 +15,29 @@ import {
 import {
   Dice5, Trophy, Crown, Zap, ShieldCheck, Smartphone, Download,
   ArrowRight, Wallet, Users, Sparkles, ChevronRight, Star, Award,
-  Play, Swords, PenLine, ChevronDown, RefreshCw, UserRound,
+  Play, Swords, PenLine, ChevronDown, RefreshCw,
 } from "lucide-react";
 import { toast } from "sonner";
-
-const AVATAR_COLORS = ["bg-red-500","bg-blue-500","bg-green-500","bg-purple-500","bg-orange-500","bg-pink-500","bg-cyan-500"];
-
-function LiveAvatar({ name, size = "w-10 h-10" }) {
-  const idx = (name?.charCodeAt(0) || 0) % AVATAR_COLORS.length;
-  return (
-    <div className={`${size} ${AVATAR_COLORS[idx]} rounded-full flex items-center justify-center shrink-0 ring-2 ring-white/10`}>
-      <UserRound className="w-[60%] h-[60%] text-white" strokeWidth={2.5} fill="currentColor" />
-    </div>
-  );
-}
+import { PlayerAvatar, VsBadge, battleRoles } from "@/components/BattleAvatars";
 
 function LiveBattleCard({ b }) {
   const [p1, p2] = b.players || [];
+  const [role1, role2] = battleRoles(b.id);
   return (
     <div className="rounded-2xl p-4 min-w-[240px] sm:min-w-0 flex-shrink-0 bg-gradient-to-br from-purple-500/15 via-white/5 to-orange-500/15 border border-white/10" data-testid={`live-battle-${b.id}`}>
       <div className="flex items-center justify-between gap-2">
         <div className="flex flex-col items-center gap-1 w-16">
-          <LiveAvatar name={p1?.name || "A"} />
+          <PlayerAvatar player={p1} role={role1} size="w-10 h-10" />
           <span className="text-[11px] font-bold text-white truncate max-w-[64px]">{p1?.name || "Player 1"}</span>
         </div>
-        <div className="flex flex-col items-center gap-1 shrink-0">
-          <div className="w-9 h-9 rounded-full bg-gradient-to-br from-red-600 via-orange-500 to-amber-400 flex items-center justify-center shadow-md">
-            <span className="text-white text-[10px] font-black tracking-wider">VS</span>
-          </div>
-        </div>
+        <VsBadge amount={fmtINR(b.prize || b.prize_pool)} size="w-9 h-9" />
         <div className="flex flex-col items-center gap-1 w-16">
-          <LiveAvatar name={p2?.name || "B"} />
+          <PlayerAvatar player={p2} role={role2} size="w-10 h-10" />
           <span className="text-[11px] font-bold text-white truncate max-w-[64px]">{p2?.name || "Player 2"}</span>
         </div>
       </div>
       <div className="flex items-center justify-center gap-3 mt-3 pt-3 border-t border-white/10 text-xs">
         <span className="text-slate-400">Entry <span className="text-white font-semibold">{fmtINR(b.stake)}</span></span>
-        <span className="text-emerald-400 font-bold">Prize {fmtINR(b.prize || b.prize_pool)}</span>
       </div>
     </div>
   );

@@ -6,6 +6,7 @@ const playerSlot = new mongoose.Schema(
     id:                String,
     name:              String,
     email:             String,
+    avatar:            { type: String, default: "" },
     result_screenshot: { type: String, default: "" },
     claimed_win:       { type: Boolean, default: null },
     result_claim:      { type: String, default: null },

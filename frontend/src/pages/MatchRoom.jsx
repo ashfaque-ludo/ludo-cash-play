@@ -7,6 +7,7 @@ import { ArrowLeft } from "lucide-react";
 import CancelBattlePopup from "@/components/CancelBattlePopup";
 import WonPopup from "@/components/WonPopup";
 import LostPopup from "@/components/LostPopup";
+import { PlayerAvatar, VsBadge, battleRoles } from "@/components/BattleAvatars";
 
 // ── Open the installed Ludo King app directly, store fallback only if absent ──
 // ludoking.com has no registered Android App Link (no assetlinks.json) or iOS
@@ -275,8 +276,9 @@ export default function MatchRoom() {
 
   const p1Name = match.player1?.name || match.players?.[0]?.name || 'Player 1';
   const p2Name = match.player2?.name || match.players?.[1]?.name || 'Player 2';
-  const p1Avatar = p1Name[0]?.toUpperCase() || 'P';
-  const p2Avatar = p2Name[0]?.toUpperCase() || 'P';
+  const p1Player = match.player1 || match.players?.[0];
+  const p2Player = match.player2 || match.players?.[1];
+  const [p1Role, p2Role] = battleRoles(match.id || match._id);
 
   const stakeAmount = match.stake_amount || match.stake || 0;
   const prizeAmount = match.prize_amount || match.prize || Math.floor(stakeAmount * 2 * 0.95);
@@ -315,23 +317,17 @@ export default function MatchRoom() {
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5 mb-4">
           <div className="flex items-center justify-between">
             <div className="flex flex-col items-center flex-1">
-              <div className="w-16 h-16 rounded-full bg-gradient-to-br from-red-500 to-red-800 flex items-center justify-center text-white text-2xl font-black mb-2 shadow">
-                {p1Avatar}
-              </div>
-              <p className="text-gray-900 font-bold text-sm text-center">{p1Name}</p>
+              <PlayerAvatar player={p1Player} role={p1Role} size="w-16 h-16" />
+              <p className="text-gray-900 font-bold text-sm text-center mt-2">{p1Name}</p>
             </div>
-            <div className="flex flex-col items-center px-4">
-              <div className="bg-gradient-to-br from-[#8B1111] to-[#C62828] text-white font-black text-lg px-4 py-2 rounded-xl shadow-md">
-                VS
-              </div>
+            <div className="flex flex-col items-center px-2">
+              <VsBadge amount={hasPlayer2 ? prizeAmount : null} size="w-14 h-14" />
             </div>
             <div className="flex flex-col items-center flex-1">
               {hasPlayer2 ? (
                 <>
-                  <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-blue-800 flex items-center justify-center text-white text-2xl font-black mb-2 shadow">
-                    {p2Avatar}
-                  </div>
-                  <p className="text-gray-900 font-bold text-sm text-center">{p2Name}</p>
+                  <PlayerAvatar player={p2Player} role={p2Role} size="w-16 h-16" />
+                  <p className="text-gray-900 font-bold text-sm text-center mt-2">{p2Name}</p>
                 </>
               ) : (
                 <>

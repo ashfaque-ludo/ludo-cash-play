@@ -81,7 +81,7 @@ function redactForSpectator(serialized) {
   delete s.room_code;
   delete s.room_password;
   delete s.results;
-  s.players = (s.players || []).map(p => ({ name: p.name, id: p.id || p.user }));
+  s.players = (s.players || []).map(p => ({ name: p.name, id: p.id || p.user, avatar: p.avatar || "" }));
   return s;
 }
 
@@ -241,7 +241,7 @@ const handleCreate = async (req, res) => {
         commission,
         room_code: null,
         room_password: "",
-        players: [{ user: req.user._id, id: req.user._id.toString(), name: req.user.name, email: req.user.email }],
+        players: [{ user: req.user._id, id: req.user._id.toString(), name: req.user.name, email: req.user.email, avatar: req.user.avatar_url || "" }],
       });
     } catch (createErr) {
       // Refund stake if match creation fails after debit
@@ -294,7 +294,7 @@ router.post("/:id/join", async (req, res) => {
     if (match.players.some(p => p.user.toString() === req.user._id.toString())) return res.status(400).json({ detail: "Already in match." });
     if (match.players.length >= 2) return res.status(400).json({ detail: "Match full." });
     await debit(req.user._id, match.stake);
-    match.players.push({ user: req.user._id, id: req.user._id.toString(), name: req.user.name, email: req.user.email });
+    match.players.push({ user: req.user._id, id: req.user._id.toString(), name: req.user.name, email: req.user.email, avatar: req.user.avatar_url || "" });
     match.status = "in_progress";
     match.started_at = new Date();
     await match.save();

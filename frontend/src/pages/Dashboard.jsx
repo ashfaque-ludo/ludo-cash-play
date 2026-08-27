@@ -3,8 +3,9 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { api, fmtINR } from "@/lib/api";
 import { toast } from "sonner";
-import { Users, Swords, Loader2, UserRound } from "lucide-react";
+import { Users, Swords, Loader2 } from "lucide-react";
 import AnnouncementBar from "@/components/AnnouncementBar";
+import { PlayerAvatar, VsBadge, battleRoles } from "@/components/BattleAvatars";
 
 const COMMISSION = 0.05; // 5%
 
@@ -12,18 +13,9 @@ function prize(stake) {
   return Math.floor(stake * 2 * (1 - COMMISSION));
 }
 
-function Avatar({ name, size = "w-9 h-9" }) {
-  const colors = ["bg-red-500","bg-blue-500","bg-green-500","bg-purple-500","bg-orange-500"];
-  const idx = (name?.charCodeAt(0) || 0) % colors.length;
-  return (
-    <div className={`${size} ${colors[idx]} rounded-full flex items-center justify-center shrink-0`}>
-      <UserRound className="w-[60%] h-[60%] text-white" strokeWidth={2.5} fill="currentColor" />
-    </div>
-  );
-}
-
 function BattleCard({ match, onPlay }) {
   const challenger = match.players?.[0];
+  const [role] = battleRoles(match.id || match._id);
   const fee = match.stake || 0;
   const p = prize(fee);
   const isOwn = match.isOwn;
@@ -31,7 +23,7 @@ function BattleCard({ match, onPlay }) {
   return (
     <div className="bg-gradient-to-r from-purple-50 via-white to-orange-50 border border-purple-200 rounded-2xl p-3 flex items-center gap-3 shadow-sm">
       <div className="flex flex-col items-center gap-1 w-16 shrink-0">
-        <Avatar name={challenger?.name || "R"} size="w-11 h-11" />
+        <PlayerAvatar player={challenger} role={role} size="w-11 h-11" />
         <span className="text-[11px] font-bold text-gray-800 truncate max-w-[64px]">{challenger?.name || "Player"}</span>
       </div>
       <div className="flex-1 min-w-0">
@@ -57,22 +49,18 @@ function BattleCard({ match, onPlay }) {
 
 function RunningCard({ match }) {
   const [p1, p2] = match.players || [];
+  const [role1, role2] = battleRoles(match.id || match._id);
   return (
     <div className="bg-gradient-to-r from-purple-50 via-white to-orange-50 border border-purple-200 rounded-2xl p-3 flex items-center justify-between shadow-sm">
       <div className="flex flex-col items-center gap-1 w-20">
-        <Avatar name={p1?.name || "A"} size="w-11 h-11" />
+        <PlayerAvatar player={p1} role={role1} size="w-11 h-11" />
         <span className="text-[11px] font-bold text-gray-800 truncate max-w-[76px]">{p1?.name || "Player 1"}</span>
       </div>
 
-      <div className="flex flex-col items-center gap-1 shrink-0">
-        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-red-600 via-orange-500 to-amber-400 flex items-center justify-center shadow-md">
-          <span className="text-white text-xs font-black tracking-wider">VS</span>
-        </div>
-        <span className="text-xs font-black text-green-600">{prize(match.stake || 0)}</span>
-      </div>
+      <VsBadge amount={prize(match.stake || 0)} />
 
       <div className="flex flex-col items-center gap-1 w-20">
-        <Avatar name={p2?.name || "B"} size="w-11 h-11" />
+        <PlayerAvatar player={p2} role={role2} size="w-11 h-11" />
         <span className="text-[11px] font-bold text-gray-800 truncate max-w-[76px]">{p2?.name || "Player 2"}</span>
       </div>
     </div>

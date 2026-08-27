@@ -1,9 +1,9 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { api, fmtINR, formatApiError } from "@/lib/api";
 import { toast } from "sonner";
-import { Edit2, Check, X, ShieldCheck, ShieldAlert, ShieldOff, Clock, Copy } from "lucide-react";
+import { Edit2, Check, X, ShieldCheck, ShieldAlert, ShieldOff, Clock, Copy, Camera } from "lucide-react";
 
 const KYC_META = {
   not_submitted: { label: "Not Verified", icon: ShieldOff, color: "text-gray-500", bg: "bg-gray-50 border-gray-200" },
@@ -20,8 +20,23 @@ export default function Profile() {
   const [pwForm, setPwForm] = useState({ current: "", next: "", confirm: "" });
   const [pwSaving, setPwSaving] = useState(false);
   const [pwOpen, setPwOpen] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const avatarInputRef = useRef();
 
   if (!user || user === false) return null;
+
+  const uploadAvatar = async (file) => {
+    if (!file) return;
+    setUploadingAvatar(true);
+    try {
+      const fd = new FormData();
+      fd.append("avatar", file);
+      await api.post("/profile/avatar", fd, { headers: { "Content-Type": "multipart/form-data" } });
+      await refresh();
+      toast.success("Profile photo updated!");
+    } catch (e) { toast.error(formatApiError(e.response?.data?.detail) || e.message); }
+    finally { setUploadingAvatar(false); }
+  };
 
   const w = user.wallet || { deposit: 0, winning: 0, bonus: 0 };
   const kycStatus = user.kyc_status || "not_submitted";
@@ -75,9 +90,31 @@ export default function Profile() {
         {/* Avatar + basic info */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4">
           <div className="flex items-start gap-4">
-            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-red-700 to-black flex items-center justify-center text-white font-black text-2xl shrink-0">
-              {(user.name || "?")[0].toUpperCase()}
-            </div>
+            <button
+              onClick={() => avatarInputRef.current?.click()}
+              disabled={uploadingAvatar}
+              className="relative w-14 h-14 rounded-2xl shrink-0 group"
+              data-testid="profile-avatar-upload"
+              title="Change profile photo"
+            >
+              {user.avatar_url ? (
+                <img src={user.avatar_url} alt={user.name} className="w-14 h-14 rounded-2xl object-cover" />
+              ) : (
+                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-red-700 to-black flex items-center justify-center text-white font-black text-2xl">
+                  {(user.name || "?")[0].toUpperCase()}
+                </div>
+              )}
+              <div className="absolute inset-0 rounded-2xl bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                <Camera className="w-5 h-5 text-white" />
+              </div>
+              <input
+                ref={avatarInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={e => uploadAvatar(e.target.files[0] || null)}
+              />
+            </button>
             <div className="flex-1 min-w-0">
               {editing ? (
                 <div className="space-y-2">
