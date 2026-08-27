@@ -7,13 +7,10 @@ function getAudioCtx() {
   const Ctx = window.AudioContext || window.webkitAudioContext;
   if (!Ctx) return null;
   if (!audioCtx) audioCtx = new Ctx();
-  if (audioCtx.state === "suspended") audioCtx.resume().catch(() => {});
   return audioCtx;
 }
 
-function playTapSound() {
-  const ctx = getAudioCtx();
-  if (!ctx) return;
+function scheduleTone(ctx) {
   try {
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
@@ -25,6 +22,17 @@ function playTapSound() {
     osc.start();
     osc.stop(ctx.currentTime + 0.08);
   } catch {}
+}
+
+function playTapSound() {
+  const ctx = getAudioCtx();
+  if (!ctx) return;
+  // A freshly-created (or backgrounded) context starts "suspended" —
+  // scheduling the tone before resume() actually completes means it's
+  // scheduled against a clock that hasn't started yet, so it plays too
+  // early/silently. Deferring to the resume promise fixes the first tap.
+  if (ctx.state === "suspended") ctx.resume().then(() => scheduleTone(ctx)).catch(() => {});
+  else scheduleTone(ctx);
 }
 
 function vibrate() {
