@@ -17,19 +17,11 @@ const STATUS_STYLE = {
 
 export default function Withdraw() {
   const { user, refresh } = useAuth();
-  const [method, setMethod] = useState("upi");
   const [amount, setAmount] = useState("");
   const [upiId, setUpiId] = useState("");
-  const [qrFile, setQrFile] = useState(null);
-  const [qrPreview, setQrPreview] = useState("");
   const [loading, setLoading] = useState(false);
   const [history, setHistory] = useState([]);
   const [kycStatus, setKycStatus] = useState(null);
-
-  const onQrSelect = (file) => {
-    setQrFile(file);
-    setQrPreview(file ? URL.createObjectURL(file) : "");
-  };
 
   const loadHistory = useCallback(async () => {
     try {
@@ -44,30 +36,22 @@ export default function Withdraw() {
   }, []);
 
   const w = user?.wallet || {};
-  const withdrawable = (w.winning || 0) + (w.referral || 0);
+  const withdrawable = (w.deposit || 0) + (w.winning || 0) + (w.referral || 0);
   const kycApproved = !KYC_ENFORCED || kycStatus === "approved";
+
+  const withdrawAll = () => setAmount(String(withdrawable));
 
   const handleWithdraw = async () => {
     const amt = parseFloat(amount);
-    if (!amt || amt < 500) return toast.error("Minimum withdrawal 500");
-    if (amt > 50000) return toast.error("Maximum withdrawal 50,000");
+    if (!amt || amt < 200) return toast.error("Minimum withdrawal 200");
     if (amt > withdrawable) return toast.error(`Insufficient balance. Withdrawable: ${withdrawable}`);
-    if (method === "upi" && !upiId.trim()) return toast.error("Enter your UPI ID");
-    if (method === "qr" && !qrFile) return toast.error("Upload your QR code image");
+    if (!upiId.trim()) return toast.error("Enter your UPI ID");
 
     setLoading(true);
     try {
-      if (method === "qr") {
-        const fd = new FormData();
-        fd.append("amount", amt);
-        fd.append("method", "qr");
-        fd.append("qr_code", qrFile);
-        await api.post("/wallet/withdraw", fd, { headers: { "Content-Type": "multipart/form-data" } });
-      } else {
-        await api.post("/wallet/withdraw", { amount: amt, method: "upi", upi_id: upiId.trim() });
-      }
+      await api.post("/wallet/withdraw", { amount: amt, upi_id: upiId.trim() });
       toast.success("Withdrawal initiated! Processing in ~60 seconds.");
-      setAmount(""); setUpiId(""); onQrSelect(null);
+      setAmount(""); setUpiId("");
       refresh();
       loadHistory();
     } catch (e) {
@@ -85,7 +69,7 @@ export default function Withdraw() {
         <p className="text-sm text-green-100">Withdrawable Balance</p>
         <p className="text-3xl font-black">{fmtINR(withdrawable)}</p>
         <p className="text-xs text-green-200 mt-0.5">
-          Winnings {fmtINR(w.winning || 0)} + Referral {fmtINR(w.referral || 0)}
+          Deposit {fmtINR(w.deposit || 0)} + Winnings {fmtINR(w.winning || 0)} + Referral {fmtINR(w.referral || 0)}
         </p>
       </div>
 
@@ -108,66 +92,30 @@ export default function Withdraw() {
       <div className={`bg-white rounded-2xl border border-gray-200 shadow-sm p-4 space-y-4 mb-4 ${!kycApproved ? "opacity-50 pointer-events-none" : ""}`}>
         {/* Amount */}
         <div>
-          <label className="text-xs font-bold text-gray-600 uppercase tracking-wide block mb-1.5">
-            Withdrawal Amount
-          </label>
+          <div className="flex items-center justify-between mb-1.5">
+            <label className="text-xs font-bold text-gray-600 uppercase tracking-wide">
+              Withdrawal Amount
+            </label>
+            <button type="button" onClick={withdrawAll} className="text-xs font-bold text-red-700 hover:underline">
+              Withdraw All ({fmtINR(withdrawable)})
+            </button>
+          </div>
           <div className="flex items-center bg-gray-50 rounded-xl border border-gray-300 px-3 focus-within:border-red-600 focus-within:ring-2 focus-within:ring-red-100 transition-all">
             <span className="text-gray-500 font-bold mr-1 text-lg"></span>
             <input type="text" inputMode="numeric" value={amount}
               onChange={e => setAmount(e.target.value.replace(/\D/g,""))}
-              placeholder="Min 500, Max 50,000"
+              placeholder="Min 200"
               className="flex-1 bg-transparent py-3 outline-none text-gray-900 text-lg" />
           </div>
         </div>
 
-        {/* Method Toggle */}
+        {/* UPI ID */}
         <div>
-          <label className="text-xs font-bold text-gray-600 uppercase tracking-wide block mb-2">Payment Method</label>
-          <div className="grid grid-cols-2 gap-2">
-            {[{id:"upi",label:"📱 Add UPI ID"},{id:"qr",label:"🔳 Add QR Code"}].map(m => (
-              <button key={m.id} onClick={() => setMethod(m.id)}
-                className={`py-2.5 rounded-xl font-bold border-2 transition-all text-sm ${
-                  method === m.id ? "bg-red-700 text-white border-red-700" : "bg-white text-gray-600 border-gray-200"
-                }`}>
-                {m.label}
-              </button>
-            ))}
-          </div>
+          <label className="text-xs font-bold text-gray-600 uppercase tracking-wide block mb-1.5">UPI ID</label>
+          <input value={upiId} onChange={e => setUpiId(e.target.value)}
+            placeholder="Paste your UPI ID — yourname@upi or phone@upi"
+            className="w-full h-11 px-3 rounded-xl bg-gray-50 border border-gray-300 text-gray-900 outline-none focus:border-red-600 focus:ring-2 focus:ring-red-100 transition-all" />
         </div>
-
-        {/* UPI fields */}
-        {method === "upi" && (
-          <div>
-            <label className="text-xs font-bold text-gray-600 uppercase tracking-wide block mb-1.5">UPI ID</label>
-            <input value={upiId} onChange={e => setUpiId(e.target.value)}
-              placeholder="yourname@upi or phone@upi"
-              className="w-full h-11 px-3 rounded-xl bg-gray-50 border border-gray-300 text-gray-900 outline-none focus:border-red-600 focus:ring-2 focus:ring-red-100 transition-all" />
-          </div>
-        )}
-
-        {/* QR code upload */}
-        {method === "qr" && (
-          <div>
-            <label className="text-xs font-bold text-gray-600 uppercase tracking-wide block mb-1.5">Your Payment QR Code</label>
-            <label
-              className="relative flex flex-col items-center justify-center gap-2 border-2 border-dashed rounded-xl cursor-pointer overflow-hidden py-6"
-              style={{ borderColor: qrFile ? "#dc2626" : "#d1d5db", minHeight: 120 }}>
-              <input type="file" accept="image/*" className="hidden"
-                onChange={e => onQrSelect(e.target.files[0] || null)} />
-              {qrPreview ? (
-                <img src={qrPreview} alt="QR preview" className="max-h-40 object-contain" />
-              ) : (
-                <>
-                  <span className="text-3xl">🔳</span>
-                  <span className="text-xs text-gray-500">Tap to upload your UPI/QR code image</span>
-                </>
-              )}
-            </label>
-            <p className="text-xs text-gray-400 mt-1.5">
-              Upload the QR code from your UPI app (Paytm, PhonePe, GPay, etc.) — admin will scan it to send your payout.
-            </p>
-          </div>
-        )}
 
         <button onClick={handleWithdraw} disabled={loading || !kycApproved}
           className="w-full h-12 rounded-xl bg-gradient-to-r from-red-700 to-black text-white font-black disabled:opacity-50 hover:opacity-90 transition-all">

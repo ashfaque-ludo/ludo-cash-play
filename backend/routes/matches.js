@@ -26,6 +26,42 @@ async function autoSettleAgreed(match, winnerPlayer, loserPlayer) {
   await payReferralBonus(loserPlayer.user, match.stake, match._id);
 }
 
+// Settle from a single submitted result if the opponent never responds —
+// mirrors autoSettleAgreed's crediting logic but is triggered by a timeout
+// instead of the opponent's own claim, so it needs its own compare-and-swap
+// to avoid double-crediting if the opponent submits (or another timer fires)
+// in between.
+async function autoSettleUnresponsive(matchId) {
+  try {
+    const match = await Match.findById(matchId);
+    if (!match || match.status !== "awaiting_review") return;
+    const submitter = match.players.find(p => p.result_claim != null);
+    const opponent = match.players.find(p => p.result_claim == null);
+    if (!submitter || !opponent) return;
+    const winnerPlayer = submitter.claimed_win ? submitter : opponent;
+    const loserPlayer = submitter.claimed_win ? opponent : submitter;
+
+    const claimed = await Match.findOneAndUpdate(
+      { _id: matchId, status: "awaiting_review" },
+      { $set: { winner: winnerPlayer.user, status: "ended", ended_at: new Date() } },
+      { new: true }
+    );
+    if (!claimed) return;
+    await User.findByIdAndUpdate(winnerPlayer.user, { $inc: { "wallet.winning": claimed.prize_pool } });
+    await Transaction.create({
+      user: winnerPlayer.user, user_phone: "", type: "match_win", amount: claimed.prize_pool, status: "completed",
+      description: `Won ${claimed.prize_pool} battle (opponent unresponsive)`, meta: { match: claimed._id, stake: claimed.stake },
+    }).catch(() => {});
+    await Transaction.create({
+      user: loserPlayer.user, user_phone: "", type: "match_loss", amount: -claimed.stake, status: "completed",
+      description: `Lost ${claimed.stake} battle (no response submitted)`, meta: { match: claimed._id, stake: claimed.stake },
+    }).catch(() => {});
+    await payReferralBonus(winnerPlayer.user, claimed.stake, claimed._id);
+    await payReferralBonus(loserPlayer.user, claimed.stake, claimed._id);
+    console.log(`[AUTO-SETTLE] Match ${matchId} settled — opponent never submitted a result`);
+  } catch (err) { console.error("Auto-settle unresponsive-opponent error:", err.message); }
+}
+
 async function getPCT() {
   try {
     const v = await Config.get("commission_pct", null);
@@ -541,6 +577,12 @@ router.post("/:id/submit-result", async (req, res) => {
 
     match.status = "awaiting_review";
     await match.save();
+
+    // Give the opponent a short window to submit their own result — if they
+    // never respond, don't leave the submitting player waiting indefinitely:
+    // settle from their claim alone and credit the winner.
+    setTimeout(() => autoSettleUnresponsive(match._id), 3 * 60 * 1000);
+
     return res.json({ ok: true, auto_resolved: false, status: "awaiting_review", match: serializeMatch(match) });
   } catch (e) { res.status(500).json({ detail: "Server error." }); }
 });

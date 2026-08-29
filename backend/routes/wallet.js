@@ -1,7 +1,4 @@
 const router = require("express").Router();
-const multer = require("multer");
-const path = require("path");
-const fs = require("fs");
 const User = require("../models/User");
 const Transaction = require("../models/Transaction");
 const Promo = require("../models/Promo");
@@ -10,24 +7,6 @@ const Promo = require("../models/Promo");
 // enforcement resumes.
 const KYC_ENFORCED = false;
 
-// ── QR-code withdrawal upload — user's own payment QR image ─────────────────
-const qrDir = path.join(__dirname, "../uploads/withdrawal_qr");
-if (!fs.existsSync(qrDir)) fs.mkdirSync(qrDir, { recursive: true });
-const qrUpload = multer({
-  storage: multer.diskStorage({
-    destination: (req, file, cb) => cb(null, qrDir),
-    filename: (req, file, cb) => {
-      const ext = path.extname(file.originalname).toLowerCase();
-      cb(null, `${Date.now()}-${req.user._id}${ext}`);
-    },
-  }),
-  limits: { fileSize: 5 * 1024 * 1024 },
-  fileFilter: (req, file, cb) => {
-    const ok = [".jpg", ".jpeg", ".png", ".webp"];
-    cb(ok.includes(path.extname(file.originalname).toLowerCase()) ? null : new Error("Images only"), true);
-  },
-});
-
 // ── GET /wallet ───────────────────────────────────────────────────────────────
 router.get("/", async (req, res) => {
   const user = await User.findById(req.user._id);
@@ -35,18 +14,13 @@ router.get("/", async (req, res) => {
 });
 
 // ── POST /wallet/withdraw ─────────────────────────────────────────────────────
-// method "qr" is multipart (carries the QR image file); "upi"/"bank" stay
-// JSON. qrUpload.single() is a no-op for non-multipart requests, so it's
-// safe to apply unconditionally.
-router.post("/withdraw", qrUpload.single("qr_code"), async (req, res) => {
+// UPI only — the whole wallet (deposit + winning + referral) is withdrawable
+// in a single request, up to whatever the user's balance actually is.
+router.post("/withdraw", async (req, res) => {
   try {
-    // req.body.amount arrives as a string for multipart (qr) submissions —
-    // normalize to a Number up front so every downstream comparison/arithmetic
-    // op is well-defined.
-    const { method = "upi", upi_id, account_number, ifsc, account_holder } = req.body;
+    const { upi_id } = req.body;
     const amount = Number(req.body.amount);
-    if (!amount || amount < 500)  return res.status(400).json({ detail: "Minimum withdrawal 500." });
-    if (amount > 50000)            return res.status(400).json({ detail: "Maximum withdrawal 50,000." });
+    if (!amount || amount < 200) return res.status(400).json({ detail: "Minimum withdrawal 200." });
 
     const user = await User.findById(req.user._id);
 
@@ -58,37 +32,29 @@ router.post("/withdraw", qrUpload.single("qr_code"), async (req, res) => {
       return res.status(403).json({ detail: "Complete KYC verification before withdrawing.", kyc_required: true });
     }
 
-    const withdrawable = (user.wallet.winning || 0) + (user.wallet.referral || 0);
+    const withdrawable = (user.wallet.deposit || 0) + (user.wallet.winning || 0) + (user.wallet.referral || 0);
     if (withdrawable < amount)
       return res.status(400).json({ detail: `Insufficient balance. Withdrawable: ${withdrawable}.` });
 
-    if (method === "upi" && !upi_id?.trim())
+    if (!upi_id?.trim())
       return res.status(400).json({ detail: "UPI ID required." });
-    if (method === "bank" && (!account_number?.trim() || !ifsc?.trim() || !account_holder?.trim()))
-      return res.status(400).json({ detail: "Account number, IFSC and account holder name required." });
-    if (method === "qr" && !req.file)
-      return res.status(400).json({ detail: "QR code image required." });
 
-    const backendUrl = process.env.BACKEND_URL || `${req.protocol}://${req.get("host")}`;
-    const qrCodeUrl = method === "qr" && req.file ? `${backendUrl}/uploads/withdrawal_qr/${req.file.filename}` : "";
-
-    // Deduct: referral first, then winning
+    // Deduct across the whole wallet: referral, then winning, then deposit —
+    // lets a user cash out everything, not just their winnings.
     let rem = amount;
     const refBal = user.wallet.referral || 0;
-    if (refBal >= rem) { user.wallet.referral -= rem; rem = 0; }
-    else { rem -= refBal; user.wallet.referral = 0; user.wallet.winning -= rem; }
+    const take1 = Math.min(refBal, rem); user.wallet.referral -= take1; rem -= take1;
+    const winBal = user.wallet.winning || 0;
+    const take2 = Math.min(winBal, rem); user.wallet.winning -= take2; rem -= take2;
+    user.wallet.deposit -= rem;
     await user.save();
 
     const tx = await Transaction.create({
       user: user._id, user_email: user.email || "", user_phone: user.phone || "",
       type: "withdrawal", amount,
-      method: method.toUpperCase(),
-      upi_id: method === "upi" ? (upi_id?.trim() || "") : "",
-      account_number: method === "bank" ? (account_number?.trim() || "") : "",
-      ifsc: method === "bank" ? (ifsc?.trim() || "") : "",
-      account_holder: method === "bank" ? (account_holder?.trim() || "") : "",
-      qr_code_url: qrCodeUrl,
-      description: `Withdrawal via ${method.toUpperCase()}`,
+      method: "UPI",
+      upi_id: upi_id.trim(),
+      description: "Withdrawal via UPI",
     });
 
     res.status(201).json({
