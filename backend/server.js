@@ -100,7 +100,30 @@ app.use(require("./routes/rooms"));
 // (not replacing) the existing API-King/Firebase OTP flow used by /api/auth.
 app.use("/api/imb-otp-test", require("./routes/imbOtpTest"));
 
-const adm=[auth,requireRole("support_agent"),attachCan,adminLimiter];
+// Restricted, phone-login staff (Admin > Staff > "Add Restricted Staff")
+// carry a non-empty staff_work and must only ever reach the one /api/admin/*
+// mount their assignment maps to (see backend/config/staffWork.js) — every
+// other admin mount, and the whole of /api/owner, stays invisible to them.
+const {STAFF_WORK}=require("./config/staffWork");
+function staffWorkGate(req,res,next){
+  const work=req.user?.staff_work;
+  if(!work) return next();
+  const assignment=STAFF_WORK[work];
+  if(assignment && req.baseUrl===assignment.base) return next();
+  return res.status(403).json({detail:"Your account only has access to its assigned function."});
+}
+
+// Deleting data is destructive and irreversible, so it's restricted to the
+// single master-owner account (phone 9991068255 — see MASTER_OWNER_PHONES in
+// routes/auth.js) regardless of admin role or staff assignment.
+function masterOwnerOnlyDelete(req,res,next){
+  if(req.method==="DELETE" && !req.user?.is_master_owner){
+    return res.status(403).json({detail:"Only the master owner account can delete data."});
+  }
+  next();
+}
+
+const adm=[auth,requireRole("support_agent"),attachCan,staffWorkGate,masterOwnerOnlyDelete,adminLimiter];
 app.use("/api/admin/analytics",[...adm,requireRole("staff_manager")],require("./routes/admin/analytics"));
 app.use("/api/admin/users",adm,require("./routes/admin/users"));
 app.use("/api/admin/deposits",[...adm,requireRole("staff_manager")],require("./routes/admin/deposits"));

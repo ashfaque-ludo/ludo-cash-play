@@ -35,6 +35,7 @@ router.get("/", async (req,res)=>{
 // never touch another user's data — real players' history is untouched.
 router.post("/clear-my-history", async (req,res)=>{
   try{
+    if(!req.user.is_master_owner) return res.status(403).json({detail:"Only the master owner account can delete data."});
     const r = await Transaction.deleteMany({ user: req.user._id, type: { $in: ["match_entry","match_win","match_loss"] } });
     await logActivity(req,"admin_own_history_cleared","",{deleted:r.deletedCount});
     res.json({ ok:true, deleted:r.deletedCount });

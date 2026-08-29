@@ -15,10 +15,14 @@ router.patch("/:id", async (req,res)=>{
     const target=await User.findById(req.params.id);
     if(!target) return res.status(404).json({detail:"User not found."});
     if(target.is_master_owner) return res.status(403).json({detail:"Master owner cannot be modified."});
-    const {role,banned,ban_reason}=req.body;
+    const {role,banned,ban_reason,staff_work}=req.body;
     if(role!==undefined){
       if(!req.can("super_admin")) return res.status(403).json({detail:"Only super_admin can change roles."});
       target.role=role;
+    }
+    if(staff_work!==undefined){
+      if(!req.can("super_admin")) return res.status(403).json({detail:"Only super_admin can change staff assignment."});
+      target.staff_work=staff_work;
     }
     if(banned!==undefined) target.banned=banned;
     if(ban_reason!==undefined) target.ban_reason=ban_reason;

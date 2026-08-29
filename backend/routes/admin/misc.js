@@ -7,6 +7,8 @@ const StakeTable=require("../../models/StakeTable");
 const Config=require("../../models/Config");
 const {logActivity}=require("../../middleware/activityLogger");
 const SupportTicket=require("../../models/SupportTicket");
+const {v4:uuidv4}=require("uuid");
+const {STAFF_WORK}=require("../../config/staffWork");
 
 router.get("/promos", async (req,res)=>{ res.json({promos:await Promo.find().sort({createdAt:-1})}); });
 router.post("/promos", async (req,res)=>{
@@ -53,7 +55,34 @@ router.delete("/stake-tables/:stake", async (req,res)=>{ await StakeTable.findOn
 router.post("/staff/create", async (req,res)=>{
   try{
     if(!req.can("super_admin")) return res.status(403).json({detail:"super_admin only."});
-    const {name,email,password,role="support_agent"}=req.body;
+    const {name,phone,work}=req.body;
+
+    // Restricted staff — phone + work assignment. Logs in the same way a
+    // normal user does (phone + OTP); their account's staff_work then locks
+    // the admin panel down to exactly one function (see WORK_TAB in
+    // Admin.jsx, staffWorkGate in server.js).
+    if(phone){
+      if(!name||!name.trim()) return res.status(400).json({detail:"Name required."});
+      const assignment=STAFF_WORK[work];
+      if(!assignment) return res.status(400).json({detail:"Select a valid work assignment."});
+      const digits=String(phone).replace(/\D/g,"").replace(/^91/,"");
+      if(!/^[6-9]\d{9}$/.test(digits)) return res.status(400).json({detail:"Enter a valid 10-digit phone number."});
+
+      let s=await User.findOne({phone:digits});
+      if(s){
+        if(s.is_master_owner) return res.status(403).json({detail:"Cannot convert the master owner into staff."});
+        s.name=name.trim(); s.role=assignment.role; s.staff_work=work;
+      } else {
+        let refCode; do{ refCode=uuidv4().slice(0,8).toUpperCase(); }while(await User.findOne({referral_code:refCode}));
+        s=new User({name:name.trim(),phone:digits,role:assignment.role,staff_work:work,referral_code:refCode,wallet:{deposit:0,winning:0,bonus:0}});
+      }
+      await s.save();
+      await logActivity(req,"staff_created",digits,{work});
+      return res.status(201).json({ok:true,user:s.toPublic()});
+    }
+
+    // Full admin — email + password, unrestricted within their role's level.
+    const {email,password,role="support_agent"}=req.body;
     if(!name||!email||!password) return res.status(400).json({detail:"name, email, password required."});
     if(password.length<6) return res.status(400).json({detail:"Min 6 chars."});
     if(!["support_agent","staff_manager","admin"].includes(role)) return res.status(400).json({detail:"Invalid role."});

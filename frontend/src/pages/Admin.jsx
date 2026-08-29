@@ -22,11 +22,41 @@ import DepositsTab from "@/components/admin/DepositsTab";
 
 const ROLES = ["user", "support_agent", "staff_manager", "admin", "super_admin"];
 
+// Mirrors backend/config/staffWork.js — a restricted staff account (added via
+// Admin > Staff > "Add Restricted Staff") only ever sees the one function its
+// staff_work is assigned to, nothing else in the admin panel.
+const WORK_TAB = {
+  withdrawals: { label: "Withdrawals", icon: ArrowDownToLine, Comp: () => <WithdrawalsTab /> },
+  deposits:    { label: "Deposit History", icon: WalletIcon, Comp: () => <DepositsTab /> },
+  matches:     { label: "Matches", icon: Trophy, Comp: ({ user }) => <MatchesTab actor={user} /> },
+  screenshots: { label: "Screenshots", icon: Camera, Comp: () => <ScreenshotsTab /> },
+  kyc:         { label: "KYC", icon: ShieldCheck, Comp: () => <KycTab /> },
+  support:     { label: "Support", icon: Phone, Comp: () => <SupportMgmtTab /> },
+};
+
 export default function Admin() {
   const { user } = useAuth();
   if (!user || user === false) return null;
   const role = user.role;
   const can = (min) => ({ user:0, support_agent:1, staff_manager:2, admin:3, super_admin:4 }[role] >= { user:0, support_agent:1, staff_manager:2, admin:3, super_admin:4 }[min]);
+
+  if (user.staff_work && WORK_TAB[user.staff_work]) {
+    const { label, icon: Icon, Comp } = WORK_TAB[user.staff_work];
+    return (
+      <div className="min-h-screen pt-24 pb-16 bg-gradient-to-b from-amber-50 to-white">
+        <div className="max-w-7xl mx-auto px-6 lg:px-12">
+          <div className="flex flex-wrap items-end justify-between gap-3 mb-6">
+            <div>
+              <div className="text-xs uppercase tracking-[0.25em] text-red-700 font-bold flex items-center gap-2"><Icon className="w-3.5 h-3.5" /> Staff — {label}</div>
+              <h1 className="text-3xl sm:text-4xl font-extrabold mt-1"><span className="text-red-700">{label}</span></h1>
+            </div>
+            <Badge variant="outline" className="border-red-200 text-red-700 bg-red-50">{user.name || user.phone}</Badge>
+          </div>
+          <Comp user={user} />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen pt-24 pb-16 bg-gradient-to-b from-amber-50 to-white">
@@ -871,6 +901,7 @@ function TablesTab(){
 function StaffTab(){
   const [rows, setRows] = useState([]);
   const [form, setForm] = useState({ email: "", password: "", name: "", role: "support_agent" });
+  const [restrictedForm, setRestrictedForm] = useState({ name: "", work: "", phone: "" });
   const load = async () => {
     try {
       const r = await api.get("/admin/users?limit=500");
@@ -886,13 +917,43 @@ function StaffTab(){
       load();
     } catch (e) { toast.error(formatApiError(e.response?.data?.detail) || e.message); }
   };
+  const createRestricted = async () => {
+    try {
+      await api.post("/admin/staff/create", restrictedForm);
+      toast.success("Staff added — they can log in with their phone number and OTP.");
+      setRestrictedForm({ name: "", work: "", phone: "" });
+      load();
+    } catch (e) { toast.error(formatApiError(e.response?.data?.detail) || e.message); }
+  };
   const demote = async (u) => {
-    try { await api.patch(`/admin/users/${u.id}`, { role: "user" }); toast.success("Access revoked"); load(); }
+    try {
+      await api.patch(`/admin/users/${u.id}`, { role: "user", staff_work: "" });
+      toast.success("Access revoked");
+      load();
+    }
     catch (e) { toast.error(formatApiError(e.response?.data?.detail) || e.message); }
   };
   return (
+    <>
     <Card className="bg-white border-gray-200 shadow-sm text-gray-900 mt-5">
-      <CardHeader><CardTitle>Staff & roles</CardTitle></CardHeader>
+      <CardHeader><CardTitle>Add Restricted Staff</CardTitle></CardHeader>
+      <CardContent>
+        <p className="text-sm text-gray-500 mb-3">They log in with their phone number (OTP, same as any player) and only see the one function you assign — nothing else in the admin panel.</p>
+        <div className="grid sm:grid-cols-4 gap-2 mb-4">
+          <Input placeholder="Staff name" value={restrictedForm.name} onChange={e=>setRestrictedForm({...restrictedForm, name:e.target.value})} className="bg-gray-50 border-gray-300 text-gray-900" data-testid="restricted-staff-name" />
+          <Select value={restrictedForm.work} onValueChange={v=>setRestrictedForm({...restrictedForm, work:v})}>
+            <SelectTrigger className="bg-gray-50 border-gray-300 text-gray-900" data-testid="restricted-staff-work"><SelectValue placeholder="Work" /></SelectTrigger>
+            <SelectContent className="bg-white border-gray-200 text-gray-900">
+              {Object.entries(WORK_TAB).map(([key, w])=> <SelectItem key={key} value={key}>{w.label}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Input placeholder="10-digit phone number" value={restrictedForm.phone} onChange={e=>setRestrictedForm({...restrictedForm, phone:e.target.value.replace(/\D/g,"")})} className="bg-gray-50 border-gray-300 text-gray-900" data-testid="restricted-staff-phone" />
+          <Button onClick={createRestricted} disabled={restrictedForm.name.length < 2 || !restrictedForm.work || restrictedForm.phone.length !== 10} className="rounded-full bg-gradient-to-r from-red-700 to-black text-white" data-testid="restricted-staff-create">Add staff</Button>
+        </div>
+      </CardContent>
+    </Card>
+    <Card className="bg-white border-gray-200 shadow-sm text-gray-900 mt-5">
+      <CardHeader><CardTitle>Full Admins (email &amp; password)</CardTitle></CardHeader>
       <CardContent>
         <div className="grid sm:grid-cols-5 gap-2 mb-4">
           <Input placeholder="Name" value={form.name} onChange={e=>setForm({...form, name:e.target.value})} className="bg-gray-50 border-gray-300 text-gray-900" data-testid="staff-name" />
@@ -907,25 +968,27 @@ function StaffTab(){
           <Button onClick={create} disabled={!form.email || form.password.length < 6 || form.name.length < 2} className="rounded-full bg-gradient-to-r from-red-700 to-black text-white" data-testid="staff-create">Create staff</Button>
         </div>
         <Table>
-          <TableHeader><TableRow className="border-gray-200"><TableHead>Name</TableHead><TableHead>Email</TableHead><TableHead>Role</TableHead><TableHead>Actions</TableHead></TableRow></TableHeader>
+          <TableHeader><TableRow className="border-gray-200"><TableHead>Name</TableHead><TableHead>Email / Phone</TableHead><TableHead>Role</TableHead><TableHead>Work</TableHead><TableHead>Actions</TableHead></TableRow></TableHeader>
           <TableBody>
             {rows.map(u => (
-              <TableRow key={u.id} className="border-gray-200" data-testid={`staff-row-${u.email}`}>
+              <TableRow key={u.id} className="border-gray-200" data-testid={`staff-row-${u.email || u.phone}`}>
                 <TableCell>{u.name} {u.is_master_owner && <Badge className="ml-1 bg-amber-500 text-black text-[10px]"><Lock className="w-3 h-3 mr-0.5" />MASTER</Badge>}</TableCell>
-                <TableCell className="text-gray-400">{u.email}</TableCell>
+                <TableCell className="text-gray-400">{u.email || u.phone}</TableCell>
                 <TableCell><Badge variant="outline" className="border-amber-500/30 text-amber-300">{u.role}</Badge></TableCell>
+                <TableCell>{u.staff_work ? <Badge variant="outline" className="border-red-300 text-red-700">{WORK_TAB[u.staff_work]?.label || u.staff_work}</Badge> : <span className="text-gray-300">—</span>}</TableCell>
                 <TableCell>
                   {!u.is_master_owner && (
-                    <Button onClick={()=>demote(u)} size="sm" variant="outline" className="rounded-full border-red-500/30 text-red-300" data-testid={`revoke-${u.email}`}>Revoke access</Button>
+                    <Button onClick={()=>demote(u)} size="sm" variant="outline" className="rounded-full border-red-500/30 text-red-300" data-testid={`revoke-${u.email || u.phone}`}>Revoke access</Button>
                   )}
                 </TableCell>
               </TableRow>
             ))}
-            {rows.length === 0 && <TableRow><TableCell colSpan={4} className="text-center text-gray-500 py-6">No staff yet.</TableCell></TableRow>}
+            {rows.length === 0 && <TableRow><TableCell colSpan={5} className="text-center text-gray-500 py-6">No staff yet.</TableCell></TableRow>}
           </TableBody>
         </Table>
       </CardContent>
     </Card>
+    </>
   );
 }
 

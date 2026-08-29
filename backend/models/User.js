@@ -14,6 +14,11 @@ const userSchema = new mongoose.Schema({
   password:        { type: String, select: false },
   phone:           { type: String },
   role:            { type: String, enum: ["user","support_agent","staff_manager","admin","super_admin"], default: "user" },
+  // Non-empty only for phone-login staff created via Admin > Staff > "Add
+  // Restricted Staff" — locks the admin panel down to exactly one function
+  // (see WORK_TAB in Admin.jsx and staffWorkGate in server.js). Empty for
+  // every regular user/admin/owner account.
+  staff_work:      { type: String, default: "" },
   is_master_owner: { type: Boolean, default: false },
   banned:          { type: Boolean, default: false },
   ban_reason:      { type: String, default: "" },
