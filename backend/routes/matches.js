@@ -360,6 +360,28 @@ router.post("/:id/cancel", async (req, res) => {
       return res.json({ ok: true, message: "Battle cancelled. Amount refunded." });
     }
 
+    // In progress or matched, but room code not yet shared — either player
+    // can cancel unilaterally and get an instant refund. Nobody has actually
+    // started playing yet, so there's nothing to protect by requiring mutual
+    // consent here; that requirement only makes sense once the room code is
+    // out and the match could really be in play.
+    if (["in_progress", "matched"].includes(match.status) && !match.room_code) {
+      const settled = await Match.findOneAndUpdate(
+        { _id: req.params.id, status: match.status, room_code: { $in: [null, ""] } },
+        { $set: { status: "cancelled", cancel_reason: req.body.reason || "Cancelled by player before room code was shared", cancelled_by: req.user._id } },
+        { new: true }
+      );
+      if (settled) {
+        const ids = settled.players.map(p => p.user).filter(Boolean);
+        if (ids.length) await User.updateMany({ _id: { $in: ids } }, { $inc: { "wallet.deposit": settled.stake } });
+        return res.json({ ok: true, auto_resolved: true, message: "Battle cancelled. Amount refunded." });
+      }
+      // Lost the race (room code got set / match already settled) — fall
+      // through to the mutual-cancel flow below on the now-current state.
+      const fresh = await Match.findById(req.params.id);
+      if (fresh) Object.assign(match, fresh.toObject());
+    }
+
     // In progress or matched — track who cancelled
     if (["in_progress", "matched"].includes(match.status)) {
       // Atomic $addToSet — the previous version read the match, mutated
