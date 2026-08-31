@@ -16,7 +16,7 @@ import {
   Table, TableHeader, TableRow, TableHead, TableBody, TableCell
 } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
-import { ShieldCheck, ShieldAlert, ShieldOff, Users, Wallet as WalletIcon, ArrowDownToLine, Trophy, Tag, Megaphone, BarChart3, FileText, Lock, Ban, KeyRound, Settings, Layers, UserPlus, Trash2, Camera, ZoomIn, Share2, Clock, MessageSquare, Image, PlusCircle, MinusCircle, Gift, Phone } from "lucide-react";
+import { ShieldCheck, ShieldAlert, ShieldOff, Users, Wallet as WalletIcon, ArrowDownToLine, Trophy, Tag, Megaphone, BarChart3, FileText, Lock, Ban, KeyRound, Settings, Layers, UserPlus, Trash2, Camera, ZoomIn, Share2, Clock, MessageSquare, Image, PlusCircle, MinusCircle, Gift, Phone, Search } from "lucide-react";
 import { toast } from "sonner";
 import DepositsTab from "@/components/admin/DepositsTab";
 
@@ -76,6 +76,7 @@ export default function Admin() {
             {can("staff_manager") && <TabsTrigger value="deposits" data-testid="tab-deposits"><WalletIcon className="w-3.5 h-3.5 mr-1" /> Deposit History</TabsTrigger>}
             {can("staff_manager") && <TabsTrigger value="withdrawals" data-testid="tab-withdrawals"><ArrowDownToLine className="w-3.5 h-3.5 mr-1" /> Withdrawals</TabsTrigger>}
             <TabsTrigger value="matches" data-testid="tab-matches"><Trophy className="w-3.5 h-3.5 mr-1" /> Matches</TabsTrigger>
+            <TabsTrigger value="verify-result" data-testid="tab-verify-result"><Search className="w-3.5 h-3.5 mr-1" /> Verify Result</TabsTrigger>
             <TabsTrigger value="screenshots" data-testid="tab-screenshots"><Camera className="w-3.5 h-3.5 mr-1" /> Screenshots</TabsTrigger>
             <TabsTrigger value="referrals" data-testid="tab-referrals"><Share2 className="w-3.5 h-3.5 mr-1" /> Referrals</TabsTrigger>
             <TabsTrigger value="kyc" data-testid="tab-kyc"><ShieldCheck className="w-3.5 h-3.5 mr-1" /> KYC</TabsTrigger>
@@ -97,6 +98,7 @@ export default function Admin() {
           <TabsContent value="deposits"><DepositsTab /></TabsContent>
           <TabsContent value="withdrawals"><WithdrawalsTab /></TabsContent>
           <TabsContent value="matches"><MatchesTab actor={user} /></TabsContent>
+          <TabsContent value="verify-result"><VerifyResultTab /></TabsContent>
           <TabsContent value="screenshots"><ScreenshotsTab /></TabsContent>
           <TabsContent value="referrals"><ReferralsTab /></TabsContent>
           <TabsContent value="kyc"><KycTab /></TabsContent>
@@ -467,6 +469,79 @@ function WithdrawalsTab(){
           <button onClick={() => setZoomedUrl(null)} className="fixed top-5 right-5 bg-white/10 rounded-full w-9 h-9 grid place-items-center text-white text-lg">✕</button>
         </div>
       )}
+    </Card>
+  );
+}
+
+// ─── Verify Result Tab — standalone room-code lookup ──────────────────────
+function VerifyResultTab() {
+  const [roomCode, setRoomCode] = useState("");
+  const [claimedWinner, setClaimedWinner] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [result, setResult] = useState(null);
+  const [error, setError] = useState("");
+
+  const verify = async () => {
+    if (!roomCode.trim()) return toast.error("Room code required");
+    setBusy(true);
+    setResult(null);
+    setError("");
+    try {
+      const r = await api.post("/admin/matches/verify-result", { roomCode: roomCode.trim(), claimedWinner: claimedWinner.trim() });
+      setResult(r.data);
+    } catch (e) {
+      setError(formatApiError(e.response?.data?.detail) || e.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Card className="bg-white border-gray-200 shadow-sm text-gray-900 mt-5">
+      <CardHeader><CardTitle>Verify Result via API</CardTitle></CardHeader>
+      <CardContent className="space-y-4">
+        <p className="text-sm text-gray-500">
+          Look up a Ludo King room's actual result using its room code — for the rare case of a suspected wrong/fake result claim.
+          This is manual/on-demand only; the normal match flow keeps settling automatically without this.
+        </p>
+        <div className="grid sm:grid-cols-2 gap-3">
+          <div>
+            <Label className="text-gray-600 text-xs">Room Code *</Label>
+            <Input value={roomCode} onChange={e => setRoomCode(e.target.value.replace(/\D/g,""))} placeholder="e.g. 06455589" className="bg-gray-50 border-gray-300 text-gray-900 mt-1" />
+          </div>
+          <div>
+            <Label className="text-gray-600 text-xs">Claimed Winner (name, optional)</Label>
+            <Input value={claimedWinner} onChange={e => setClaimedWinner(e.target.value)} placeholder="Player's claimed name" className="bg-gray-50 border-gray-300 text-gray-900 mt-1" />
+          </div>
+        </div>
+        <Button disabled={busy} onClick={verify} className="rounded-full bg-gradient-to-r from-red-700 to-black text-white font-bold">
+          {busy ? "Checking…" : "Verify"}
+        </Button>
+
+        {error && <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-sm text-red-700">{error}</div>}
+
+        {result && (
+          <div className="space-y-3">
+            <div className={`rounded-xl border-2 p-4 ${
+              result.verified === true ? "border-green-400 bg-green-50" :
+              result.verified === false ? "border-red-400 bg-red-50" :
+              "border-amber-400 bg-amber-50"
+            }`}>
+              <p className={`font-black ${
+                result.verified === true ? "text-green-700" : result.verified === false ? "text-red-700" : "text-amber-700"
+              }`}>
+                {result.verified === true ? "✅ Verified Match" : result.verified === false ? "❌ Mismatch" : "⚠️ Could not confirm automatically"}
+              </p>
+              <p className="text-sm text-gray-600 mt-1">Actual winner (best-effort): <strong>{result.actualWinner || "Unknown"}</strong></p>
+              {claimedWinner && <p className="text-sm text-gray-600">Claimed winner: <strong>{result.claimedWinner}</strong></p>}
+            </div>
+            <details className="bg-gray-50 border border-gray-200 rounded-xl p-3">
+              <summary className="text-xs font-semibold text-gray-500 cursor-pointer">Raw API response</summary>
+              <pre className="text-xs text-gray-700 mt-2 whitespace-pre-wrap break-all">{JSON.stringify(result.raw, null, 2)}</pre>
+            </details>
+          </div>
+        )}
+      </CardContent>
     </Card>
   );
 }
