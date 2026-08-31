@@ -236,6 +236,12 @@ function DepositPage({ onBack, initialOrderId }) {
             Pay <strong>{amt}</strong> via UPI — instant &amp; automatic
           </p>
         )}
+        <div className="bg-red-50 border-2 border-red-300 rounded-xl p-3">
+          <p className="text-red-700 text-xs font-bold text-center leading-5">
+            ⚠️ चेतावनी: कृपया उसी मोबाइल नंबर/UPI से पेमेंट करें जिससे आपने KYC किया है।
+            अगर आपने किसी और नंबर/UPI से पेमेंट किया, तो आपके वॉलेट में राशि ऐड नहीं होगी।
+          </p>
+        </div>
         <button onClick={handlePayNow} disabled={!amt || amt < 10 || creating}
           className="w-full h-12 rounded-xl bg-gradient-to-r from-red-700 to-black text-white font-black disabled:opacity-50 hover:opacity-90 transition-all flex items-center justify-center gap-2">
           {creating ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
