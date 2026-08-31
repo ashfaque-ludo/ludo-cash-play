@@ -479,6 +479,7 @@ function MatchesTab({ actor }){
   const [editForm, setEditForm] = useState({ label: "", stake: "", status: "", cancel_reason: "" });
   const [clearing, setClearing] = useState(false);
   const [processingId, setProcessingId] = useState(null);
+  const [verifyResults, setVerifyResults] = useState({});
   const BACKEND = process.env.REACT_APP_BACKEND_URL || "";
   const toAbsUrl = (u) => !u ? "" : (u.startsWith("http") || u.startsWith("data:")) ? u : `${BACKEND}${u}`;
 
@@ -505,6 +506,17 @@ function MatchesTab({ actor }){
     try { await api.post(`/admin/matches/${m.id}/resolve`, { winner }); toast.success("Resolved!"); load(); }
     catch (e) { toast.error(formatApiError(e.response?.data?.detail) || e.message); }
     finally { setProcessingId(null); }
+  };
+
+  const verifyResult = async (m, p) => {
+    const key = `${m.id}-${p.user || p.id}`;
+    setVerifyResults(v => ({ ...v, [key]: { loading: true } }));
+    try {
+      const r = await api.post("/admin/matches/verify-result", { roomCode: m.room_code, claimedWinner: p.name });
+      setVerifyResults(v => ({ ...v, [key]: { loading: false, ...r.data } }));
+    } catch (e) {
+      setVerifyResults(v => ({ ...v, [key]: { loading: false, error: formatApiError(e.response?.data?.detail) || e.message } }));
+    }
   };
 
   const openEdit = (m) => {
@@ -631,7 +643,10 @@ function MatchesTab({ actor }){
 
                     {/* Player results + screenshots */}
                     <div className="grid grid-cols-2 gap-3 mb-3">
-                      {[{p: p1, ss: p1ss, label: "Player 1", bg: "bg-blue-50"}, {p: p2, ss: p2ss, label: "Player 2", bg: "bg-red-50"}].map(({p, ss, label, bg}) => (
+                      {[{p: p1, ss: p1ss, label: "Player 1", bg: "bg-blue-50"}, {p: p2, ss: p2ss, label: "Player 2", bg: "bg-red-50"}].map(({p, ss, label, bg}) => {
+                        const vKey = p ? `${m.id}-${p.user || p.id}` : null;
+                        const v = vKey ? verifyResults[vKey] : null;
+                        return (
                         <div key={label} className={`${bg} rounded-xl p-2`}>
                           <p className="text-xs text-gray-500 mb-0.5">{label} ({(p?.name || "?").slice(0,8)}{p?.phone ? ` · ${p.phone}` : ""}):</p>
                           <p className={`font-bold text-sm ${p?.result_claim === "won" ? "text-green-600" : p?.result_claim === "lost" ? "text-red-600" : "text-gray-400"}`}>
@@ -642,8 +657,28 @@ function MatchesTab({ actor }){
                               <img src={ss} alt={label} className="w-16 h-16 object-cover rounded-lg border-2 border-white shadow" onError={e => { e.target.style.display = "none"; }} />
                             </button>
                           )}
+                          {p && m.room_code && (
+                            <div className="mt-1.5">
+                              <Button size="sm" variant="outline" disabled={v?.loading} onClick={() => verifyResult(m, p)}
+                                className="rounded-full border-gray-300 bg-white text-gray-600 text-xs h-6 px-2">
+                                {v?.loading ? "Checking…" : "Verify"}
+                              </Button>
+                              {v && !v.loading && (
+                                v.error ? (
+                                  <p className="text-xs text-red-500 mt-1">{v.error}</p>
+                                ) : v.verified === true ? (
+                                  <p className="text-xs font-bold text-green-600 mt-1">✅ Verified Match</p>
+                                ) : v.verified === false ? (
+                                  <p className="text-xs font-bold text-red-600 mt-1">❌ Mismatch (actual: {v.actualWinner})</p>
+                                ) : (
+                                  <p className="text-xs font-bold text-amber-600 mt-1">⚠️ Could not confirm automatically</p>
+                                )
+                              )}
+                            </div>
+                          )}
                         </div>
-                      ))}
+                        );
+                      })}
                     </div>
 
                     {/* Cancel reason */}

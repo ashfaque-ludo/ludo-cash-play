@@ -4,6 +4,24 @@ const User=require("../../models/User");
 const Transaction=require("../../models/Transaction");
 const {logActivity}=require("../../middleware/activityLogger");
 const {payReferralBonus}=require("../../utils/referral");
+const {getRoomResult}=require("../../utils/ludoKingService");
+
+// Best-effort winner extraction — the RapidAPI "Classic Room Code" response
+// shape has not yet been confirmed against a real completed game (every call
+// so far returned "not subscribed"), so this tries several plausible field
+// names and returns null instead of guessing, so a wrong guess never shows
+// up as a false "Mismatch" to the admin.
+function extractWinner(data){
+  if(!data||typeof data!=="object") return null;
+  const candidates=[data.winner,data.Winner,data.winner_name,data.winnerName,data.result?.winner,data.game?.winner,data.data?.winner];
+  const found=candidates.find(v=>typeof v==="string"&&v.trim());
+  if(found) return found.trim();
+  if(Array.isArray(data.players)){
+    const w=data.players.find(p=>p?.won===true||p?.result==="won"||p?.status==="winner");
+    if(w?.name) return String(w.name).trim();
+  }
+  return null;
+}
 
 // GET /api/admin/matches?status=...
 // status=pending → shows admin_review + awaiting_review + disputed together
@@ -166,6 +184,21 @@ router.post("/:id/resolve", async (req,res)=>{
     }
     res.json({ok:true});
   }catch(e){res.status(500).json({detail:"Server error."});}
+});
+
+// POST /api/admin/matches/verify-result — manual, on-demand only. Called from
+// the admin "Verify" button on a match row; never runs automatically or on a
+// schedule. The automatic player-submitted-result flow is untouched by this.
+router.post("/verify-result", async (req,res)=>{
+  try{
+    const {roomCode,claimedWinner}=req.body;
+    if(!roomCode) return res.status(400).json({detail:"roomCode is required."});
+    const raw=await getRoomResult(roomCode);
+    const actualWinner=extractWinner(raw);
+    const verified = actualWinner==null ? null : actualWinner.toLowerCase()===String(claimedWinner||"").trim().toLowerCase();
+    await logActivity(req,"match_result_verify_checked",roomCode,{claimedWinner,actualWinner,verified});
+    res.json({roomCode,claimedWinner,actualWinner,verified,raw});
+  }catch(e){ res.status(500).json({detail:e.message||"Verification failed."}); }
 });
 
 module.exports=router;
