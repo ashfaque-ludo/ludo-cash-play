@@ -36,6 +36,13 @@ export default function LostPopup({ open, onClose, matchId, onResult }) {
         <p className="text-sm text-gray-600 mb-1">Are you sure you lost this game?</p>
         <p className="text-sm text-gray-400 mb-4">क्या आप निश्चित हैं कि आप यह गेम हार गए हैं?</p>
 
+        <div className="bg-red-50 border-2 border-red-300 rounded-xl p-3 mb-4">
+          <p className="text-red-700 text-xs font-bold text-center leading-5">
+            ⚠️ चेतावनी: कृपया सही रिजल्ट ही अपलोड करें। अगर आपने गलत मैच रिजल्ट अपलोड किया
+            तो आपके वॉलेट से ₹1000 काट लिए जाएंगे। कृपया ऐसी गलती न करें।
+          </p>
+        </div>
+
         <label className="flex items-center gap-3 cursor-pointer p-3 bg-gray-50 rounded-xl mb-4">
           <input
             type="checkbox"

@@ -59,6 +59,14 @@ export default function ScreenshotUpload() {
         </div>
 
         <div className="glass-strong rounded-3xl border border-white/10 p-6 fade-up delay-1">
+          {/* Hindi warning */}
+          <div className="bg-red-500/10 border-2 border-red-500/40 rounded-2xl p-3 mb-5">
+            <p className="text-red-400 text-xs font-bold text-center leading-5">
+              ⚠️ चेतावनी: कृपया सही रिजल्ट ही अपलोड करें। अगर आपने गलत मैच रिजल्ट अपलोड किया
+              तो आपके वॉलेट से ₹1000 काट लिए जाएंगे। कृपया ऐसी गलती न करें।
+            </p>
+          </div>
+
           {/* Drop zone */}
           <div
             onDrop={onDrop}

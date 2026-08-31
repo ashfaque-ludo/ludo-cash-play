@@ -454,6 +454,12 @@ export default function MatchRoom() {
             {isActive && !myResult && (
               <div className="mt-2 pt-3 border-t border-gray-200">
                 <p className="text-center text-gray-600 text-sm font-bold mb-3">Match Status</p>
+                <div className="bg-red-50 border-2 border-red-300 rounded-xl p-3 mb-3">
+                  <p className="text-red-700 text-xs font-bold text-center leading-5">
+                    ⚠️ चेतावनी: कृपया सही रिजल्ट ही अपलोड करें। अगर आपने गलत मैच रिजल्ट अपलोड किया
+                    तो आपके वॉलेट से ₹1000 काट लिए जाएंगे। कृपया ऐसी गलती न करें।
+                  </p>
+                </div>
                 <div className="grid grid-cols-3 gap-2">
                   <button
                     onClick={() => setShowWon(true)}

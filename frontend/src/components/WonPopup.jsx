@@ -53,6 +53,13 @@ export default function WonPopup({ open, onClose, matchId, prize, onResult }) {
         </div>
         <p className="text-sm text-gray-500 mb-4">Upload your Ludo King end-screen to verify your win and claim the prize.</p>
 
+        <div className="bg-red-50 border-2 border-red-300 rounded-xl p-3 mb-4">
+          <p className="text-red-700 text-xs font-bold text-center leading-5">
+            ⚠️ चेतावनी: कृपया सही रिजल्ट ही अपलोड करें। अगर आपने गलत मैच रिजल्ट अपलोड किया
+            तो आपके वॉलेट से ₹1000 काट लिए जाएंगे। कृपया ऐसी गलती न करें।
+          </p>
+        </div>
+
         <div
           onClick={() => fileRef.current?.click()}
           className={`rounded-2xl border-2 border-dashed p-5 text-center cursor-pointer transition-all mb-4 ${

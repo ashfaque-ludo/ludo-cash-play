@@ -1527,9 +1527,18 @@ function BannersTab() {
   const load = async () => { try { const r = await api.get("/admin/banners"); setBanners(r.data.banners || []); } catch {} };
   useEffect(() => { load(); }, []);
 
+  const onImageFile = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) { toast.error("Image too large. Max 5 MB."); return; }
+    const reader = new FileReader();
+    reader.onloadend = () => setForm(f => ({ ...f, image_url: reader.result }));
+    reader.readAsDataURL(file);
+  };
+
   const create = async () => {
     if (!form.title.trim()) return toast.error("Title required");
-    try { await api.post("/admin/banners", form); toast.success("Banner created"); setForm(f => ({ ...f, title: "", subtitle: "" })); load(); }
+    try { await api.post("/admin/banners", form); toast.success("Banner created"); setForm(f => ({ ...f, title: "", subtitle: "", image_url: "" })); load(); }
     catch (e) { toast.error(formatApiError(e.response?.data?.detail) || e.message); }
   };
 
@@ -1546,34 +1555,37 @@ function BannersTab() {
     <Card className="bg-white border-gray-200 shadow-sm text-gray-900 mt-5">
       <CardHeader><CardTitle>Banner Management</CardTitle></CardHeader>
       <CardContent className="space-y-4">
-        <div className="grid sm:grid-cols-2 gap-3 p-4 rounded-xl border border-gray-200 bg-gray-50">
+        <div className="p-4 rounded-xl border border-gray-200 bg-gray-50 space-y-4">
           <div>
             <Label className="text-gray-600 text-xs">Title *</Label>
-            <Input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} className="bg-gray-50 border-gray-300 text-gray-900 mt-1" placeholder="e.g. Weekend Special!" />
+            <Input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} className="bg-white border-gray-300 text-gray-900 mt-1" placeholder="e.g. Weekend Special!" />
           </div>
           <div>
-            <Label className="text-gray-600 text-xs">Subtitle</Label>
-            <Input value={form.subtitle} onChange={e => setForm(f => ({ ...f, subtitle: e.target.value }))} className="bg-gray-50 border-gray-300 text-gray-900 mt-1" placeholder="Short description" />
+            <Label className="text-gray-600 text-xs">Image Upload *</Label>
+            <Input type="file" accept="image/*" onChange={onImageFile} className="bg-white border-gray-300 text-gray-900 mt-1" />
+            {form.image_url && (
+              <img src={form.image_url} alt="Banner preview" className="mt-2 h-24 rounded-lg border border-gray-200 object-cover" />
+            )}
           </div>
-          <div>
-            <Label className="text-gray-600 text-xs">Image URL (optional)</Label>
-            <Input value={form.image_url} onChange={e => setForm(f => ({ ...f, image_url: e.target.value }))} className="bg-gray-50 border-gray-300 text-gray-900 mt-1" placeholder="https://..." />
+          <div className="grid sm:grid-cols-2 gap-3">
+            <div>
+              <Label className="text-gray-600 text-xs">Subtitle</Label>
+              <Input value={form.subtitle} onChange={e => setForm(f => ({ ...f, subtitle: e.target.value }))} className="bg-white border-gray-300 text-gray-900 mt-1" placeholder="Short description" />
+            </div>
+            <div>
+              <Label className="text-gray-600 text-xs">Link</Label>
+              <Input value={form.link} onChange={e => setForm(f => ({ ...f, link: e.target.value }))} className="bg-white border-gray-300 text-gray-900 mt-1" placeholder="/play" />
+            </div>
+            <div>
+              <Label className="text-gray-600 text-xs">BG From (hex)</Label>
+              <Input value={form.bg_from} onChange={e => setForm(f => ({ ...f, bg_from: e.target.value }))} className="bg-white border-gray-300 text-gray-900 mt-1" />
+            </div>
+            <div>
+              <Label className="text-gray-600 text-xs">BG To (hex)</Label>
+              <Input value={form.bg_to} onChange={e => setForm(f => ({ ...f, bg_to: e.target.value }))} className="bg-white border-gray-300 text-gray-900 mt-1" />
+            </div>
           </div>
-          <div>
-            <Label className="text-gray-600 text-xs">Link</Label>
-            <Input value={form.link} onChange={e => setForm(f => ({ ...f, link: e.target.value }))} className="bg-gray-50 border-gray-300 text-gray-900 mt-1" placeholder="/play" />
-          </div>
-          <div>
-            <Label className="text-gray-600 text-xs">BG From (hex)</Label>
-            <Input value={form.bg_from} onChange={e => setForm(f => ({ ...f, bg_from: e.target.value }))} className="bg-gray-50 border-gray-300 text-gray-900 mt-1" />
-          </div>
-          <div>
-            <Label className="text-gray-600 text-xs">BG To (hex)</Label>
-            <Input value={form.bg_to} onChange={e => setForm(f => ({ ...f, bg_to: e.target.value }))} className="bg-gray-50 border-gray-300 text-gray-900 mt-1" />
-          </div>
-          <div className="flex items-end pb-1 col-span-full">
-            <Button onClick={create} className="rounded-full bg-gradient-to-r from-red-700 to-black text-white font-bold">Create Banner</Button>
-          </div>
+          <Button onClick={create} className="rounded-full bg-gradient-to-r from-red-700 to-black text-white font-bold">Submit</Button>
         </div>
         {form.title && (
           <div className="rounded-2xl p-5 text-white" style={{ background: `linear-gradient(135deg, ${form.bg_from}, ${form.bg_to})` }}>
@@ -1585,7 +1597,11 @@ function BannersTab() {
         <div className="space-y-3 mt-2">
           {banners.map(b => (
             <div key={b.id} className="flex items-center gap-3 rounded-xl bg-gray-50 border border-gray-200 p-3">
-              <div className="w-12 h-12 rounded-xl flex-shrink-0" style={{ background: `linear-gradient(135deg, ${b.bg_from}, ${b.bg_to})` }} />
+              {b.image_url ? (
+                <img src={b.image_url} alt={b.title} className="w-12 h-12 rounded-xl flex-shrink-0 object-cover" />
+              ) : (
+                <div className="w-12 h-12 rounded-xl flex-shrink-0" style={{ background: `linear-gradient(135deg, ${b.bg_from}, ${b.bg_to})` }} />
+              )}
               <div className="flex-1 min-w-0">
                 <div className="font-semibold truncate">{b.title}</div>
                 {b.subtitle && <div className="text-xs text-gray-400 truncate">{b.subtitle}</div>}
@@ -1605,6 +1621,53 @@ function BannersTab() {
 }
 
 // ─── Support Management Tab ───────────────────────────────────────────────
+function SupportNumberCard() {
+  const [number, setNumber] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    api.get("/admin/payment-settings")
+      .then(r => setNumber(r.data.whatsapp_number || ""))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  const save = async () => {
+    setBusy(true);
+    try {
+      await api.post("/admin/payment-settings", { whatsapp_number: number });
+      toast.success("Support number updated");
+    } catch (e) { toast.error(formatApiError(e.response?.data?.detail) || e.message); }
+    finally { setBusy(false); }
+  };
+
+  return (
+    <Card className="bg-white border-gray-200 shadow-sm text-gray-900 mb-4">
+      <CardHeader><CardTitle>Support Number</CardTitle></CardHeader>
+      <CardContent>
+        <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-end">
+          <div className="flex-1 w-full">
+            <Label className="text-gray-600 text-xs">Admin Support Number (WhatsApp / Call)</Label>
+            <Input
+              value={number}
+              onChange={e => setNumber(e.target.value.replace(/\D/g, ""))}
+              disabled={loading}
+              placeholder="917206638948"
+              maxLength={12}
+              className="bg-gray-50 border-gray-300 text-gray-900 mt-1"
+            />
+            <p className="text-xs text-gray-500 mt-1">Format: 91XXXXXXXXXX — shown on the user Support page for WhatsApp/Call.</p>
+          </div>
+          <Button disabled={busy || loading} onClick={save} className="rounded-full bg-gradient-to-r from-red-700 to-black text-white font-bold">
+            {busy ? "Saving…" : "Save Number"}
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 function SupportMgmtTab() {
   const [tickets, setTickets] = useState([]);
   const [filter, setFilter] = useState("open");
@@ -1651,7 +1714,9 @@ function SupportMgmtTab() {
   };
 
   return (
-    <Card className="bg-white border-gray-200 shadow-sm text-gray-900 mt-5">
+    <div className="mt-5">
+    <SupportNumberCard />
+    <Card className="bg-white border-gray-200 shadow-sm text-gray-900">
       <CardHeader className="flex flex-row items-center gap-3 flex-wrap">
         <CardTitle>Support Tickets</CardTitle>
         <div className="flex gap-2 ml-auto flex-wrap">
@@ -1723,6 +1788,7 @@ function SupportMgmtTab() {
         )}
       </CardContent>
     </Card>
+    </div>
   );
 }
 
