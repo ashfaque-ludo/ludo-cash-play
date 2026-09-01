@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
+import { toast } from 'sonner';
 
 const BACKEND = process.env.REACT_APP_BACKEND_URL || '';
 
@@ -18,6 +19,7 @@ export default function DepositsTab() {
   const [deposits, setDeposits] = useState([]);
   const [filter, setFilter] = useState('any');
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const token = localStorage.getItem('lcp_token');
 
   const load = useCallback(async () => {
@@ -41,6 +43,13 @@ export default function DepositsTab() {
     return () => clearInterval(i);
   }, [load]);
 
+  const manualRefresh = async () => {
+    setRefreshing(true);
+    await load();
+    setRefreshing(false);
+    toast.success('Refreshed');
+  };
+
   return (
     <div className="p-4 bg-[#0F0F0F] min-h-screen">
       <div className="flex justify-between items-center mb-4">
@@ -49,10 +58,11 @@ export default function DepositsTab() {
           <p className="text-xs text-gray-500 mt-0.5">Automatic via IMB — read only</p>
         </div>
         <button
-          onClick={load}
-          className="px-4 py-2 bg-[#C62828] text-white rounded-xl text-sm font-bold hover:bg-[#8B1111] transition-colors"
+          onClick={manualRefresh}
+          disabled={refreshing}
+          className="px-4 py-2 bg-[#C62828] text-white rounded-xl text-sm font-bold hover:bg-[#8B1111] transition-colors disabled:opacity-60"
         >
-          🔄 Refresh
+          {refreshing ? "Refreshing…" : "🔄 Refresh"}
         </button>
       </div>
 

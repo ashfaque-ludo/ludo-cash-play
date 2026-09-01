@@ -9,6 +9,7 @@ export default function Referral() {
   const { user } = useAuth();
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   const fetchData = async () => {
     setLoading(true);
@@ -20,6 +21,13 @@ export default function Referral() {
   };
 
   useEffect(() => { fetchData(); }, []);
+
+  const manualRefresh = async () => {
+    setRefreshing(true);
+    await fetchData();
+    setRefreshing(false);
+    toast.success("Refreshed");
+  };
 
   if (!user || user === false) return null;
 
@@ -120,8 +128,8 @@ export default function Referral() {
       <div className="bg-white rounded-2xl shadow-sm mx-4 p-4 mb-4">
         <div className="flex items-center justify-between mb-3">
           <h3 className="font-bold text-gray-900">Your Referrals ({stats?.total_referrals || 0})</h3>
-          <button onClick={fetchData} className="text-gray-400 hover:text-red-700">
-            <RefreshCw className="w-4 h-4" />
+          <button onClick={manualRefresh} disabled={refreshing} className="text-gray-400 hover:text-red-700">
+            <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />
           </button>
         </div>
         {loading ? (

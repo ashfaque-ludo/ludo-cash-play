@@ -18,6 +18,7 @@ export default function OpenBattles() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState(0);
   const [joining, setJoining] = useState(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -32,6 +33,13 @@ export default function OpenBattles() {
     const iv = setInterval(load, 7000);
     return () => clearInterval(iv);
   }, [load]);
+
+  const manualRefresh = async () => {
+    setRefreshing(true);
+    await load();
+    setRefreshing(false);
+    toast.success("Refreshed");
+  };
 
   const join = async (m) => {
     if (user === false) { navigate("/login"); return; }
@@ -60,8 +68,8 @@ export default function OpenBattles() {
             <p className="text-slate-400 mt-1 text-sm">{filtered.length} battle{filtered.length !== 1 ? "s" : ""} waiting for players</p>
           </div>
           <div className="flex gap-2 flex-wrap">
-            <Button onClick={load} variant="outline" className="rounded-full border-white/20 bg-white/5 text-white gap-2">
-              <RefreshCw className="w-4 h-4" /> Refresh
+            <Button onClick={manualRefresh} disabled={refreshing} variant="outline" className="rounded-full border-white/20 bg-white/5 text-white gap-2">
+              <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} /> Refresh
             </Button>
             {user && (
               <Link to="/play">

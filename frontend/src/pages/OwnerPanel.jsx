@@ -210,6 +210,8 @@ function AdminsTab() {
 
   useEffect(() => { load(); }, [load]);
 
+  const manualRefresh = async () => { await load(); toast.success("Refreshed"); };
+
   const handleAdd = async () => {
     if (!addForm.name.trim()) return toast.error("Name required");
     setAddBusy(true);
@@ -265,7 +267,7 @@ function AdminsTab() {
       <div className="rounded-2xl bg-[#1A1A1A] border border-white/10 overflow-hidden">
         <div className="flex items-center justify-between p-4 border-b border-slate-700">
           <div className="font-bold text-white flex items-center gap-2"><Users className="w-4 h-4 text-yellow-400" /> All Staff ({admins.length})</div>
-          <button onClick={load} className="text-slate-400 hover:text-white"><RefreshCw className="w-4 h-4" /></button>
+          <button onClick={manualRefresh} disabled={loading} className="text-slate-400 hover:text-white"><RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} /></button>
         </div>
         {loading ? <LoadingCard /> : (
           <div className="divide-y divide-slate-700">

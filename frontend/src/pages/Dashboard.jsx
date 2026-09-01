@@ -169,6 +169,11 @@ export default function Dashboard() {
     }
   };
 
+  const manualRefreshBattles = async () => {
+    await loadBattles();
+    toast.success("Refreshed");
+  };
+
   const handlePlay = async (match) => {
     setJoining(match._id || match.id);
     try {
@@ -232,7 +237,7 @@ export default function Dashboard() {
               Open Battles
               <span className="bg-red-700 text-white text-xs px-2 py-0.5 rounded-full">{openBattles.length}</span>
             </h2>
-            <button onClick={loadBattles} className="text-xs text-red-700 font-semibold">Refresh</button>
+            <button onClick={manualRefreshBattles} className="text-xs text-red-700 font-semibold">Refresh</button>
           </div>
 
           {loading ? (

@@ -396,7 +396,7 @@ function WithdrawalsTab(){
               className={`rounded-full capitalize border-gray-300 ${status===s ? "bg-gradient-to-r from-red-700 to-black border-red-700 text-white" : "bg-gray-100 text-gray-600"}`}
               data-testid={`wd-filter-${s}`}>{s}</Button>
           ))}
-          <Button size="sm" onClick={load} variant="outline" className="rounded-full border-gray-300 bg-gray-100 text-gray-600">Refresh</Button>
+          <Button size="sm" onClick={async () => { await load(); toast.success("Refreshed"); }} variant="outline" className="rounded-full border-gray-300 bg-gray-100 text-gray-600">Refresh</Button>
         </div>
       </CardHeader>
       <CardContent className="overflow-x-auto">
@@ -695,7 +695,7 @@ function MatchesTab({ actor }){
                 {s === "pending" ? "🔔 Pending" : s === "admin_review" ? "⚠️ Review" : s}
               </Button>
             ))}
-            <Button size="sm" onClick={load} variant="outline" className="rounded-full border-gray-300 bg-gray-100 text-gray-600">Refresh</Button>
+            <Button size="sm" onClick={async () => { await load(); toast.success("Refreshed"); }} variant="outline" className="rounded-full border-gray-300 bg-gray-100 text-gray-600">Refresh</Button>
           </div>
         </CardHeader>
         <CardContent>
@@ -1164,7 +1164,7 @@ function ScreenshotsTab() {
               {s}
             </Button>
           ))}
-          <Button size="sm" onClick={load} variant="outline" className="rounded-full border-gray-300 bg-gray-100 text-gray-600" data-testid="ss-refresh">Refresh</Button>
+          <Button size="sm" onClick={async () => { await load(); toast.success("Refreshed"); }} variant="outline" className="rounded-full border-gray-300 bg-gray-100 text-gray-600" data-testid="ss-refresh">Refresh</Button>
         </div>
       </CardHeader>
       <CardContent>
@@ -1270,7 +1270,7 @@ function ReferralsTab() {
       <Card className="bg-white border-gray-200 shadow-sm text-gray-900">
         <CardHeader className="flex flex-row items-center">
           <CardTitle>Top Referrers</CardTitle>
-          <Button size="sm" onClick={load} variant="outline" className="ml-auto rounded-full border-gray-300 bg-gray-100 text-gray-600">Refresh</Button>
+          <Button size="sm" onClick={async () => { await load(); toast.success("Refreshed"); }} variant="outline" className="ml-auto rounded-full border-gray-300 bg-gray-100 text-gray-600">Refresh</Button>
         </CardHeader>
         <CardContent className="overflow-x-auto">
           <Table>
@@ -1407,7 +1407,7 @@ function KycTab() {
               {s}
             </Button>
           ))}
-          <Button size="sm" onClick={load} variant="outline" className="rounded-full border-gray-300 bg-gray-100 text-gray-600" data-testid="kyc-refresh">Refresh</Button>
+          <Button size="sm" onClick={async () => { await load(); toast.success("Refreshed"); }} variant="outline" className="rounded-full border-gray-300 bg-gray-100 text-gray-600" data-testid="kyc-refresh">Refresh</Button>
         </div>
       </CardHeader>
       <CardContent>

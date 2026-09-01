@@ -49,6 +49,7 @@ export default function RunningBattles() {
   const [matches, setMatches] = useState([]);
   const [spectate, setSpectate] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   const load = useCallback(async () => {
     if (!user) { setLoading(false); return; }
@@ -77,6 +78,13 @@ export default function RunningBattles() {
     return () => { clearInterval(iv); clearInterval(iv2); };
   }, [load, loadSpectate]);
 
+  const manualRefresh = async () => {
+    setRefreshing(true);
+    await Promise.all([load(), loadSpectate()]);
+    setRefreshing(false);
+    toast.success("Refreshed");
+  };
+
   // Guests can't have "my battles", but the spectate feed below (real running
   // matches, redacted) is public — don't hide the whole page from them.
   const showMine = !!user;
@@ -95,8 +103,8 @@ export default function RunningBattles() {
             </p>
           </div>
           <div className="flex gap-2">
-            <Button onClick={() => { load(); loadSpectate(); }} variant="outline" className="rounded-full border-white/20 bg-white/5 text-white gap-2">
-              <RefreshCw className="w-4 h-4" /> Refresh
+            <Button onClick={manualRefresh} disabled={refreshing} variant="outline" className="rounded-full border-white/20 bg-white/5 text-white gap-2">
+              <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} /> Refresh
             </Button>
             {showMine ? (
               <Link to="/play">

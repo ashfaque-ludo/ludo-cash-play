@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { api, fmtINR } from "@/lib/api";
 import { RefreshCw, Clock, ArrowUpToLine, ArrowDownToLine, Gift, Sword, AlertTriangle, Star } from "lucide-react";
+import { toast } from "sonner";
 
 const TABS = [
   { id: "game",     label: "🎮 Game" },
@@ -33,6 +34,7 @@ export default function History() {
   const [activeTab, setActiveTab] = useState("game");
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   // Backup for a missed IMB webhook: when the Deposit tab is opened and any
   // deposit is still "pending", actively re-check it against IMB's own Check
@@ -71,6 +73,13 @@ export default function History() {
     setActiveTab(id);
   };
 
+  const manualRefresh = async () => {
+    setRefreshing(true);
+    await load(activeTab);
+    setRefreshing(false);
+    toast.success("Refreshed");
+  };
+
   return (
     <div className="min-h-screen pt-20 bg-gradient-to-b from-amber-50 to-white pb-24">
       {/* Sticky tab bar */}
@@ -89,8 +98,8 @@ export default function History() {
               {tab.label}
             </button>
           ))}
-          <button onClick={() => load(activeTab)} className="flex-shrink-0 px-4 py-3 text-gray-400 hover:text-gray-600 border-b-2 border-transparent ml-auto">
-            <RefreshCw className="w-4 h-4" />
+          <button onClick={manualRefresh} disabled={refreshing} className="flex-shrink-0 px-4 py-3 text-gray-400 hover:text-gray-600 border-b-2 border-transparent ml-auto">
+            <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />
           </button>
         </div>
       </div>
