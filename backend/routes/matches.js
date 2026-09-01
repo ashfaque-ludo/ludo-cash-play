@@ -6,62 +6,6 @@ const StakeTable = require("../models/StakeTable");
 const Config = require("../models/Config");
 const { payReferralBonus } = require("../utils/referral");
 
-// Auto-settle: credit winner immediately when claims agree (one won + one lost).
-// Mirrors the crediting logic used by admin decide/resolve — kept in sync manually.
-async function autoSettleAgreed(match, winnerPlayer, loserPlayer) {
-  match.winner = winnerPlayer.user;
-  match.status = "ended";
-  match.ended_at = new Date();
-  await match.save();
-  await User.findByIdAndUpdate(winnerPlayer.user, { $inc: { "wallet.winning": match.prize_pool } });
-  await Transaction.create({
-    user: winnerPlayer.user, user_phone: "", type: "match_win", amount: match.prize_pool, status: "completed",
-    description: `Won ${match.prize_pool} battle`, meta: { match: match._id, stake: match.stake },
-  }).catch(() => {});
-  await Transaction.create({
-    user: loserPlayer.user, user_phone: "", type: "match_loss", amount: -match.stake, status: "completed",
-    description: `Lost ${match.stake} battle`, meta: { match: match._id, stake: match.stake },
-  }).catch(() => {});
-  await payReferralBonus(winnerPlayer.user, match.stake, match._id);
-  await payReferralBonus(loserPlayer.user, match.stake, match._id);
-}
-
-// Settle from a single submitted result if the opponent never responds —
-// mirrors autoSettleAgreed's crediting logic but is triggered by a timeout
-// instead of the opponent's own claim, so it needs its own compare-and-swap
-// to avoid double-crediting if the opponent submits (or another timer fires)
-// in between.
-async function autoSettleUnresponsive(matchId) {
-  try {
-    const match = await Match.findById(matchId);
-    if (!match || match.status !== "awaiting_review") return;
-    const submitter = match.players.find(p => p.result_claim != null);
-    const opponent = match.players.find(p => p.result_claim == null);
-    if (!submitter || !opponent) return;
-    const winnerPlayer = submitter.claimed_win ? submitter : opponent;
-    const loserPlayer = submitter.claimed_win ? opponent : submitter;
-
-    const claimed = await Match.findOneAndUpdate(
-      { _id: matchId, status: "awaiting_review" },
-      { $set: { winner: winnerPlayer.user, status: "ended", ended_at: new Date() } },
-      { new: true }
-    );
-    if (!claimed) return;
-    await User.findByIdAndUpdate(winnerPlayer.user, { $inc: { "wallet.winning": claimed.prize_pool } });
-    await Transaction.create({
-      user: winnerPlayer.user, user_phone: "", type: "match_win", amount: claimed.prize_pool, status: "completed",
-      description: `Won ${claimed.prize_pool} battle (opponent unresponsive)`, meta: { match: claimed._id, stake: claimed.stake },
-    }).catch(() => {});
-    await Transaction.create({
-      user: loserPlayer.user, user_phone: "", type: "match_loss", amount: -claimed.stake, status: "completed",
-      description: `Lost ${claimed.stake} battle (no response submitted)`, meta: { match: claimed._id, stake: claimed.stake },
-    }).catch(() => {});
-    await payReferralBonus(winnerPlayer.user, claimed.stake, claimed._id);
-    await payReferralBonus(loserPlayer.user, claimed.stake, claimed._id);
-    console.log(`[AUTO-SETTLE] Match ${matchId} settled — opponent never submitted a result`);
-  } catch (err) { console.error("Auto-settle unresponsive-opponent error:", err.message); }
-}
-
 async function getPCT() {
   try {
     const v = await Config.get("commission_pct", null);
@@ -555,35 +499,50 @@ router.post("/:id/submit-result", async (req, res) => {
     match.players[idx].result_screenshot = screenshotData;
     match.players[idx].claimed_win = result === "won";
     match.players[idx].result_claim = result;
-
-    const both = match.players.every(p => (p.result_claim !== null && p.result_claim !== undefined) || p.claimed_win !== null);
-    if (both) {
-      const allWin = match.players.every(p => p.claimed_win === true);
-      const allLose = match.players.every(p => p.claimed_win === false);
-      if (!allWin && !allLose) {
-        // Results agree: one player says won, the other says lost — settle
-        // automatically and credit the winner immediately, no admin needed.
-        const winnerP = match.players.find(p => p.claimed_win === true);
-        const loserP = match.players.find(p => p.claimed_win === false);
-        await autoSettleAgreed(match, winnerP, loserP);
-        return res.json({ ok: true, auto_resolved: true, status: "ended", match: serializeMatch(match) });
-      }
-      // Both claim the same outcome (both "won" or both "lost") — genuine
-      // dispute, admin must investigate the screenshots.
-      match.status = "disputed";
-      await match.save();
-      return res.json({ ok: true, auto_resolved: false, status: match.status, match: serializeMatch(match) });
-    }
-
-    match.status = "awaiting_review";
     await match.save();
 
-    // Give the opponent a short window to submit their own result — if they
-    // never respond, don't leave the submitting player waiting indefinitely:
-    // settle from their claim alone and credit the winner.
-    setTimeout(() => autoSettleUnresponsive(match._id), 3 * 60 * 1000);
+    if (result === "won") {
+      // Instant settle: credit the claiming winner right away (commission is
+      // already baked into prize_pool), without waiting for the opponent's
+      // screenshot. Compare-and-swap on status guards against double-credit
+      // if both players submit "won" at nearly the same time — only the
+      // request that actually flips in_progress/awaiting_review -> ended pays out.
+      const opponent = match.players.find(p => p.user.toString() !== req.user._id.toString());
+      const settled = await Match.findOneAndUpdate(
+        { _id: match._id, status: { $in: ["in_progress", "awaiting_review"] } },
+        { $set: { winner: req.user._id, status: "ended", ended_at: new Date() } },
+        { new: true }
+      );
+      if (settled) {
+        await User.findByIdAndUpdate(req.user._id, { $inc: { "wallet.winning": settled.prize_pool } });
+        await Transaction.create({
+          user: req.user._id, user_phone: "", type: "match_win", amount: settled.prize_pool, status: "completed",
+          description: `Won ${settled.prize_pool} battle`, meta: { match: settled._id, stake: settled.stake },
+        }).catch(() => {});
+        if (opponent) {
+          await Transaction.create({
+            user: opponent.user, user_phone: "", type: "match_loss", amount: -settled.stake, status: "completed",
+            description: `Lost ${settled.stake} battle`, meta: { match: settled._id, stake: settled.stake },
+          }).catch(() => {});
+        }
+        await payReferralBonus(req.user._id, settled.stake, settled._id);
+        if (opponent) await payReferralBonus(opponent.user, settled.stake, settled._id);
+        return res.json({ ok: true, auto_resolved: true, status: "ended", match: serializeMatch(settled) });
+      }
+      // Lost the race (match already settled by the time this landed) —
+      // just report current state, no double-credit.
+      const fresh = await Match.findById(match._id);
+      return res.json({ ok: true, auto_resolved: false, status: fresh?.status, match: serializeMatch(fresh || match) });
+    }
 
-    return res.json({ ok: true, auto_resolved: false, status: "awaiting_review", match: serializeMatch(match) });
+    // result === "lost" — just record the claim. If the opponent's "won"
+    // claim already settled the match, nothing more to do here. If the
+    // opponent hasn't claimed yet, wait for them (no payout to trigger yet).
+    if (match.status === "in_progress") {
+      match.status = "awaiting_review";
+      await match.save();
+    }
+    return res.json({ ok: true, auto_resolved: false, status: match.status, match: serializeMatch(match) });
   } catch (e) { res.status(500).json({ detail: "Server error." }); }
 });
 

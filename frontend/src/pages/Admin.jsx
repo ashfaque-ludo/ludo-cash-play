@@ -16,7 +16,7 @@ import {
   Table, TableHeader, TableRow, TableHead, TableBody, TableCell
 } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
-import { ShieldCheck, ShieldAlert, ShieldOff, Users, Wallet as WalletIcon, ArrowDownToLine, Trophy, Tag, Megaphone, BarChart3, FileText, Lock, Ban, KeyRound, Settings, Layers, UserPlus, Trash2, Camera, ZoomIn, Share2, Clock, MessageSquare, Image, PlusCircle, MinusCircle, Gift, Phone, Search } from "lucide-react";
+import { ShieldCheck, ShieldAlert, ShieldOff, Users, Wallet as WalletIcon, ArrowDownToLine, Trophy, Tag, Megaphone, BarChart3, FileText, Lock, Ban, KeyRound, Settings, Layers, UserPlus, Trash2, Camera, ZoomIn, Share2, Clock, MessageSquare, Image, PlusCircle, MinusCircle, Gift, Phone, Search, Copy } from "lucide-react";
 import { toast } from "sonner";
 import DepositsTab from "@/components/admin/DepositsTab";
 
@@ -423,7 +423,14 @@ function WithdrawalsTab(){
                       <img src={d.qr_code_url} alt="Withdrawal QR" onClick={() => setZoomedUrl(d.qr_code_url)}
                         className="w-12 h-12 object-cover rounded-lg border border-gray-200 cursor-zoom-in" />
                     ) : d.upi_id ? (
-                      <span className="text-gray-600 font-mono text-sm">{d.upi_id}</span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-gray-600 font-mono text-sm">{d.upi_id}</span>
+                        <button type="button" title="Copy UPI ID"
+                          onClick={() => { navigator.clipboard.writeText(d.upi_id); toast.success("UPI ID copied"); }}
+                          className="text-gray-400 hover:text-gray-700">
+                          <Copy className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     ) : d.account_number ? (
                       <span className="text-gray-600 text-xs">{d.account_holder} · {d.account_number} · {d.ifsc}</span>
                     ) : (
@@ -532,8 +539,10 @@ function VerifyResultTab() {
               }`}>
                 {result.verified === true ? "✅ Verified Match" : result.verified === false ? "❌ Mismatch" : "⚠️ Could not confirm automatically"}
               </p>
-              <p className="text-sm text-gray-600 mt-1">Actual winner (best-effort): <strong>{result.actualWinner || "Unknown"}</strong></p>
-              {claimedWinner && <p className="text-sm text-gray-600">Claimed winner: <strong>{result.claimedWinner}</strong></p>}
+              {result.message && <p className="text-sm text-gray-600 mt-1">{result.message}</p>}
+              {result.actualWinner && <p className="text-sm text-gray-600 mt-1">Actual winner ID: <strong>{result.actualWinner}</strong></p>}
+              {claimedWinner && result.actualWinner && <p className="text-sm text-gray-600">Claimed winner: <strong>{result.claimedWinner}</strong></p>}
+              {result.status && <p className="text-xs text-gray-500 mt-1">Room status: {result.status}</p>}
             </div>
             <details className="bg-gray-50 border border-gray-200 rounded-xl p-3">
               <summary className="text-xs font-semibold text-gray-500 cursor-pointer">Raw API response</summary>
@@ -746,7 +755,7 @@ function MatchesTab({ actor }){
                                 ) : v.verified === false ? (
                                   <p className="text-xs font-bold text-red-600 mt-1">❌ Mismatch (actual: {v.actualWinner})</p>
                                 ) : (
-                                  <p className="text-xs font-bold text-amber-600 mt-1">⚠️ Could not confirm automatically</p>
+                                  <p className="text-xs font-bold text-amber-600 mt-1">⚠️ {v.message || "Could not confirm automatically"}</p>
                                 )
                               )}
                             </div>

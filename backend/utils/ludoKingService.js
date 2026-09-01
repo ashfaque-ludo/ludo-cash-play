@@ -1,6 +1,6 @@
 const axios = require("axios");
 
-const ROOM_RESULT_URL = "https://ludo-king-manual-roomcode-type-result.p.rapidapi.com/rapidapi/manualresult/result/";
+const ROOM_RESULT_URL = "https://ludo-king-api-room-code.p.rapidapi.com/start";
 
 // Looks up a Ludo King room's actual result via RapidAPI, given the same
 // room code the two players used in-app. Manual/on-demand only — called from
@@ -13,7 +13,7 @@ async function getRoomResult(roomCode) {
   let res;
   try {
     res = await axios.get(ROOM_RESULT_URL, {
-      params: { roomcode: roomCode },
+      params: { roomCode },
       headers: { "x-rapidapi-key": key, "x-rapidapi-host": host },
       timeout: 10000,
     });

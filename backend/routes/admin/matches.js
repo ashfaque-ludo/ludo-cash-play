@@ -6,22 +6,9 @@ const {logActivity}=require("../../middleware/activityLogger");
 const {payReferralBonus}=require("../../utils/referral");
 const {getRoomResult}=require("../../utils/ludoKingService");
 
-// Best-effort winner extraction — the RapidAPI "Classic Room Code" response
-// shape has not yet been confirmed against a real completed game (every call
-// so far returned "not subscribed"), so this tries several plausible field
-// names and returns null instead of guessing, so a wrong guess never shows
-// up as a false "Mismatch" to the admin.
-function extractWinner(data){
-  if(!data||typeof data!=="object") return null;
-  const candidates=[data.winner,data.Winner,data.winner_name,data.winnerName,data.result?.winner,data.game?.winner,data.data?.winner];
-  const found=candidates.find(v=>typeof v==="string"&&v.trim());
-  if(found) return found.trim();
-  if(Array.isArray(data.players)){
-    const w=data.players.find(p=>p?.won===true||p?.result==="won"||p?.status==="winner");
-    if(w?.name) return String(w.name).trim();
-  }
-  return null;
-}
+// Confirmed RapidAPI "ludo-king-api-room-code" /start response shape:
+// { success, roomCode, tableId, gameType, status, winnerId, owner: {id,name,status} }
+// winnerId is null until the match finishes, so that's the "not decided yet" signal.
 
 // GET /api/admin/matches?status=...
 // status=pending → shows admin_review + awaiting_review + disputed together
@@ -194,10 +181,19 @@ router.post("/verify-result", async (req,res)=>{
     const {roomCode,claimedWinner}=req.body;
     if(!roomCode) return res.status(400).json({detail:"roomCode is required."});
     const raw=await getRoomResult(roomCode);
-    const actualWinner=extractWinner(raw);
-    const verified = actualWinner==null ? null : actualWinner.toLowerCase()===String(claimedWinner||"").trim().toLowerCase();
-    await logActivity(req,"match_result_verify_checked",roomCode,{claimedWinner,actualWinner,verified});
-    res.json({roomCode,claimedWinner,actualWinner,verified,raw});
+
+    let actualWinner=null, verified=null, message=null;
+    if(!raw||raw.success!==true){
+      message=raw?.message||"Room lookup failed.";
+    } else if(raw.winnerId==null){
+      message="Match abhi khatam nahi hua.";
+    } else {
+      actualWinner=String(raw.winnerId).trim();
+      verified=actualWinner.toLowerCase()===String(claimedWinner||"").trim().toLowerCase();
+    }
+
+    await logActivity(req,"match_result_verify_checked",roomCode,{claimedWinner,actualWinner,verified,status:raw?.status});
+    res.json({roomCode,claimedWinner,actualWinner,verified,status:raw?.status,message,raw});
   }catch(e){ res.status(500).json({detail:e.message||"Verification failed."}); }
 });
 

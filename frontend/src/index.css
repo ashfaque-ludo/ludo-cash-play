@@ -15,6 +15,15 @@
     visibility: hidden !important;
 }
 
+/* overflow-x lives on html, not body — a non-visible overflow on <body>
+   makes some mobile browsers (iOS Safari, some Android WebViews) treat body
+   as the containing block for position:fixed descendants instead of the
+   viewport, which makes the fixed header/bottom-nav visibly scroll with the
+   page instead of staying pinned. */
+html {
+    overflow-x: hidden;
+}
+
 body {
     margin: 0;
     font-family: 'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;
@@ -22,7 +31,6 @@ body {
     color: #F8FAFC;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    overflow-x: hidden;
 }
 
 h1, h2, h3, h4, h5 { font-family: 'Outfit', sans-serif; letter-spacing: -0.02em; }
