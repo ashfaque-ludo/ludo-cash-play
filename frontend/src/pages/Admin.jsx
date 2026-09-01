@@ -1598,8 +1598,16 @@ function PenaltyBonusTab({ actor }) {
 }
 
 // ─── Commission Tab ───────────────────────────────────────────────────────
+// Strips a leading zero only when another digit follows it (so "0" and
+// "0.5" survive, but "05" -> "5" and "015" -> "15") — a plain
+// value={Number(...)} round-trip on every keystroke doesn't clear the
+// leading zero on some browsers, so typing "15" over a "0" produces "015".
+function stripLeadingZero(s) {
+  return s.replace(/^0+(?=\d)/, "");
+}
+
 function CommissionTab() {
-  const [commission, setCommission] = useState(5);
+  const [commission, setCommission] = useState("5");
   const [busy, setBusy] = useState(false);
   const [days, setDays] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -1607,7 +1615,7 @@ function CommissionTab() {
   const [to, setTo] = useState("");
 
   const loadRate = useCallback(async () => {
-    try { const r = await api.get("/admin/commission-settings"); setCommission(r.data.commission_pct); } catch {}
+    try { const r = await api.get("/admin/commission-settings"); setCommission(String(r.data.commission_pct)); } catch {}
   }, []);
   const loadHistory = useCallback(async () => {
     setLoading(true);
@@ -1623,7 +1631,7 @@ function CommissionTab() {
 
   const saveCommission = async () => {
     setBusy(true);
-    try { await api.post("/admin/commission-settings", { commission_pct: commission }); toast.success("Commission updated"); }
+    try { await api.post("/admin/commission-settings", { commission_pct: Number(commission) }); toast.success("Commission updated"); }
     catch (e) { toast.error(formatApiError(e.response?.data?.detail) || e.message); }
     finally { setBusy(false); }
   };
@@ -1639,7 +1647,7 @@ function CommissionTab() {
           <div className="flex items-end gap-4">
             <div className="flex-1">
               <Label className="text-xs text-gray-400">Platform Commission %</Label>
-              <Input type="number" min={0} max={50} step={0.5} value={commission} onChange={e => setCommission(Number(e.target.value))}
+              <Input type="number" min={0} max={50} step={0.5} value={commission} onChange={e => setCommission(stripLeadingZero(e.target.value))}
                 className="bg-gray-50 border-gray-300 text-gray-900 mt-1 w-40" />
               <p className="text-xs text-gray-500 mt-1">Prize = Stake × 2 × (1 − commission/100). Current: {commission}%. Applies to every new battle from the moment it's saved — matches already in progress keep the rate they were created with.</p>
             </div>
@@ -1706,15 +1714,15 @@ function CommissionTab() {
 
 // ─── Referral Settings Tab ────────────────────────────────────────────────
 function ReferralSettingsTab() {
-  const [bonus, setBonus] = useState(50);
-  const [pct, setPct] = useState(1);
+  const [bonus, setBonus] = useState("50");
+  const [pct, setPct] = useState("1");
   const [wa, setWa] = useState("919090000000");
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     api.get("/admin/referral-settings").then(r => {
-      setBonus(r.data.referral_bonus ?? 50);
-      setPct(r.data.referral_pct ?? 1);
+      setBonus(String(r.data.referral_bonus ?? 50));
+      setPct(String(r.data.referral_pct ?? 1));
       setWa(r.data.whatsapp_number ?? "919090000000");
     }).catch(() => {});
   }, []);
@@ -1735,12 +1743,12 @@ function ReferralSettingsTab() {
         <div className="grid sm:grid-cols-2 gap-4">
           <div>
             <Label className="text-gray-600">Referral Bonus Amount</Label>
-            <Input type="number" value={bonus} onChange={e => setBonus(e.target.value)} className="bg-gray-50 border-gray-300 text-gray-900 mt-1" />
+            <Input type="number" value={bonus} onChange={e => setBonus(stripLeadingZero(e.target.value))} className="bg-gray-50 border-gray-300 text-gray-900 mt-1" />
             <p className="text-xs text-gray-500 mt-1">Bonus credited to referrer when referred user joins</p>
           </div>
           <div>
             <Label className="text-gray-600">Referral Percent (per match)</Label>
-            <Input type="number" min={0} max={50} step={0.5} value={pct} onChange={e => setPct(e.target.value)} className="bg-gray-50 border-gray-300 text-gray-900 mt-1" />
+            <Input type="number" min={0} max={50} step={0.5} value={pct} onChange={e => setPct(stripLeadingZero(e.target.value))} className="bg-gray-50 border-gray-300 text-gray-900 mt-1" />
             <p className="text-xs text-gray-500 mt-1">e.g. 1 = referrer earns 1% of every battle their referred player plays, for life</p>
           </div>
         </div>
