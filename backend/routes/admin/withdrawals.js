@@ -15,6 +15,27 @@ router.get("/", async (req,res)=>{
   } catch(e){ res.status(500).json({detail:"Server error."}); }
 });
 
+// Day-wise withdrawal history — sums approved (actually paid out) withdrawals
+// by the day they were approved, so admin can check any date's payout total
+// and count without scrolling the full pending/approved/rejected list.
+router.get("/daily", async (req,res)=>{
+  try{
+    const days = Math.min(Math.max(Number(req.query.days) || 30, 1), 365);
+    const from = req.query.from ? new Date(req.query.from) : new Date(Date.now() - days*24*60*60*1000);
+    const to = req.query.to ? new Date(new Date(req.query.to).getTime() + 24*60*60*1000) : new Date();
+    const rows = await Transaction.aggregate([
+      { $match: { type: "withdrawal", status: "approved", reviewed_at: { $gte: from, $lt: to } } },
+      { $group: {
+          _id: { $dateToString: { format: "%Y-%m-%d", date: "$reviewed_at" } },
+          amount: { $sum: "$amount" },
+          count: { $sum: 1 },
+      } },
+      { $sort: { _id: -1 } },
+    ]);
+    res.json({ days: rows.map(r => ({ date: r._id, amount: r.amount, count: r.count })) });
+  }catch(e){ res.status(500).json({detail:"Server error."}); }
+});
+
 router.post("/:id/approve", async (req,res)=>{
   try{
     const tx=await Transaction.findOne({_id:req.params.id,type:"withdrawal"});

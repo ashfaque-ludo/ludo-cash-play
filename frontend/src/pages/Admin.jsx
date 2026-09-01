@@ -75,6 +75,7 @@ export default function Admin() {
             <TabsTrigger value="users" data-testid="tab-users"><Users className="w-3.5 h-3.5 mr-1" /> Users</TabsTrigger>
             {can("staff_manager") && <TabsTrigger value="deposits" data-testid="tab-deposits"><WalletIcon className="w-3.5 h-3.5 mr-1" /> Deposit History</TabsTrigger>}
             {can("staff_manager") && <TabsTrigger value="withdrawals" data-testid="tab-withdrawals"><ArrowDownToLine className="w-3.5 h-3.5 mr-1" /> Withdrawals</TabsTrigger>}
+            {can("staff_manager") && <TabsTrigger value="withdrawal-history" data-testid="tab-withdrawal-history"><Clock className="w-3.5 h-3.5 mr-1" /> Withdrawal History</TabsTrigger>}
             <TabsTrigger value="matches" data-testid="tab-matches"><Trophy className="w-3.5 h-3.5 mr-1" /> Matches</TabsTrigger>
             <TabsTrigger value="verify-result" data-testid="tab-verify-result"><Search className="w-3.5 h-3.5 mr-1" /> Verify Result</TabsTrigger>
             <TabsTrigger value="screenshots" data-testid="tab-screenshots"><Camera className="w-3.5 h-3.5 mr-1" /> Screenshots</TabsTrigger>
@@ -98,6 +99,7 @@ export default function Admin() {
           <TabsContent value="users"><UsersTab actor={user} /></TabsContent>
           <TabsContent value="deposits"><DepositsTab /></TabsContent>
           <TabsContent value="withdrawals"><WithdrawalsTab /></TabsContent>
+          <TabsContent value="withdrawal-history"><WithdrawalHistoryTab /></TabsContent>
           <TabsContent value="matches"><MatchesTab actor={user} /></TabsContent>
           <TabsContent value="verify-result"><VerifyResultTab /></TabsContent>
           <TabsContent value="screenshots"><ScreenshotsTab /></TabsContent>
@@ -478,6 +480,84 @@ function WithdrawalsTab(){
           <button onClick={() => setZoomedUrl(null)} className="fixed top-5 right-5 bg-white/10 rounded-full w-9 h-9 grid place-items-center text-white text-lg">✕</button>
         </div>
       )}
+    </Card>
+  );
+}
+
+// ─── Withdrawal History Tab — day-wise payout record ──────────────────────
+function WithdrawalHistoryTab() {
+  const [days, setDays] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const params = from && to ? { from, to } : { days: 30 };
+      const r = await api.get("/admin/withdrawals/daily", { params });
+      setDays(r.data.days || []);
+    } catch {} finally { setLoading(false); }
+  }, [from, to]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const total = days.reduce((s, d) => s + (d.amount || 0), 0);
+  const totalCount = days.reduce((s, d) => s + (d.count || 0), 0);
+
+  return (
+    <Card className="bg-white border-gray-200 shadow-sm text-gray-900 mt-5">
+      <CardHeader><CardTitle>Withdrawal History — Day-wise</CardTitle></CardHeader>
+      <CardContent className="space-y-4">
+        <p className="text-sm text-gray-500">Approved (actually paid out) withdrawals, grouped by the date they were approved. Pick any date range to check a specific day.</p>
+        <div className="flex flex-wrap items-end gap-3">
+          <div>
+            <Label className="text-xs text-gray-400">From</Label>
+            <Input type="date" value={from} onChange={e => setFrom(e.target.value)} className="bg-gray-50 border-gray-300 text-gray-900 mt-1" />
+          </div>
+          <div>
+            <Label className="text-xs text-gray-400">To</Label>
+            <Input type="date" value={to} onChange={e => setTo(e.target.value)} className="bg-gray-50 border-gray-300 text-gray-900 mt-1" />
+          </div>
+          <Button variant="outline" onClick={load} className="rounded-full border-gray-300">Filter</Button>
+          {(from || to) && <Button variant="outline" onClick={() => { setFrom(""); setTo(""); }} className="rounded-full border-gray-300 text-gray-500">Reset (last 30 days)</Button>}
+        </div>
+
+        <div className="grid grid-cols-2 gap-3 max-w-md">
+          <div className="bg-red-50 border border-red-200 rounded-xl p-3">
+            <p className="text-xs text-gray-500">Total withdrawn (range)</p>
+            <p className="text-xl font-black text-red-700">{fmtINR(total)}</p>
+          </div>
+          <div className="bg-gray-50 border border-gray-200 rounded-xl p-3">
+            <p className="text-xs text-gray-500">Withdrawals paid</p>
+            <p className="text-xl font-black text-gray-800">{totalCount}</p>
+          </div>
+        </div>
+
+        {loading ? (
+          <div className="text-gray-400 text-center py-8">Loading…</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader><TableRow className="border-gray-200">
+                <TableHead>Date</TableHead>
+                <TableHead>Withdrawals Paid</TableHead>
+                <TableHead>Amount Paid</TableHead>
+              </TableRow></TableHeader>
+              <TableBody>
+                {days.map(d => (
+                  <TableRow key={d.date} className="border-gray-200">
+                    <TableCell className="font-medium">{d.date}</TableCell>
+                    <TableCell>{d.count}</TableCell>
+                    <TableCell className="text-red-700 font-bold">{fmtINR(d.amount)}</TableCell>
+                  </TableRow>
+                ))}
+                {days.length === 0 && <TableRow><TableCell colSpan={3} className="text-center text-gray-500 py-6">No withdrawals paid in this range.</TableCell></TableRow>}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+      </CardContent>
     </Card>
   );
 }
