@@ -427,10 +427,15 @@ function WithdrawalsTab(){
                       <img src={d.qr_code_url} alt="Withdrawal QR" onClick={() => setZoomedUrl(d.qr_code_url)}
                         className="w-12 h-12 object-cover rounded-lg border border-gray-200 cursor-zoom-in" />
                     ) : d.upi_id ? (
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-gray-600 font-mono text-sm">{d.upi_id}</span>
+                      <div className="flex items-center gap-1.5 select-none">
+                        <span className="text-gray-600 font-mono text-sm select-none">{d.upi_id}</span>
                         <button type="button" title="Copy UPI ID"
-                          onClick={() => { navigator.clipboard.writeText(d.upi_id); toast.success("UPI ID copied"); }}
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => {
+                            navigator.clipboard.writeText(d.upi_id);
+                            window.getSelection()?.removeAllRanges();
+                            toast.success("UPI ID copied");
+                          }}
                           className="text-gray-400 hover:text-gray-700">
                           <Copy className="w-3.5 h-3.5" />
                         </button>
