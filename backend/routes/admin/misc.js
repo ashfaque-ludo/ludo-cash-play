@@ -5,6 +5,7 @@ const Broadcast=require("../../models/Broadcast");
 const ActivityLog=require("../../models/ActivityLog");
 const StakeTable=require("../../models/StakeTable");
 const Config=require("../../models/Config");
+const Match=require("../../models/Match");
 const {logActivity}=require("../../middleware/activityLogger");
 const SupportTicket=require("../../models/SupportTicket");
 const {v4:uuidv4}=require("uuid");
@@ -96,12 +97,18 @@ router.post("/staff/create", async (req,res)=>{
 // Referral settings
 router.get("/referral-settings", async (req,res)=>{
   const bonus = await Config.get("referral_bonus", 50);
+  const pct = await Config.get("referral_pct", 1);
   const wa = await Config.get("whatsapp_number", "919090000000");
-  res.json({ referral_bonus: bonus, whatsapp_number: wa });
+  res.json({ referral_bonus: bonus, referral_pct: pct, whatsapp_number: wa });
 });
 router.post("/referral-settings", async (req,res)=>{
-  const { referral_bonus, whatsapp_number } = req.body;
+  const { referral_bonus, referral_pct, whatsapp_number } = req.body;
   if (referral_bonus !== undefined) await Config.set("referral_bonus", Number(referral_bonus));
+  if (referral_pct !== undefined) {
+    const pct = Number(referral_pct);
+    if (isNaN(pct) || pct < 0 || pct > 50) return res.status(400).json({ detail: "Referral % must be 0–50." });
+    await Config.set("referral_pct", pct);
+  }
   if (whatsapp_number !== undefined) await Config.set("whatsapp_number", String(whatsapp_number).replace(/\D/g,""));
   await logActivity(req,"referral_settings_updated","",req.body);
   res.json({ ok:true });
@@ -140,6 +147,27 @@ router.post("/commission-settings", async (req,res)=>{
   await Config.set("commission_pct", pct);
   await logActivity(req,"commission_updated","",{ commission_pct: pct });
   res.json({ ok:true, commission_pct: pct });
+});
+
+// Day-wise commission earned — commission is stored per-match at creation
+// time (whatever commission_pct was in effect then), so changing the rate
+// never rewrites history; this just sums it by the day each match ended.
+router.get("/commission-daily", async (req,res)=>{
+  try{
+    const days = Math.min(Math.max(Number(req.query.days) || 30, 1), 365);
+    const from = req.query.from ? new Date(req.query.from) : new Date(Date.now() - days*24*60*60*1000);
+    const to = req.query.to ? new Date(new Date(req.query.to).getTime() + 24*60*60*1000) : new Date();
+    const rows = await Match.aggregate([
+      { $match: { status: "ended", ended_at: { $gte: from, $lt: to } } },
+      { $group: {
+          _id: { $dateToString: { format: "%Y-%m-%d", date: "$ended_at" } },
+          commission: { $sum: "$commission" },
+          matches: { $sum: 1 },
+      } },
+      { $sort: { _id: -1 } },
+    ]);
+    res.json({ days: rows.map(r => ({ date: r._id, commission: r.commission, matches: r.matches })) });
+  }catch(e){ res.status(500).json({detail:"Server error."}); }
 });
 
 // Announcement settings

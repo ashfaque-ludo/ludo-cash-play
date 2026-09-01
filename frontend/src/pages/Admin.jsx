@@ -16,7 +16,7 @@ import {
   Table, TableHeader, TableRow, TableHead, TableBody, TableCell
 } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
-import { ShieldCheck, ShieldAlert, ShieldOff, Users, Wallet as WalletIcon, ArrowDownToLine, Trophy, Tag, Megaphone, BarChart3, FileText, Lock, Ban, KeyRound, Settings, Layers, UserPlus, Trash2, Camera, ZoomIn, Share2, Clock, MessageSquare, Image, PlusCircle, MinusCircle, Gift, Phone, Search, Copy } from "lucide-react";
+import { ShieldCheck, ShieldAlert, ShieldOff, Users, Wallet as WalletIcon, ArrowDownToLine, Trophy, Tag, Megaphone, BarChart3, FileText, Lock, Ban, KeyRound, Settings, Layers, UserPlus, Trash2, Camera, ZoomIn, Share2, Clock, MessageSquare, Image, PlusCircle, MinusCircle, Gift, Phone, Search, Copy, Percent } from "lucide-react";
 import { toast } from "sonner";
 import DepositsTab from "@/components/admin/DepositsTab";
 
@@ -88,6 +88,7 @@ export default function Admin() {
             {can("super_admin") && <TabsTrigger value="settings" data-testid="tab-settings"><Settings className="w-3.5 h-3.5 mr-1" /> Settings</TabsTrigger>}
             {can("staff_manager") && <TabsTrigger value="penalty" data-testid="tab-penalty"><WalletIcon className="w-3.5 h-3.5 mr-1" /> Penalty/Bonus</TabsTrigger>}
             {can("super_admin") && <TabsTrigger value="ref-settings" data-testid="tab-ref-settings"><Gift className="w-3.5 h-3.5 mr-1" /> Referral Settings</TabsTrigger>}
+            {can("super_admin") && <TabsTrigger value="commission" data-testid="tab-commission"><Percent className="w-3.5 h-3.5 mr-1" /> Commission</TabsTrigger>}
             {can("admin") && <TabsTrigger value="banners" data-testid="tab-banners"><Image className="w-3.5 h-3.5 mr-1" /> Banners</TabsTrigger>}
             <TabsTrigger value="support-mgmt" data-testid="tab-support"><Phone className="w-3.5 h-3.5 mr-1" /> Support</TabsTrigger>
             {can("admin") && <TabsTrigger value="payment-settings" data-testid="tab-payment"><WalletIcon className="w-3.5 h-3.5 mr-1" /> Settings</TabsTrigger>}
@@ -110,6 +111,7 @@ export default function Admin() {
           <TabsContent value="settings"><SettingsTab /></TabsContent>
           <TabsContent value="penalty"><PenaltyBonusTab actor={user} /></TabsContent>
           <TabsContent value="ref-settings"><ReferralSettingsTab /></TabsContent>
+          <TabsContent value="commission"><CommissionTab /></TabsContent>
           <TabsContent value="banners"><BannersTab /></TabsContent>
           <TabsContent value="support-mgmt"><SupportMgmtTab /></TabsContent>
           <TabsContent value="payment-settings"><PaymentSettingsTab /></TabsContent>
@@ -1595,15 +1597,124 @@ function PenaltyBonusTab({ actor }) {
   );
 }
 
+// ─── Commission Tab ───────────────────────────────────────────────────────
+function CommissionTab() {
+  const [commission, setCommission] = useState(5);
+  const [busy, setBusy] = useState(false);
+  const [days, setDays] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
+
+  const loadRate = useCallback(async () => {
+    try { const r = await api.get("/admin/commission-settings"); setCommission(r.data.commission_pct); } catch {}
+  }, []);
+  const loadHistory = useCallback(async () => {
+    setLoading(true);
+    try {
+      const params = from && to ? { from, to } : { days: 30 };
+      const r = await api.get("/admin/commission-daily", { params });
+      setDays(r.data.days || []);
+    } catch {} finally { setLoading(false); }
+  }, [from, to]);
+
+  useEffect(() => { loadRate(); }, [loadRate]);
+  useEffect(() => { loadHistory(); }, [loadHistory]);
+
+  const saveCommission = async () => {
+    setBusy(true);
+    try { await api.post("/admin/commission-settings", { commission_pct: commission }); toast.success("Commission updated"); }
+    catch (e) { toast.error(formatApiError(e.response?.data?.detail) || e.message); }
+    finally { setBusy(false); }
+  };
+
+  const total = days.reduce((s, d) => s + (d.commission || 0), 0);
+  const totalMatches = days.reduce((s, d) => s + (d.matches || 0), 0);
+
+  return (
+    <div className="space-y-5 mt-5">
+      <Card className="bg-white border-gray-200 shadow-sm text-gray-900">
+        <CardHeader><CardTitle>Commission Rate</CardTitle></CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-end gap-4">
+            <div className="flex-1">
+              <Label className="text-xs text-gray-400">Platform Commission %</Label>
+              <Input type="number" min={0} max={50} step={0.5} value={commission} onChange={e => setCommission(Number(e.target.value))}
+                className="bg-gray-50 border-gray-300 text-gray-900 mt-1 w-40" />
+              <p className="text-xs text-gray-500 mt-1">Prize = Stake × 2 × (1 − commission/100). Current: {commission}%. Applies to every new battle from the moment it's saved — matches already in progress keep the rate they were created with.</p>
+            </div>
+            <Button disabled={busy} onClick={saveCommission} className="rounded-full bg-amber-600 text-white">Save</Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="bg-white border-gray-200 shadow-sm text-gray-900">
+        <CardHeader><CardTitle>Commission Earned — Day-wise</CardTitle></CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex flex-wrap items-end gap-3">
+            <div>
+              <Label className="text-xs text-gray-400">From</Label>
+              <Input type="date" value={from} onChange={e => setFrom(e.target.value)} className="bg-gray-50 border-gray-300 text-gray-900 mt-1" />
+            </div>
+            <div>
+              <Label className="text-xs text-gray-400">To</Label>
+              <Input type="date" value={to} onChange={e => setTo(e.target.value)} className="bg-gray-50 border-gray-300 text-gray-900 mt-1" />
+            </div>
+            <Button variant="outline" onClick={loadHistory} className="rounded-full border-gray-300">Filter</Button>
+            {(from || to) && <Button variant="outline" onClick={() => { setFrom(""); setTo(""); }} className="rounded-full border-gray-300 text-gray-500">Reset (last 30 days)</Button>}
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 max-w-md">
+            <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3">
+              <p className="text-xs text-gray-500">Total commission (range)</p>
+              <p className="text-xl font-black text-emerald-700">{fmtINR(total)}</p>
+            </div>
+            <div className="bg-gray-50 border border-gray-200 rounded-xl p-3">
+              <p className="text-xs text-gray-500">Matches settled</p>
+              <p className="text-xl font-black text-gray-800">{totalMatches}</p>
+            </div>
+          </div>
+
+          {loading ? (
+            <div className="text-gray-400 text-center py-8">Loading…</div>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader><TableRow className="border-gray-200">
+                  <TableHead>Date</TableHead>
+                  <TableHead>Matches Settled</TableHead>
+                  <TableHead>Commission Earned</TableHead>
+                </TableRow></TableHeader>
+                <TableBody>
+                  {days.map(d => (
+                    <TableRow key={d.date} className="border-gray-200">
+                      <TableCell className="font-medium">{d.date}</TableCell>
+                      <TableCell>{d.matches}</TableCell>
+                      <TableCell className="text-emerald-600 font-bold">{fmtINR(d.commission)}</TableCell>
+                    </TableRow>
+                  ))}
+                  {days.length === 0 && <TableRow><TableCell colSpan={3} className="text-center text-gray-500 py-6">No commission in this range.</TableCell></TableRow>}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
 // ─── Referral Settings Tab ────────────────────────────────────────────────
 function ReferralSettingsTab() {
   const [bonus, setBonus] = useState(50);
+  const [pct, setPct] = useState(1);
   const [wa, setWa] = useState("919090000000");
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     api.get("/admin/referral-settings").then(r => {
       setBonus(r.data.referral_bonus ?? 50);
+      setPct(r.data.referral_pct ?? 1);
       setWa(r.data.whatsapp_number ?? "919090000000");
     }).catch(() => {});
   }, []);
@@ -1611,7 +1722,7 @@ function ReferralSettingsTab() {
   const save = async () => {
     setBusy(true);
     try {
-      await api.post("/admin/referral-settings", { referral_bonus: Number(bonus), whatsapp_number: wa });
+      await api.post("/admin/referral-settings", { referral_bonus: Number(bonus), referral_pct: Number(pct), whatsapp_number: wa });
       toast.success("Settings saved");
     } catch (e) { toast.error(formatApiError(e.response?.data?.detail) || e.message); }
     finally { setBusy(false); }
@@ -1621,10 +1732,17 @@ function ReferralSettingsTab() {
     <Card className="bg-white border-gray-200 shadow-sm text-gray-900 mt-5">
       <CardHeader><CardTitle>Referral &amp; Contact Settings</CardTitle></CardHeader>
       <CardContent className="space-y-4 max-w-md">
-        <div>
-          <Label className="text-gray-600">Referral Bonus Amount</Label>
-          <Input type="number" value={bonus} onChange={e => setBonus(e.target.value)} className="bg-gray-50 border-gray-300 text-gray-900 mt-1" />
-          <p className="text-xs text-gray-500 mt-1">Bonus credited to referrer when referred user joins</p>
+        <div className="grid sm:grid-cols-2 gap-4">
+          <div>
+            <Label className="text-gray-600">Referral Bonus Amount</Label>
+            <Input type="number" value={bonus} onChange={e => setBonus(e.target.value)} className="bg-gray-50 border-gray-300 text-gray-900 mt-1" />
+            <p className="text-xs text-gray-500 mt-1">Bonus credited to referrer when referred user joins</p>
+          </div>
+          <div>
+            <Label className="text-gray-600">Referral Percent (per match)</Label>
+            <Input type="number" min={0} max={50} step={0.5} value={pct} onChange={e => setPct(e.target.value)} className="bg-gray-50 border-gray-300 text-gray-900 mt-1" />
+            <p className="text-xs text-gray-500 mt-1">e.g. 1 = referrer earns 1% of every battle their referred player plays, for life</p>
+          </div>
         </div>
         <div>
           <Label className="text-gray-600">WhatsApp Number (with country code)</Label>
@@ -1913,21 +2031,18 @@ function SupportMgmtTab() {
 
 function PaymentSettingsTab() {
   const [form, setForm] = useState({ whatsapp_number: "", support_email: "" });
-  const [commission, setCommission] = useState(5);
   const [announcement, setAnnouncement] = useState("");
   const [battleBanner, setBattleBanner] = useState("");
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
     try {
-      const [p, c, a, bb] = await Promise.all([
+      const [p, a, bb] = await Promise.all([
         api.get("/admin/payment-settings"),
-        api.get("/admin/commission-settings"),
         api.get("/admin/announcement"),
         api.get("/admin/battle-banner"),
       ]);
       setForm(p.data);
-      setCommission(c.data.commission_pct);
       setAnnouncement(a.data.announcement || "");
       setBattleBanner(bb.data.text || "");
     } catch {}
@@ -1937,12 +2052,6 @@ function PaymentSettingsTab() {
   const savePayment = async () => {
     setBusy(true);
     try { await api.post("/admin/payment-settings", form); toast.success("Contact settings saved"); }
-    catch (e) { toast.error(formatApiError(e.response?.data?.detail) || e.message); }
-    finally { setBusy(false); }
-  };
-  const saveCommission = async () => {
-    setBusy(true);
-    try { await api.post("/admin/commission-settings", { commission_pct: commission }); toast.success("Commission updated"); }
     catch (e) { toast.error(formatApiError(e.response?.data?.detail) || e.message); }
     finally { setBusy(false); }
   };
@@ -1985,21 +2094,6 @@ function PaymentSettingsTab() {
           </div>
 
           <Button disabled={busy} onClick={savePayment} className="rounded-full bg-gradient-to-r from-red-700 to-black text-white">Save Contact Settings</Button>
-        </CardContent>
-      </Card>
-
-      <Card className="bg-white border-gray-200 shadow-sm text-gray-900">
-        <CardHeader><CardTitle>Commission Rate</CardTitle></CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-end gap-4">
-            <div className="flex-1">
-              <Label className="text-xs text-gray-400">Platform Commission %</Label>
-              <Input type="number" min={0} max={50} step={0.5} value={commission} onChange={e => setCommission(Number(e.target.value))}
-                className="bg-gray-50 border-gray-300 text-gray-900 mt-1 w-40" />
-              <p className="text-xs text-gray-500 mt-1">Prize = Stake × 2 × (1 − commission/100). Current: {commission}%</p>
-            </div>
-            <Button disabled={busy} onClick={saveCommission} className="rounded-full bg-amber-600 text-white">Save</Button>
-          </div>
         </CardContent>
       </Card>
 
