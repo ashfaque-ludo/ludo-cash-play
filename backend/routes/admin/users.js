@@ -1,5 +1,6 @@
 const router=require("express").Router();
 const User=require("../../models/User");
+const ActivityLog=require("../../models/ActivityLog");
 const {logActivity}=require("../../middleware/activityLogger");
 const {LEVELS}=require("../../middleware/adminAuth");
 router.get("/", async (req,res)=>{
@@ -38,12 +39,30 @@ router.post("/:id/wallet", async (req,res)=>{
     if(!reason||reason.length<3) return res.status(400).json({detail:"Reason required."});
     const target=await User.findById(req.params.id);
     if(!target) return res.status(404).json({detail:"User not found."});
+    const before={deposit:target.wallet.deposit||0,winning:target.wallet.winning||0,bonus:target.wallet.bonus||0};
     if(deposit!==undefined) target.wallet.deposit=Number(deposit);
     if(winning!==undefined) target.wallet.winning=Number(winning);
     if(bonus!==undefined) target.wallet.bonus=Number(bonus);
     await target.save();
-    await logActivity(req,"wallet_edited",target.email,{reason});
+    const after={deposit:target.wallet.deposit||0,winning:target.wallet.winning||0,bonus:target.wallet.bonus||0};
+    await logActivity(req,"wallet_edited",target.email||target.phone||target._id.toString(),{
+      reason, user_id:target._id.toString(), before, after,
+      delta:{deposit:after.deposit-before.deposit, winning:after.winning-before.winning, bonus:after.bonus-before.bonus},
+    });
     res.json({ok:true,wallet:target.wallet});
+  }catch(e){res.status(500).json({detail:"Server error."});}
+});
+
+// GET /admin/users/:id/wallet-history — every wallet edit made to this user,
+// from either the Admin panel or the Owner Panel, newest first — shown right
+// inside the wallet-edit dialog so an admin can see what changed before them.
+router.get("/:id/wallet-history", async (req,res)=>{
+  try{
+    const logs=await ActivityLog.find({
+      "meta.user_id":req.params.id,
+      action:{$in:["wallet_edited","owner_wallet_adjusted"]},
+    }).sort({createdAt:-1}).limit(20);
+    res.json({logs:logs.map(l=>({...l.toObject(),id:l._id.toString(),created_at:l.createdAt}))});
   }catch(e){res.status(500).json({detail:"Server error."});}
 });
 router.post("/:id/freeze-wallet", async (req,res)=>{

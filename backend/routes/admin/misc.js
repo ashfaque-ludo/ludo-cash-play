@@ -36,7 +36,19 @@ router.post("/broadcasts", async (req,res)=>{
   res.status(201).json({ok:true,broadcast:{...b.toObject(),id:b._id.toString(),created_at:b.createdAt}});
 });
 
-router.get("/activity-logs", async (req,res)=>{ const l=await ActivityLog.find().sort({createdAt:-1}).limit(200); res.json({logs:l.map(x=>({...x.toObject(),id:x._id.toString(),created_at:x.createdAt}))}); });
+// GET /admin/activity-logs — every admin/staff action (wallet edits, bans,
+// match decisions, screenshot review, settings changes, ...), newest first.
+// Optional filters so "what did this staff member do" / "what happened to
+// this user" can be answered without scrolling the whole log.
+router.get("/activity-logs", async (req,res)=>{
+  const { actor, target, action, limit=500 } = req.query;
+  const filter = {};
+  if (actor) filter.actor_email = { $regex: actor, $options: "i" };
+  if (target) filter.target = { $regex: target, $options: "i" };
+  if (action) filter.action = { $regex: action, $options: "i" };
+  const l=await ActivityLog.find(filter).sort({createdAt:-1}).limit(Math.min(Number(limit)||500,1000));
+  res.json({logs:l.map(x=>({...x.toObject(),id:x._id.toString(),created_at:x.createdAt}))});
+});
 
 router.post("/maintenance", async (req,res)=>{ await Config.set("maintenance",{enabled:!!req.body.enabled,message:req.body.message||""}); await logActivity(req,"maintenance_updated","",req.body); res.json({ok:true}); });
 

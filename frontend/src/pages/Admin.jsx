@@ -83,7 +83,7 @@ export default function Admin() {
             <TabsTrigger value="kyc" data-testid="tab-kyc"><ShieldCheck className="w-3.5 h-3.5 mr-1" /> KYC</TabsTrigger>
             {can("admin") && <TabsTrigger value="promos" data-testid="tab-promos"><Tag className="w-3.5 h-3.5 mr-1" /> Promos</TabsTrigger>}
             {can("admin") && <TabsTrigger value="broadcasts" data-testid="tab-broadcasts"><Megaphone className="w-3.5 h-3.5 mr-1" /> Broadcasts</TabsTrigger>}
-            {can("admin") && <TabsTrigger value="logs" data-testid="tab-logs"><FileText className="w-3.5 h-3.5 mr-1" /> Logs</TabsTrigger>}
+            {can("admin") && <TabsTrigger value="logs" data-testid="tab-logs"><FileText className="w-3.5 h-3.5 mr-1" /> Staff Activity</TabsTrigger>}
             {can("super_admin") && <TabsTrigger value="tables" data-testid="tab-tables"><Layers className="w-3.5 h-3.5 mr-1" /> Tables</TabsTrigger>}
             {can("super_admin") && <TabsTrigger value="staff" data-testid="tab-staff"><UserPlus className="w-3.5 h-3.5 mr-1" /> Staff</TabsTrigger>}
             {can("super_admin") && <TabsTrigger value="settings" data-testid="tab-settings"><Settings className="w-3.5 h-3.5 mr-1" /> Settings</TabsTrigger>}
@@ -305,12 +305,34 @@ function EditUserDialog({ open, user, actor, onClose }) {
 function WalletDialog({ open, user, onClose }) {
   const [w, setW] = useState({deposit:"", winning:"", bonus:""});
   const [reason, setReason] = useState("");
-  useEffect(()=>{ if (user) setW({deposit: user.wallet.deposit, winning: user.wallet.winning, bonus: user.wallet.bonus}); setReason(""); }, [user]);
+  const [history, setHistory] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+
+  const loadHistory = useCallback(async (userId) => {
+    if (!userId) return;
+    setHistoryLoading(true);
+    try {
+      const r = await api.get(`/admin/users/${userId}/wallet-history`);
+      setHistory(r.data.logs || []);
+    } catch { setHistory([]); }
+    finally { setHistoryLoading(false); }
+  }, []);
+
+  useEffect(()=>{
+    if (user) {
+      setW({deposit: user.wallet.deposit, winning: user.wallet.winning, bonus: user.wallet.bonus});
+      loadHistory(user.id);
+    }
+    setReason("");
+  }, [user, loadHistory]);
+
   if (!user) return null;
   const submit = async () => {
     try {
       await api.post(`/admin/users/${user.id}/wallet`, { deposit: Number(w.deposit), winning: Number(w.winning), bonus: Number(w.bonus), reason });
-      toast.success("Wallet updated"); onClose();
+      toast.success("Wallet updated");
+      loadHistory(user.id);
+      setReason("");
     } catch (e) { toast.error(formatApiError(e.response?.data?.detail) || e.message); }
   };
   return (
@@ -329,6 +351,32 @@ function WalletDialog({ open, user, onClose }) {
         <DialogFooter>
           <Button onClick={submit} disabled={reason.length < 3} className="rounded-full bg-amber-500 text-black font-bold" data-testid="wallet-submit">Apply</Button>
         </DialogFooter>
+
+        <div className="border-t border-gray-200 pt-3 mt-1">
+          <Label className="text-gray-600">Past wallet changes for this user</Label>
+          <div className="max-h-48 overflow-y-auto mt-2 divide-y divide-gray-100" data-testid="wallet-history-list">
+            {historyLoading && <div className="text-gray-400 text-xs py-2">Loading…</div>}
+            {!historyLoading && history.map(l => (
+              <div key={l.id} className="py-1.5 text-xs">
+                <div className="flex items-center justify-between">
+                  <span className="font-semibold text-gray-700">{l.actor_email} ({l.actor_role})</span>
+                  <span className="text-gray-400">{new Date(l.created_at).toLocaleString("en-IN")}</span>
+                </div>
+                {l.meta?.before && l.meta?.after && (
+                  <div className="flex flex-wrap gap-2 mt-0.5">
+                    {["deposit","winning","bonus"].map(k => (
+                      <span key={k} className={l.meta.delta?.[k] > 0 ? "text-green-600" : l.meta.delta?.[k] < 0 ? "text-red-600" : "text-gray-400"}>
+                        {k}: {fmtINR(l.meta.before[k])} → {fmtINR(l.meta.after[k])}
+                      </span>
+                    ))}
+                  </div>
+                )}
+                {l.meta?.reason && <div className="text-gray-400">reason: {l.meta.reason}</div>}
+              </div>
+            ))}
+            {!historyLoading && history.length === 0 && <div className="text-gray-400 text-xs py-2">No previous wallet changes.</div>}
+          </div>
+        </div>
       </DialogContent>
     </Dialog>
   );
@@ -978,24 +1026,70 @@ function BroadcastsTab(){
   );
 }
 
+// Every admin/staff action — wallet edits, bans, match decisions, screenshot
+// review, settings changes, everything logActivity() records — newest first,
+// filterable by which staff member did it or which user it happened to.
 function LogsTab(){
   const [rows, setRows] = useState([]);
-  useEffect(()=>{ api.get("/admin/activity-logs").then(r=>setRows(r.data.logs)).catch(()=>{}); }, []);
+  const [loading, setLoading] = useState(true);
+  const [actor, setActor] = useState("");
+  const [target, setTarget] = useState("");
+  const [action, setAction] = useState("");
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const params = {};
+      if (actor.trim()) params.actor = actor.trim();
+      if (target.trim()) params.target = target.trim();
+      if (action.trim()) params.action = action.trim();
+      const r = await api.get("/admin/activity-logs", { params });
+      setRows(r.data.logs || []);
+    } catch { setRows([]); }
+    finally { setLoading(false); }
+  }, [actor, target, action]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const isWalletAction = a => a === "wallet_edited" || a === "owner_wallet_adjusted";
+
   return (
     <Card className="bg-white border-gray-200 shadow-sm text-gray-900 mt-5">
-      <CardHeader><CardTitle>Activity & security logs</CardTitle></CardHeader>
+      <CardHeader>
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <CardTitle>Staff Activity (every admin/staff action)</CardTitle>
+          <Button size="sm" onClick={load} variant="outline" className="rounded-full border-gray-300 bg-gray-100 text-gray-600">Refresh</Button>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-3">
+          <Input placeholder="Filter by staff (email)" value={actor} onChange={e=>setActor(e.target.value)} className="bg-gray-50 border-gray-300 text-gray-900" data-testid="logs-filter-actor" />
+          <Input placeholder="Filter by user (email/phone)" value={target} onChange={e=>setTarget(e.target.value)} className="bg-gray-50 border-gray-300 text-gray-900" data-testid="logs-filter-target" />
+          <Input placeholder="Filter by action (e.g. wallet_edited)" value={action} onChange={e=>setAction(e.target.value)} className="bg-gray-50 border-gray-300 text-gray-900" data-testid="logs-filter-action" />
+        </div>
+      </CardHeader>
       <CardContent className="max-h-[600px] overflow-y-auto divide-y divide-gray-100" data-testid="logs-list">
-        {rows.map(l=>(
+        {loading && <div className="text-gray-400 text-sm py-4">Loading…</div>}
+        {!loading && rows.map(l=>(
           <div key={l.id} className="py-2 text-sm">
             <div className="flex items-center justify-between">
               <span className="font-semibold">{l.action}</span>
               <span className="text-xs text-gray-400">{new Date(l.created_at).toLocaleString("en-IN")}</span>
             </div>
             <div className="text-xs text-gray-400">{l.actor_email} ({l.actor_role}) → target: {l.target || "—"}</div>
-            {l.meta && Object.keys(l.meta).length > 0 && <div className="text-xs text-gray-500 mt-0.5 font-mono">{JSON.stringify(l.meta)}</div>}
+            {isWalletAction(l.action) && l.meta?.before && l.meta?.after ? (
+              <div className="text-xs mt-1 flex flex-wrap gap-3">
+                {["deposit","winning","bonus"].map(k => (
+                  <span key={k} className={l.meta.delta?.[k] > 0 ? "text-green-600" : l.meta.delta?.[k] < 0 ? "text-red-600" : "text-gray-500"}>
+                    {k}: {fmtINR(l.meta.before[k])} → {fmtINR(l.meta.after[k])} ({l.meta.delta?.[k] > 0 ? "+" : ""}{fmtINR(l.meta.delta?.[k] || 0)})
+                  </span>
+                ))}
+                {l.meta.reason && <span className="text-gray-400">reason: {l.meta.reason}</span>}
+              </div>
+            ) : (
+              l.meta && Object.keys(l.meta).length > 0 && <div className="text-xs text-gray-500 mt-0.5 font-mono">{JSON.stringify(l.meta)}</div>
+            )}
           </div>
         ))}
-        {rows.length === 0 && <div className="text-gray-400 text-sm py-4">No activity yet.</div>}
+        {!loading && rows.length === 0 && <div className="text-gray-400 text-sm py-4">No activity found.</div>}
       </CardContent>
     </Card>
   );

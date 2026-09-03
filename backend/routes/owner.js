@@ -337,13 +337,24 @@ router.post("/users/wallet-adjust", async (req, res) => {
   try {
     const { user_id, deposit, winning, bonus, reason } = req.body;
     if (!reason || reason.length < 3) return res.status(400).json({ detail: "Reason required (min 3 chars)." });
+    const before = await User.findById(user_id);
+    if (!before) return res.status(404).json({ detail: "User not found." });
+    const beforeWallet = { deposit: before.wallet.deposit || 0, winning: before.wallet.winning || 0, bonus: before.wallet.bonus || 0 };
     const target = await User.findByIdAndUpdate(
       user_id,
       { $set: { "wallet.deposit": Number(deposit), "wallet.winning": Number(winning), "wallet.bonus": Number(bonus) } },
       { new: true }
     );
-    if (!target) return res.status(404).json({ detail: "User not found." });
-    await ActivityLog.create({ action: "owner_wallet_adjusted", actor: req.user._id, actor_email: req.user.email || req.user.phone, actor_role: req.user.role, target: target.email || target.phone || user_id, meta: { deposit, winning, bonus, reason }, ip: req.ip });
+    const afterWallet = { deposit: target.wallet.deposit || 0, winning: target.wallet.winning || 0, bonus: target.wallet.bonus || 0 };
+    await ActivityLog.create({
+      action: "owner_wallet_adjusted", actor: req.user._id, actor_email: req.user.email || req.user.phone, actor_role: req.user.role,
+      target: target.email || target.phone || user_id,
+      meta: {
+        reason, user_id, before: beforeWallet, after: afterWallet,
+        delta: { deposit: afterWallet.deposit - beforeWallet.deposit, winning: afterWallet.winning - beforeWallet.winning, bonus: afterWallet.bonus - beforeWallet.bonus },
+      },
+      ip: req.ip,
+    });
     res.json({ ok: true, wallet: target.wallet });
   } catch (e) { res.status(500).json({ detail: e.message }); }
 });
