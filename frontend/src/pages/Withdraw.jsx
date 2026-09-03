@@ -36,7 +36,7 @@ export default function Withdraw() {
   }, []);
 
   const w = user?.wallet || {};
-  const withdrawable = (w.deposit || 0) + (w.winning || 0) + (w.referral || 0);
+  const withdrawable = w.winning || 0;
   const kycApproved = !KYC_ENFORCED || kycStatus === "approved";
 
   const withdrawAll = () => setAmount(String(withdrawable));
@@ -66,10 +66,10 @@ export default function Withdraw() {
 
       {/* Balance banner */}
       <div className="bg-gradient-to-r from-green-600 to-green-800 rounded-2xl p-4 text-white mb-4 shadow">
-        <p className="text-sm text-green-100">Withdrawable Balance</p>
+        <p className="text-sm text-green-100">Withdrawable Balance (Winnings only)</p>
         <p className="text-3xl font-black">{fmtINR(withdrawable)}</p>
         <p className="text-xs text-green-200 mt-0.5">
-          Deposit {fmtINR(w.deposit || 0)} + Winnings {fmtINR(w.winning || 0)} + Referral {fmtINR(w.referral || 0)}
+          Only your Winning wallet can be withdrawn. Deposit, bonus &amp; referral balances can be used to play battles.
         </p>
       </div>
 

@@ -14,6 +14,17 @@ async function getPCT() {
   return 5; // default 5%; override via Admin > Payment Settings
 }
 
+// A match "needs my result" once it's live and I haven't submitted I Won / I
+// Lost for it yet — covers in_progress/awaiting_review (still submittable)
+// and admin_review/disputed (stuck pending admin, so still blocking).
+async function findPendingResultMatch(userId) {
+  return Match.findOne({
+    "players.user": userId,
+    status: { $in: ["in_progress", "awaiting_review", "admin_review", "disputed"] },
+    players: { $elemMatch: { user: userId, result_claim: null } },
+  });
+}
+
 async function debit(userId, amount) {
   const user = await User.findById(userId);
   const total = (user.wallet.deposit || 0) + (user.wallet.bonus || 0) + (user.wallet.winning || 0);
@@ -189,6 +200,12 @@ const handleCreate = async (req, res) => {
         detail: "आप एक समय में अधिकतम 2 battle create कर सकते हैं।",
       });
     }
+    const pending = await findPendingResultMatch(req.user._id);
+    if (pending) {
+      return res.status(400).json({
+        detail: "पहले अपने चालू मैच का रिजल्ट डालें (I Won / I Lost), तभी नई battle create कर सकते हैं।",
+      });
+    }
     const PCT = await getPCT();
     const { stake, custom_stake } = req.body;
     const isCustom = !!custom_stake;
@@ -273,6 +290,12 @@ router.post("/:id/join", async (req, res) => {
     if (match.status !== "waiting") return res.status(400).json({ detail: "Match not open." });
     if (match.players.some(p => p.user.toString() === req.user._id.toString())) return res.status(400).json({ detail: "Already in match." });
     if (match.players.length >= 2) return res.status(400).json({ detail: "Match full." });
+    const pending = await findPendingResultMatch(req.user._id);
+    if (pending) {
+      return res.status(400).json({
+        detail: "पहले अपने चालू मैच का रिजल्ट डालें (I Won / I Lost), तभी नई battle join कर सकते हैं।",
+      });
+    }
     await debit(req.user._id, match.stake);
     match.players.push({ user: req.user._id, id: req.user._id.toString(), name: req.user.name, email: req.user.email, avatar: req.user.avatar_url || "" });
     match.status = "in_progress";

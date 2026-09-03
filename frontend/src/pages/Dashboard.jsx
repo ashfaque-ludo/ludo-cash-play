@@ -73,6 +73,7 @@ export default function Dashboard() {
   const [openBattles, setOpenBattles] = useState([]);
   const [runningBattles, setRunningBattles] = useState([]);
   const [spectateBattles, setSpectateBattles] = useState([]);
+  const [pendingResultMatch, setPendingResultMatch] = useState(null);
   const [createAmt, setCreateAmt] = useState("");
   const [creating, setCreating] = useState(false);
   const [joining, setJoining] = useState(null);
@@ -96,6 +97,16 @@ export default function Dashboard() {
       const running = matches.filter(m => m.status === "in_progress");
       setOpenBattles(open);
       setRunningBattles(running);
+
+      // A match "needs my result" once it's live and I haven't submitted
+      // I Won / I Lost for it yet — mirrors the backend's create/join guard,
+      // so the button here reflects reality instead of erroring after tap.
+      const uid = String(userId || "");
+      const mine = matches.filter(m =>
+        (m.player_ids || []).map(String).includes(uid) &&
+        !["waiting", "ended", "cancelled"].includes(m.status)
+      );
+      setPendingResultMatch(mine.find(m => !m.results?.[uid]) || null);
     } catch {}
     finally { setLoading(false); }
   }, [user]);
@@ -132,6 +143,11 @@ export default function Dashboard() {
   const referralCount = user.referral_count || 0;
 
   const handleCreate = async () => {
+    if (pendingResultMatch) {
+      toast.error("पहले अपने चालू मैच का रिजल्ट (I Won / I Lost) डालें, तभी नई battle बना सकते हैं।");
+      nav(`/match/${pendingResultMatch._id || pendingResultMatch.id}`);
+      return;
+    }
     const stake = parseInt(createAmt);
     if (!stake || stake < 100) return toast.error("Minimum 100");
     if (stake > 25000) return toast.error("Maximum 25,000");
@@ -175,6 +191,11 @@ export default function Dashboard() {
   };
 
   const handlePlay = async (match) => {
+    if (pendingResultMatch) {
+      toast.error("पहले अपने चालू मैच का रिजल्ट (I Won / I Lost) डालें, तभी नई battle join कर सकते हैं।");
+      nav(`/match/${pendingResultMatch._id || pendingResultMatch.id}`);
+      return;
+    }
     setJoining(match._id || match.id);
     try {
       await api.post(`/matches/${match._id || match.id}/join`);
@@ -206,6 +227,21 @@ export default function Dashboard() {
         {/* Create Battle */}
         <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
           <h2 className="font-black text-gray-900 text-base mb-3">⚔️ Create a Battle!</h2>
+
+          {pendingResultMatch && (
+            <div className="bg-amber-50 border-2 border-amber-300 rounded-xl p-3 mb-3">
+              <p className="text-amber-800 text-xs font-bold text-center leading-5 mb-2">
+                ⚠️ पहले अपने चालू मैच का रिजल्ट (I Won / I Lost) डालें — तभी नई battle create/join कर पाएंगे।
+              </p>
+              <button
+                onClick={() => nav(`/match/${pendingResultMatch._id || pendingResultMatch.id}`)}
+                className="w-full py-2 bg-amber-500 hover:bg-amber-600 text-black font-bold text-xs rounded-lg"
+              >
+                Go to Match &amp; Submit Result
+              </button>
+            </div>
+          )}
+
           <div className="flex gap-2">
             <div className="flex-1 relative">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-bold"></span>
@@ -215,12 +251,13 @@ export default function Dashboard() {
                 value={createAmt}
                 onChange={e => setCreateAmt(e.target.value.replace(/\D/g,""))}
                 placeholder="Enter amount (100–25000)"
-                className="w-full h-11 pl-7 pr-3 rounded-xl bg-gray-50 border border-gray-300 text-gray-900 outline-none focus:border-red-600 focus:ring-2 focus:ring-red-100 transition-all"
+                disabled={!!pendingResultMatch}
+                className="w-full h-11 pl-7 pr-3 rounded-xl bg-gray-50 border border-gray-300 text-gray-900 outline-none focus:border-red-600 focus:ring-2 focus:ring-red-100 transition-all disabled:opacity-50"
               />
             </div>
             <button
               onClick={handleCreate}
-              disabled={creating || !createAmt}
+              disabled={creating || !createAmt || !!pendingResultMatch}
               className="px-6 h-11 bg-gradient-to-r from-red-700 to-black text-white font-black rounded-xl disabled:opacity-50 hover:opacity-90 transition-all flex items-center gap-1.5"
             >
               {creating ? <Loader2 className="w-4 h-4 animate-spin" /> : "Set"}

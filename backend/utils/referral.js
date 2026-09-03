@@ -15,7 +15,9 @@ async function payReferralBonus(playerId, matchAmount, matchId) {
     const bonus = Math.floor(matchAmount * (Number(pct) / 100));
     if (bonus < 1) return;
 
-    await User.findByIdAndUpdate(referrer._id, { $inc: { "wallet.referral": bonus } });
+    // Credited straight to deposit (playable, not directly withdrawable) —
+    // only wallet.winning is withdrawable now.
+    await User.findByIdAndUpdate(referrer._id, { $inc: { "wallet.deposit": bonus } });
 
     await Transaction.create({
       user: referrer._id,

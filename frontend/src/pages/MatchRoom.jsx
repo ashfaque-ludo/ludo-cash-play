@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { api, fmtINR } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Copy } from "lucide-react";
 import CancelBattlePopup from "@/components/CancelBattlePopup";
 import WonPopup from "@/components/WonPopup";
 import LostPopup from "@/components/LostPopup";
@@ -212,6 +212,7 @@ export default function MatchRoom() {
   const copyCode = () => {
     if (!match?.room_code) return;
     navigator.clipboard.writeText(match.room_code);
+    window.getSelection()?.removeAllRanges();
     toast.success('Code copied!');
   };
 
@@ -430,16 +431,18 @@ export default function MatchRoom() {
             <h3 className="font-bold text-center text-green-700 mb-3">Room Code</h3>
 
             <div className="bg-green-50 border-2 border-green-500 rounded-xl p-4 text-center mb-3">
-              <p className="text-5xl font-black tracking-widest text-green-700">
+              <p className="text-5xl font-black tracking-widest text-green-700 select-none">
                 {match.room_code}
               </p>
             </div>
 
             <button
+              type="button"
+              onMouseDown={(e) => e.preventDefault()}
               onClick={copyCode}
-              className="w-full py-3 bg-green-600 text-white rounded-xl font-bold mb-2"
+              className="w-full py-3 bg-green-600 text-white rounded-xl font-bold mb-2 flex items-center justify-center gap-2"
             >
-              📋 Copy Code
+              <Copy className="w-4 h-4" /> Copy Code
             </button>
 
             {/* Play button — opens Ludo King for both players */}
@@ -458,6 +461,12 @@ export default function MatchRoom() {
                   <p className="text-red-700 text-xs font-bold text-center leading-5">
                     ⚠️ चेतावनी: कृपया सही रिजल्ट ही अपलोड करें। अगर आपने गलत मैच रिजल्ट अपलोड किया
                     तो आपके वॉलेट से ₹1000 काट लिए जाएंगे। कृपया ऐसी गलती न करें।
+                  </p>
+                </div>
+                <div className="bg-amber-50 border-2 border-amber-300 rounded-xl p-3 mb-3">
+                  <p className="text-amber-800 text-xs font-bold text-center leading-5">
+                    ⚠️ चेतावनी: जब तक आप इस मैच का रिजल्ट (I Won / I Lost) नहीं डालेंगे, तब तक आप
+                    कोई नई battle create नहीं कर पाएंगे।
                   </p>
                 </div>
                 <div className="grid grid-cols-3 gap-2">

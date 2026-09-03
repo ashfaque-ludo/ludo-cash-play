@@ -43,6 +43,12 @@ export default function LostPopup({ open, onClose, matchId, onResult }) {
           </p>
         </div>
 
+        <div className="bg-amber-50 border-2 border-amber-300 rounded-xl p-3 mb-4">
+          <p className="text-amber-800 text-xs font-bold text-center leading-5">
+            ⚠️ जब तक आप रिजल्ट नहीं डालेंगे, तब तक नई battle create नहीं कर पाएंगे।
+          </p>
+        </div>
+
         <label className="flex items-center gap-3 cursor-pointer p-3 bg-gray-50 rounded-xl mb-4">
           <input
             type="checkbox"

@@ -63,7 +63,9 @@ async function creditImbOrderIfPaid({ order_id, success, shouldMarkFailed = fals
       if (depositor?.referred_by) {
         const bonus = Math.min(Math.round(tx.amount * REFERRAL_DEPOSIT_PCT), REFERRAL_DEPOSIT_MAX);
         if (bonus > 0) {
-          await User.findByIdAndUpdate(depositor.referred_by, { $inc: { "wallet.bonus": bonus } });
+          // Credited straight to deposit (playable, not directly withdrawable) —
+          // only wallet.winning is withdrawable now.
+          await User.findByIdAndUpdate(depositor.referred_by, { $inc: { "wallet.deposit": bonus } });
           await Referral.findOneAndUpdate(
             { referrer: depositor.referred_by, referred: tx.user },
             { $inc: { commission_earned: bonus } }

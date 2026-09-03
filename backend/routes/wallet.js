@@ -14,8 +14,9 @@ router.get("/", async (req, res) => {
 });
 
 // ── POST /wallet/withdraw ─────────────────────────────────────────────────────
-// UPI only — the whole wallet (deposit + winning + referral) is withdrawable
-// in a single request, up to whatever the user's balance actually is.
+// UPI only — only wallet.winning is withdrawable. Deposit, bonus and referral
+// balances can be used to play battles but never withdrawn directly (referral
+// can still be moved into winning via /wallet/redeem-referral first).
 router.post("/withdraw", async (req, res) => {
   try {
     const { upi_id } = req.body;
@@ -32,21 +33,14 @@ router.post("/withdraw", async (req, res) => {
       return res.status(403).json({ detail: "Complete KYC verification before withdrawing.", kyc_required: true });
     }
 
-    const withdrawable = (user.wallet.deposit || 0) + (user.wallet.winning || 0) + (user.wallet.referral || 0);
+    const withdrawable = user.wallet.winning || 0;
     if (withdrawable < amount)
-      return res.status(400).json({ detail: `Insufficient balance. Withdrawable: ${withdrawable}.` });
+      return res.status(400).json({ detail: `Insufficient balance. Withdrawable (winning only): ${withdrawable}.` });
 
     if (!upi_id?.trim())
       return res.status(400).json({ detail: "UPI ID required." });
 
-    // Deduct across the whole wallet: referral, then winning, then deposit —
-    // lets a user cash out everything, not just their winnings.
-    let rem = amount;
-    const refBal = user.wallet.referral || 0;
-    const take1 = Math.min(refBal, rem); user.wallet.referral -= take1; rem -= take1;
-    const winBal = user.wallet.winning || 0;
-    const take2 = Math.min(winBal, rem); user.wallet.winning -= take2; rem -= take2;
-    user.wallet.deposit -= rem;
+    user.wallet.winning -= amount;
     await user.save();
 
     const tx = await Transaction.create({
@@ -106,7 +100,9 @@ router.post("/redeem-promo", async (req, res) => {
       return res.status(400).json({ detail: "Promo exhausted." });
     promo.redeemed_by.push(req.user._id);
     await promo.save();
-    await User.findByIdAndUpdate(req.user._id, { $inc: { "wallet.bonus": promo.amount } });
+    // Credited straight to deposit (playable, not directly withdrawable) —
+    // only wallet.winning is withdrawable now.
+    await User.findByIdAndUpdate(req.user._id, { $inc: { "wallet.deposit": promo.amount } });
     res.json({ ok: true, bonus_added: promo.amount });
   } catch (e) {
     res.status(500).json({ detail: "Server error." });
