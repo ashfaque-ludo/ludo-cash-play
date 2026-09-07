@@ -43,13 +43,11 @@ async function getRoomResult(roomCode) {
       { roomCode },
       {
         headers: { "Content-Type": "application/json", "x-api-key": key },
-        timeout: 20000,
+        timeout: 10000,
       }
     );
   } catch (e) {
-    if (e.code === "ECONNABORTED" || e.code === "ETIMEDOUT") {
-      throw new Error("API response mein deer ho rahi hai, dobara try karein.");
-    }
+    if (e.code === "ECONNABORTED") throw new Error("Ludo King API request timed out");
     const detail = e.response?.data ? JSON.stringify(e.response.data) : e.message;
     throw new Error(`Ludo King API failed: ${detail}`);
   }

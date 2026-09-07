@@ -585,12 +585,6 @@ router.post("/:id/set-room-code", async (req, res) => {
     if (!isCreator) return res.status(403).json({ detail: "Only battle creator can set room code." });
     match.room_code = trimmed;
     if (match.status === "matched") match.status = "in_progress";
-    // Kick off background auto-verification — backend/utils/resultPoller.js
-    // picks this up on its next tick and polls LudoRoom until the table
-    // finishes, then auto-settles without either player needing to submit anything.
-    match.result_poll_status = "polling";
-    match.result_poll_started_at = new Date();
-    match.result_poll_attempts = 0;
     await match.save();
     console.log(`[ROOM CODE SET] match=${match._id} code=${trimmed} by=${req.user.phone || req.user._id}`);
     res.json({ ok: true, room_code: trimmed, match: serializeMatch(match) });

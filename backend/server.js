@@ -184,7 +184,6 @@ connectDB().then(async ()=>{
   await reviewStuckMatches();
   await migrateSupportNumber();
   await require("./models/StakeTable").seedDefaults();
-  require("./utils/resultPoller").startResultPoller();
   const PORT=process.env.PORT||5000;
   app.listen(PORT,()=>console.log(`\n🎲  MyAkadda backend → http://localhost:${PORT}\n`));
 });
