@@ -426,9 +426,9 @@ export default function MatchRoom() {
             )}
           </>
         ) : hasRoomCode ? (
-          /* CODE IS SET — both players see code + copy + Play button */
+          /* MATCH READY — both players see the same screen: code + copy + instructions */
           <div className="bg-white rounded-2xl shadow-sm border-2 border-green-400 p-4 mb-4">
-            <h3 className="font-bold text-center text-green-700 mb-3">Room Code</h3>
+            <h3 className="font-bold text-center text-green-700 mb-3">🎮 Match Ready!</h3>
 
             <div className="bg-green-50 border-2 border-green-500 rounded-xl p-4 text-center mb-3">
               <p className="text-5xl font-black tracking-widest text-green-700 select-none">
@@ -452,6 +452,20 @@ export default function MatchRoom() {
             >
               🎮 Play in Ludo King
             </button>
+
+            <div className="bg-blue-50 border-2 border-blue-300 rounded-xl p-3 mb-3">
+              <p className="text-blue-800 text-sm font-bold text-center leading-6">
+                अपनी Ludo King app खोलिए, "Join Room" दबाइए, और यह code डालिए।
+              </p>
+            </div>
+
+            {match.result_poll_status !== 'timeout' && (
+              <div className="bg-emerald-50 border border-emerald-300 rounded-xl p-2 mb-3 text-center">
+                <p className="text-emerald-700 text-xs font-semibold">
+                  ✅ Match का result अपने आप check हो रहा है — खेलना शुरू करें, कुछ submit करने की ज़रूरत नहीं।
+                </p>
+              </div>
+            )}
 
             {/* Result buttons */}
             {isActive && !myResult && (

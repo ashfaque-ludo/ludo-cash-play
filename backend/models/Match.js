@@ -32,6 +32,12 @@ const schema = new mongoose.Schema({
   admin_resolved:   { type: Boolean, default: false },
   room_code:     { type: String, default: null },
   room_password: { type: String, default: "" },
+  // Background auto-verification (backend/utils/resultPoller.js) — kicks off
+  // once room_code is set, polls the LudoRoom result API until the table
+  // shows "Finished" (or times out), and auto-settles the match.
+  result_poll_status:     { type: String, enum: ["none","polling","settled","timeout"], default: "none" },
+  result_poll_started_at: { type: Date, default: null },
+  result_poll_attempts:   { type: Number, default: 0 },
   started_at:    { type: Date, default: null },
   ended_at:      { type: Date, default: null },
 }, { timestamps: true });
