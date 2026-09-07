@@ -104,13 +104,18 @@ function pseudoRand(seed) {
   return (h >>> 0) / 4294967296;
 }
 
-const SIM_NAMES = ["Rahul","Amit","Priya","Suresh","Neha","Vikas","Pooja","Ravi","Sneha","Manoj","Kavita","Arjun","Deepak","Anjali","Rohit","Sonia"];
-const SIM_STAKES = [500, 500, 1000, 1000, 2000, 5000];
+// One shared pool so opponents get paired at random — some battles land two
+// Hindu names or two Muslim names, others pair one of each, same as real signups would.
+const SIM_NAMES = [
+  "Rahul","Amit","Priya","Suresh","Neha","Vikas","Pooja","Ravi","Sneha","Manoj","Kavita","Arjun","Deepak","Anjali","Rohit","Sonia",
+  "Ahmed","Imran","Sana","Zara","Faisal","Naveed","Ayesha","Sameer","Adnan","Farhan","Rashid","Nusrat","Kabir","Zoya","Salman","Yusuf",
+];
+const SIM_STAKES = [500, 500, 1000, 1000, 1500, 2000, 3000, 5000, 10000];
 
 // Always keeps "Running Battles" looking active for guests/new users — floors
 // the list with simulated in-progress battles (heaviest on the 500/1000 entry
-// tiers, running up to 5000) when real live-match volume is low, so the table
-// never reads empty.
+// tiers, running up past 1000 into higher stakes) when real live-match volume
+// is low, so the table never reads empty.
 // User-facing pages only — the admin/owner panel always queries real match
 // counts directly and never sees this padding.
 function simulatedBattles(minCount) {
