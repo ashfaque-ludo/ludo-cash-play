@@ -6,9 +6,10 @@ const {logActivity}=require("../../middleware/activityLogger");
 const {payReferralBonus}=require("../../utils/referral");
 const {getRoomResult}=require("../../utils/ludoKingService");
 
-// Confirmed RapidAPI "ludo-king-api-room-code" /start response shape:
-// { success, roomCode, tableId, gameType, status, winnerId, owner: {id,name,status} }
-// winnerId is null until the match finishes, so that's the "not decided yet" signal.
+// LudoRoom API (POST /api/v1/ludoking/result) response shape:
+// { table_status, owner_name, owner_status, player1_name, player1_status, ... }
+// table_status !== "Finished" is the "not decided yet" signal; once finished,
+// whichever side has status "Won" names the actual winner.
 
 // GET /api/admin/matches?status=...
 // status=pending → shows admin_review + awaiting_review + disputed together
@@ -182,18 +183,17 @@ router.post("/verify-result", async (req,res)=>{
     if(!roomCode) return res.status(400).json({detail:"roomCode is required."});
     const raw=await getRoomResult(roomCode);
 
-    let actualWinner=null, verified=null, message=null;
-    if(!raw||raw.success!==true){
-      message=raw?.message||"Room lookup failed.";
-    } else if(raw.winnerId==null){
+    let actualWinner=null, verified=false, message=null;
+    if(!raw||raw.table_status!=="Finished"){
       message="Match abhi khatam nahi hua.";
     } else {
-      actualWinner=String(raw.winnerId).trim();
-      verified=actualWinner.toLowerCase()===String(claimedWinner||"").trim().toLowerCase();
+      if(raw.owner_status==="Won") actualWinner=raw.owner_name;
+      else if(raw.player1_status==="Won") actualWinner=raw.player1_name;
+      verified=!!actualWinner && String(actualWinner).trim().toLowerCase()===String(claimedWinner||"").trim().toLowerCase();
     }
 
-    await logActivity(req,"match_result_verify_checked",roomCode,{claimedWinner,actualWinner,verified,status:raw?.status});
-    res.json({roomCode,claimedWinner,actualWinner,verified,status:raw?.status,message,raw});
+    await logActivity(req,"match_result_verify_checked",roomCode,{claimedWinner,actualWinner,verified,status:raw?.table_status});
+    res.json({roomCode,claimedWinner,actualWinner,verified,status:raw?.table_status,message,raw});
   }catch(e){ res.status(500).json({detail:e.message||"Verification failed."}); }
 });
 
