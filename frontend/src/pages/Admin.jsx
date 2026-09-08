@@ -705,6 +705,11 @@ function VerifyResultTab() {
             </div>
             {result.players && (
               <div>
+                {result.players[0] && (
+                  <p className="text-xs text-gray-500 mb-1">
+                    Room Creator: <strong className="text-gray-900">{result.players[0].name}{result.players[0].phone ? ` (${result.players[0].phone})` : ""}</strong> <span className="text-gray-400">(auto-matched as Ludo King owner)</span>
+                  </p>
+                )}
                 <p className="text-xs text-gray-500 mb-1">Registered players in this match — decide off this, not the bare name above:</p>
                 <WinnerPlayersCompare actualWinner={result.actualWinner} players={result.players} matchedPlayerId={result.matchedPlayerId} />
               </div>
@@ -954,6 +959,11 @@ function MatchesTab({ actor }){
                               {v?.loading ? "Checking…" : "Verify Now"}
                             </Button>
                           </div>
+                          {p1 && (
+                            <p className="text-xs text-gray-500 mb-1">
+                              Room Creator: <strong className="text-gray-900">{p1.name}{p1.phone ? ` (${p1.phone})` : ""}</strong> <span className="text-gray-400">(auto-matched as Ludo King owner)</span>
+                            </p>
+                          )}
                           {v?.error && <p className="text-xs text-red-500">{v.error}</p>}
                           {!v?.error && (v?.message || (!winnerName && m.ludoroom_last_check?.table_status)) && (
                             <p className="text-xs text-amber-600 mb-1">{v?.message || `Status: ${m.ludoroom_last_check.table_status}`}</p>
