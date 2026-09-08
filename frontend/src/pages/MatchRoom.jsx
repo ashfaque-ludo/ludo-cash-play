@@ -483,12 +483,6 @@ export default function MatchRoom() {
                     तो आपके वॉलेट से ₹1000 काट लिए जाएंगे। कृपया ऐसी गलती न करें।
                   </p>
                 </div>
-                <div className="bg-amber-50 border-2 border-amber-300 rounded-xl p-3 mb-3">
-                  <p className="text-amber-800 text-xs font-bold text-center leading-5">
-                    ⚠️ चेतावनी: जब तक आप इस मैच का रिजल्ट (I Won / I Lost) नहीं डालेंगे, तब तक आप
-                    कोई नई battle create नहीं कर पाएंगे।
-                  </p>
-                </div>
                 <div className="grid grid-cols-3 gap-2">
                   <button
                     onClick={() => setShowWon(true)}
