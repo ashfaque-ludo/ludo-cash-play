@@ -71,6 +71,10 @@ function isRoomFound(raw) {
 
 // Whichever side's status is "Won" (case-insensitive) — LudoRoom exposes at
 // most an owner/player1 pair per room, never a separate "winnerId" field.
+// Display-only: this is the player's actual Ludo King in-app username, which
+// on this site is essentially never the same string as their registered
+// site name (often an auto-generated "UserXXXX" placeholder) — see
+// resolveWinnerRole for the field that's actually safe to settle on.
 function findWinnerName(raw) {
   if (!raw) return null;
   if (raw.owner_status && String(raw.owner_status).toLowerCase() === "won") return raw.owner_name || null;
@@ -78,4 +82,20 @@ function findWinnerName(raw) {
   return null;
 }
 
-module.exports = { getRoomResult, isRoomFound, findWinnerName };
+// Which ROLE won — "owner" or "player1" — never a name. LudoRoom's "owner" is
+// whoever created the room in Ludo King; our match.players[0] is always the
+// battle creator (only they're allowed to call set-room-code), so owner ↔
+// players[0] and player1 ↔ players[1] (the joiner) — a reliable structural
+// mapping that doesn't depend on any name correspondence at all. Root cause
+// (2026-09-08): settlement previously matched on name, which silently never
+// worked once site display names stopped being real names.
+function resolveWinnerRole(raw) {
+  if (!raw) return null;
+  const ownerWon = raw.owner_status && String(raw.owner_status).toLowerCase() === "won";
+  const player1Won = raw.player1_status && String(raw.player1_status).toLowerCase() === "won";
+  if (ownerWon && !player1Won) return "owner";
+  if (player1Won && !ownerWon) return "player1";
+  return null; // ambiguous (both/neither Won) — let admin decide
+}
+
+module.exports = { getRoomResult, isRoomFound, findWinnerName, resolveWinnerRole };

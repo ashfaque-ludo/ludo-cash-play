@@ -4,7 +4,7 @@ const User=require("../../models/User");
 const Transaction=require("../../models/Transaction");
 const {logActivity}=require("../../middleware/activityLogger");
 const {payReferralBonus}=require("../../utils/referral");
-const {getRoomResult,isRoomFound,findWinnerName}=require("../../utils/ludoKingService");
+const {getRoomResult,isRoomFound,findWinnerName,resolveWinnerRole}=require("../../utils/ludoKingService");
 
 // LudoRoom (ludoroom.in) /api/v1/ludoking/result response shape:
 // { table_status, owner_name, owner_status, owner_chips, player1_name,
@@ -213,7 +213,15 @@ router.post("/verify-result", async (req,res)=>{
       const users=await User.find({_id:{$in:userIds}}).select("phone");
       const phoneById=Object.fromEntries(users.map(u=>[u._id.toString(),u.phone||""]));
       players=match.players.map(p=>({id:p.user?.toString()||p.id,name:p.name,phone:phoneById[p.user?.toString()]||""}));
-      if(actualWinner){
+      // Prefer role (LudoRoom "owner" = room creator = players[0], "player1"
+      // = joiner = players[1]) — site display names essentially never match
+      // the player's real Ludo King username, so name-matching alone almost
+      // always comes up empty. Name match is kept as a secondary check in
+      // case they do happen to coincide.
+      const role=resolveWinnerRole(raw);
+      if(role){
+        matchedPlayerId=(role==="owner"?players[0]:players[1])?.id||null;
+      } else if(actualWinner){
         const norm=s=>String(s||"").trim().toLowerCase();
         matchedPlayerId=players.find(p=>norm(p.name)===norm(actualWinner))?.id||null;
       }

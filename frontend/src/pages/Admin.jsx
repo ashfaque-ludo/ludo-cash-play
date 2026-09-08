@@ -780,6 +780,20 @@ function MatchesTab({ actor }){
     return null;
   };
 
+  // Which registered player (index 0 = creator/"owner", 1 = joiner/"player1")
+  // the snapshot's winner role points to — site display names essentially
+  // never match the player's real Ludo King username, so role (not name) is
+  // what settlement actually uses; this mirrors that here for display.
+  const lastCheckWinnerIndex = (m) => {
+    const c = m.ludoroom_last_check;
+    if (!c) return null;
+    const ownerWon = c.owner_status && String(c.owner_status).toLowerCase() === "won";
+    const player1Won = c.player1_status && String(c.player1_status).toLowerCase() === "won";
+    if (ownerWon && !player1Won) return 0;
+    if (player1Won && !ownerWon) return 1;
+    return null;
+  };
+
   const openEdit = (m) => {
     setEditMatch(m);
     setEditForm({ label: m.label || "", stake: m.stake || "", status: m.status || "", cancel_reason: m.cancel_reason || "" });
@@ -929,6 +943,8 @@ function MatchesTab({ actor }){
                       const autoWinner = !v ? lastCheckWinner(m) : null;
                       const winnerName = v?.actualWinner || autoWinner;
                       const players = v?.players || [p1, p2].filter(Boolean).map(p => ({ id: p.user || p.id, name: p.name, phone: p.phone || "" }));
+                      const autoWinnerIdx = !v ? lastCheckWinnerIndex(m) : null;
+                      const matchedPlayerId = v?.matchedPlayerId ?? (autoWinnerIdx !== null ? players[autoWinnerIdx]?.id : null);
                       return (
                         <div className="bg-gray-50 border border-gray-200 rounded-xl p-3 mb-3">
                           <div className="flex items-center justify-between gap-2 mb-1">
@@ -948,7 +964,7 @@ function MatchesTab({ actor }){
                                 {autoWinner && !v ? "Last auto-check winner name: " : "LudoRoom winner name: "}
                                 <strong className="text-gray-900">{winnerName}</strong>
                               </p>
-                              <WinnerPlayersCompare actualWinner={winnerName} players={players} matchedPlayerId={v?.matchedPlayerId} />
+                              <WinnerPlayersCompare actualWinner={winnerName} players={players} matchedPlayerId={matchedPlayerId} />
                             </>
                           )}
                           {!v && m.ludoroom_last_error?.message && (

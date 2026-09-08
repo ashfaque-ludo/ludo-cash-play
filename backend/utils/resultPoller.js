@@ -1,7 +1,7 @@
 const Match = require("../models/Match");
 const User = require("../models/User");
 const Transaction = require("../models/Transaction");
-const { getRoomResult, findWinnerName } = require("./ludoKingService");
+const { getRoomResult, resolveWinnerRole } = require("./ludoKingService");
 const { payReferralBonus } = require("./referral");
 
 const POLL_INTERVAL_MS = 18 * 1000; // 15-20s — fast phase
@@ -21,16 +21,27 @@ const FAILURE_BACKOFF_CAP = 5;
 // continues (slower cadence) until EXTENDED_TIMEOUT_MS, so a late-finishing
 // match still auto-settles instead of silently going unwatched.
 
+// ROOT CAUSE (2026-09-08): this used to match LudoRoom's winner name against
+// match.players[].name — but LudoRoom returns the player's real Ludo King
+// in-app username, while this site's registered display names are often
+// auto-generated placeholders ("User3135" etc.). Those two name-spaces
+// essentially never match, so every match silently fell through to
+// "winner name didn't match either player" and got flagged for manual
+// review — looking exactly like "polling never succeeds". Settlement now
+// uses ROLE instead: LudoRoom's "owner" is whoever created the room in Ludo
+// King, and match.players[0] is always our battle creator (only they can
+// call set-room-code) — so owner ↔ players[0], player1 ↔ players[1] (the
+// joiner). No name correspondence required.
+//
 // Same compare-and-swap pattern as the manual submit-result / admin decide
 // flows (routes/matches.js, routes/admin/matches.js) — only the request that
 // actually flips status away from in_progress/awaiting_review/admin_review
 // pays out, so this can never double-credit against either of those paths.
 // admin_review is included because the extended phase flags a match into
 // admin_review purely for visibility while still auto-tracking it.
-async function settleWithWinnerName(match, winnerName) {
-  const norm = (s) => String(s || "").trim().toLowerCase();
-  const winnerSlot = match.players.find((p) => norm(p.name) === norm(winnerName));
-  if (!winnerSlot) return { ok: false, reason: "name_mismatch" };
+async function settleWithWinnerRole(match, role) {
+  const winnerSlot = role === "owner" ? match.players[0] : role === "player1" ? match.players[1] : null;
+  if (!winnerSlot?.user) return { ok: false, reason: "no_winner_slot" };
   const loserSlot = match.players.find((p) => p.user?.toString() !== winnerSlot.user?.toString());
 
   const settled = await Match.findOneAndUpdate(
@@ -160,21 +171,23 @@ async function pollOnce() {
 
       if (!raw || String(raw.table_status).toLowerCase() !== "finished") continue;
 
-      const winnerName = findWinnerName(raw);
-      if (!winnerName) {
-        console.warn(`[LUDOROOM-POLL] match=${match._id} table_status=Finished but no side has status "Won" — owner_status=${raw.owner_status} player1_status=${raw.player1_status}`);
+      const role = resolveWinnerRole(raw);
+      if (!role) {
+        console.warn(`[LUDOROOM-POLL] match=${match._id} table_status=Finished but no clear role won — owner_status=${raw.owner_status} player1_status=${raw.player1_status}`);
         await flagTimeout(match._id, "LudoRoom marked table Finished but no clear winner — needs manual review");
         continue;
       }
 
-      const result = await settleWithWinnerName(match, winnerName);
-      if (!result.ok && result.reason === "name_mismatch") {
-        console.warn(`[LUDOROOM-POLL] match=${match._id} winner name "${winnerName}" didn't match either player: ${match.players.map(p => p.name).join(" / ")}`);
-        await flagTimeout(match._id, `LudoRoom winner name "${winnerName}" didn't match either player — needs manual review`);
-      } else if (result.ok) {
-        console.log(`[LUDOROOM-POLL] match=${match._id} settled — winner ${winnerName}`);
+      const result = await settleWithWinnerRole(match, role);
+      if (result.ok) {
+        console.log(`[LUDOROOM-POLL] match=${match._id} settled — winner role=${role} (player=${result.settled.winner})`);
+      } else if (result.reason === "already_settled") {
+        // Resolved by another path (admin decide/resolve, or the player's
+        // own submit-result) in the meantime — nothing to do, not an error.
+        console.log(`[LUDOROOM-POLL] match=${match._id} already settled by another path`);
       } else {
-        console.log(`[LUDOROOM-POLL] match=${match._id} already settled by another path (reason=${result.reason})`);
+        console.warn(`[LUDOROOM-POLL] match=${match._id} could not settle (${result.reason}) — role=${role}`);
+        await flagTimeout(match._id, `LudoRoom reported a winner (${role}) but settlement failed (${result.reason}) — needs manual review`);
       }
     } catch (err) {
       console.error(`[LUDOROOM-POLL] unexpected error for match=${match._id}:`, err.message, err.stack);
