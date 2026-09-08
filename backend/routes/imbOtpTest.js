@@ -1,5 +1,18 @@
 const router = require("express").Router();
+const axios = require("axios");
 const { sendMobileOtp, sendAadhaarOtp } = require("../utils/imbOtp");
+
+// GET /api/imb-otp-test/my-ip — this server's actual outbound public IP, so
+// it can be whitelisted on IMB's dashboard (IMB rejects OTP calls from any
+// non-whitelisted IP with INVALID_IP, independent of e-KYC/credentials).
+router.get("/my-ip", async (req, res) => {
+  try {
+    const r = await axios.get("https://api.ipify.org?format=json", { timeout: 8000 });
+    res.json({ ok: true, ip: r.data?.ip || null });
+  } catch (e) {
+    res.status(502).json({ ok: false, detail: e.message });
+  }
+});
 
 // TEST-ONLY, isolated from the real login/signup flow (routes/auth.js, which
 // still uses API-King / Firebase). Nothing here writes to otpStore or any
