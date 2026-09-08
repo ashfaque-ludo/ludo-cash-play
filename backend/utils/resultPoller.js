@@ -84,7 +84,7 @@ async function pollOnce() {
     $or: [{ result_poll_next_attempt_at: null }, { result_poll_next_attempt_at: { $lte: now } }],
   }).limit(50);
 
-  if (matches.length) console.log(`[LUDOROOM-POLL] tick — ${matches.length} match(es) due`);
+  console.log(`[LUDOROOM-POLL] tick @ ${now.toISOString()} — ${matches.length} match(es) due`);
 
   for (const match of matches) {
     try {
@@ -107,20 +107,34 @@ async function pollOnce() {
       try {
         raw = await getRoomResult(match.room_code);
         console.log(`[LUDOROOM-POLL] match=${match._id} code=${match.room_code} table_status=${raw?.table_status ?? "(null)"} attempt#${(match.result_poll_attempts || 0) + 1}`);
-      } catch (apiErr) {
-        const failCount = (match.result_poll_fail_count || 0) + 1;
-        console.warn(`[LUDOROOM-POLL] match=${match._id} API call failed (attempt ${failCount}/${MAX_CONSECUTIVE_FAILURES}): ${apiErr.message}${apiErr.rateLimited ? " [rate limited]" : ""}`);
-        if (failCount >= MAX_CONSECUTIVE_FAILURES) {
-          await flagTimeout(match._id, `LudoRoom API failed repeatedly (${apiErr.message}) — needs manual review`);
-          console.error(`[LUDOROOM-POLL] match=${match._id} gave up after ${failCount} consecutive failures: ${apiErr.message}`);
-        } else {
-          const baseInterval = inExtendedPhase ? EXTENDED_POLL_INTERVAL_MS : POLL_INTERVAL_MS;
-          const backoff = baseInterval * (apiErr.rateLimited ? RATE_LIMIT_BACKOFF_MULTIPLIER : Math.min(failCount, FAILURE_BACKOFF_CAP));
-          await Match.findByIdAndUpdate(match._id, {
-            $set: { result_poll_fail_count: failCount, result_poll_next_attempt_at: new Date(Date.now() + backoff) },
-          });
+      } catch (firstErr) {
+        // One immediate retry before counting this as a real failure — a
+        // single stale/dropped connection in a long-lived process (see
+        // ludoKingService.js keepAlive note) shouldn't burn through the
+        // MAX_CONSECUTIVE_FAILURES budget on its own.
+        console.warn(`[LUDOROOM-POLL] match=${match._id} first attempt failed, retrying once: ${firstErr.message} (http=${firstErr.httpStatus ?? "-"} code=${firstErr.code ?? "-"})`);
+        try {
+          raw = await getRoomResult(match.room_code);
+          console.log(`[LUDOROOM-POLL] match=${match._id} retry succeeded — table_status=${raw?.table_status ?? "(null)"}`);
+        } catch (apiErr) {
+          const failCount = (match.result_poll_fail_count || 0) + 1;
+          console.error(`[LUDOROOM-POLL] match=${match._id} API call failed (consecutive failure ${failCount}/${MAX_CONSECUTIVE_FAILURES}): ${apiErr.message} (http=${apiErr.httpStatus ?? "-"} code=${apiErr.code ?? "-"} body=${JSON.stringify(apiErr.responseBody) ?? "-"})`);
+          const errSnapshot = { message: apiErr.message, http_status: apiErr.httpStatus ?? null, code: apiErr.code ?? null, at: new Date() };
+          if (failCount >= MAX_CONSECUTIVE_FAILURES) {
+            await Match.findOneAndUpdate(
+              { _id: match._id, result_poll_status: { $in: ["polling", "extended"] } },
+              { $set: { result_poll_status: "timeout", needs_manual_review: true, status: "admin_review", cancel_reason: `LudoRoom API failed repeatedly (${apiErr.message}) — needs manual review`, ludoroom_last_error: errSnapshot } }
+            );
+            console.error(`[LUDOROOM-POLL] match=${match._id} gave up after ${failCount} consecutive failures: ${apiErr.message}`);
+          } else {
+            const baseInterval = inExtendedPhase ? EXTENDED_POLL_INTERVAL_MS : POLL_INTERVAL_MS;
+            const backoff = baseInterval * (apiErr.rateLimited ? RATE_LIMIT_BACKOFF_MULTIPLIER : Math.min(failCount, FAILURE_BACKOFF_CAP));
+            await Match.findByIdAndUpdate(match._id, {
+              $set: { result_poll_fail_count: failCount, result_poll_next_attempt_at: new Date(Date.now() + backoff), ludoroom_last_error: errSnapshot },
+            });
+          }
+          continue;
         }
-        continue;
       }
 
       const nextInterval = inExtendedPhase ? EXTENDED_POLL_INTERVAL_MS : POLL_INTERVAL_MS;
@@ -129,6 +143,7 @@ async function pollOnce() {
           result_poll_fail_count: 0,
           result_poll_next_attempt_at: new Date(Date.now() + nextInterval),
           result_poll_attempts: (match.result_poll_attempts || 0) + 1,
+          ludoroom_last_error: { message: null, http_status: null, code: null, at: null },
           // Snapshot every check (not just on Finished) so the admin panel can
           // show the raw LudoRoom name/status for cross-checking against the
           // two registered players without another API round-trip.

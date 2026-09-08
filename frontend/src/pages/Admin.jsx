@@ -951,6 +951,13 @@ function MatchesTab({ actor }){
                               <WinnerPlayersCompare actualWinner={winnerName} players={players} matchedPlayerId={v?.matchedPlayerId} />
                             </>
                           )}
+                          {!v && m.ludoroom_last_error?.message && (
+                            <p className="text-xs text-red-500 mt-1">
+                              Last poll error ({m.ludoroom_last_error.at ? new Date(m.ludoroom_last_error.at).toLocaleTimeString("en-IN") : ""}): {m.ludoroom_last_error.message}
+                              {m.ludoroom_last_error.http_status ? ` [HTTP ${m.ludoroom_last_error.http_status}]` : ""}
+                              {m.ludoroom_last_error.code ? ` [${m.ludoroom_last_error.code}]` : ""}
+                            </p>
+                          )}
                         </div>
                       );
                     })()}

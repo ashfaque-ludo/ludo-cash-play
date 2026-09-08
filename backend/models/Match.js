@@ -59,6 +59,14 @@ const schema = new mongoose.Schema({
     player1_status:  { type: String, default: null },
     checked_at:      { type: Date, default: null },
   },
+  // Every individual poll failure (not just the final give-up) so a stuck
+  // match is diagnosable from the admin panel/DB alone, without server logs.
+  ludoroom_last_error: {
+    message:     { type: String, default: null },
+    http_status: { type: Number, default: null },
+    code:        { type: String, default: null },
+    at:          { type: Date, default: null },
+  },
 }, { timestamps: true });
 
 schema.index({ status: 1, createdAt: -1 });

@@ -1,6 +1,20 @@
 const axios = require("axios");
+const http = require("http");
+const https = require("https");
 
 const RESULT_PATH = "/api/v1/ludoking/result";
+
+// keepAlive:false — this call is made from a long-lived background process
+// (resultPoller.js's setInterval, running for hours), not just once per
+// request. axios's default agent pools/reuses sockets; if ludoroom.in (or an
+// intermediary like Cloudflare) closes an idle keep-alive socket server-side,
+// the next reused-but-now-dead socket throws ECONNRESET/socket-hang-up on the
+// *next* call even though the API itself is fine — which looks exactly like
+// "worked once (admin's one-off manual check), then failed on every
+// subsequent background poll" (2026-09-08 bug report). Forcing a fresh
+// connection per call avoids that whole class of failure.
+const httpAgent = new http.Agent({ keepAlive: false });
+const httpsAgent = new https.Agent({ keepAlive: false });
 
 // Looks up a Ludo King room's live/finished status via LudoRoom (ludoroom.in).
 // Called two places: once right after a player submits a room code (to
@@ -23,17 +37,27 @@ async function getRoomResult(roomCode) {
     res = await axios.post(
       `${baseUrl}${RESULT_PATH}`,
       { roomCode, json: false },
-      { headers: { "Content-Type": "application/json", "x-api-key": key }, timeout: 10000 }
+      { headers: { "Content-Type": "application/json", "x-api-key": key }, timeout: 10000, httpAgent, httpsAgent }
     );
   } catch (e) {
-    if (e.code === "ECONNABORTED") throw new Error("LudoRoom API request timed out");
-    if (e.response?.status === 429) {
-      const err = new Error("LudoRoom API rate limited (429)");
+    // Preserve the full diagnostic shape (not just a flattened message) so
+    // callers can log/store enough to actually debug a recurrence — this is
+    // exactly what was missing when the background poller's failures were
+    // only visible as a generic give-up message after 10 attempts.
+    let err;
+    if (e.code === "ECONNABORTED") {
+      err = new Error("LudoRoom API request timed out");
+    } else if (e.response?.status === 429) {
+      err = new Error("LudoRoom API rate limited (429)");
       err.rateLimited = true;
-      throw err;
+    } else {
+      const detail = e.response?.data ? JSON.stringify(e.response.data) : e.message;
+      err = new Error(`LudoRoom API failed: ${detail}`);
     }
-    const detail = e.response?.data ? JSON.stringify(e.response.data) : e.message;
-    throw new Error(`LudoRoom API failed: ${detail}`);
+    err.httpStatus = e.response?.status ?? null;
+    err.code = e.code ?? null;
+    err.responseBody = e.response?.data ?? null;
+    throw err;
   }
 
   return res.data;
