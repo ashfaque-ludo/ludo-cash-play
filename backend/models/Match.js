@@ -46,6 +46,19 @@ const schema = new mongoose.Schema({
   result_poll_attempts:      { type: Number, default: 0 },
   result_poll_fail_count:    { type: Number, default: 0 },
   needs_manual_review:       { type: Boolean, default: false },
+
+  // Snapshot of the last LudoRoom check (poller or admin manual verify) —
+  // lets the admin panel show the raw LudoRoom name/status without another
+  // API round-trip, so it can be cross-checked against the two registered
+  // players (name+phone) instead of trusting a bare name on its own.
+  ludoroom_last_check: {
+    table_status:   { type: String, default: null },
+    owner_name:      { type: String, default: null },
+    owner_status:    { type: String, default: null },
+    player1_name:    { type: String, default: null },
+    player1_status:  { type: String, default: null },
+    checked_at:      { type: Date, default: null },
+  },
 }, { timestamps: true });
 
 schema.index({ status: 1, createdAt: -1 });

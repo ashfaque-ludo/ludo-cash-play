@@ -129,6 +129,17 @@ async function pollOnce() {
           result_poll_fail_count: 0,
           result_poll_next_attempt_at: new Date(Date.now() + nextInterval),
           result_poll_attempts: (match.result_poll_attempts || 0) + 1,
+          // Snapshot every check (not just on Finished) so the admin panel can
+          // show the raw LudoRoom name/status for cross-checking against the
+          // two registered players without another API round-trip.
+          ludoroom_last_check: {
+            table_status: raw?.table_status ?? null,
+            owner_name: raw?.owner_name ?? null,
+            owner_status: raw?.owner_status ?? null,
+            player1_name: raw?.player1_name ?? null,
+            player1_status: raw?.player1_status ?? null,
+            checked_at: new Date(),
+          },
         },
       });
 

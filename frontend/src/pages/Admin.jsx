@@ -615,6 +615,30 @@ function WithdrawalHistoryTab() {
   );
 }
 
+const normName = (s) => String(s || "").trim().toLowerCase();
+
+// Shows the two registered players (name + phone) side by side, highlighting
+// whichever one's name matches the LudoRoom winner name — so the admin always
+// decides off a real registered account, never a bare (possibly ambiguous or
+// misspelled) name string from LudoRoom.
+function WinnerPlayersCompare({ actualWinner, players, matchedPlayerId }) {
+  if (!players || !players.length) return null;
+  return (
+    <div className="grid sm:grid-cols-2 gap-2 mt-2">
+      {players.map((p) => {
+        const isMatch = matchedPlayerId ? p.id === matchedPlayerId : (!!actualWinner && normName(p.name) === normName(actualWinner));
+        return (
+          <div key={p.id || p.name} className={`rounded-lg p-2.5 border-2 ${isMatch ? "border-green-500 bg-green-50" : "border-gray-200 bg-gray-50"}`}>
+            <p className="text-sm font-bold text-gray-900">{p.name || "—"}</p>
+            <p className="text-xs text-gray-500">{p.phone || "no phone on file"}</p>
+            {isMatch && <p className="text-xs font-bold text-green-600 mt-1">✅ Matches LudoRoom winner name</p>}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 // ─── Verify Result Tab — standalone room-code lookup ──────────────────────
 function VerifyResultTab() {
   const [roomCode, setRoomCode] = useState("");
@@ -675,10 +699,16 @@ function VerifyResultTab() {
                 {result.verified === true ? "✅ Verified Match" : result.verified === false ? "❌ Mismatch" : "⚠️ Could not confirm automatically"}
               </p>
               {result.message && <p className="text-sm text-gray-600 mt-1">{result.message}</p>}
-              {result.actualWinner && <p className="text-sm text-gray-600 mt-1">Actual winner (LudoRoom): <strong>{result.actualWinner}</strong></p>}
+              {result.actualWinner && <p className="text-sm text-gray-600 mt-1">LudoRoom winner name: <strong>{result.actualWinner}</strong></p>}
               {claimedWinner && result.actualWinner && <p className="text-sm text-gray-600">Claimed winner: <strong>{result.claimedWinner}</strong></p>}
               {result.status && <p className="text-xs text-gray-500 mt-1">Room status: {result.status}</p>}
             </div>
+            {result.players && (
+              <div>
+                <p className="text-xs text-gray-500 mb-1">Registered players in this match — decide off this, not the bare name above:</p>
+                <WinnerPlayersCompare actualWinner={result.actualWinner} players={result.players} matchedPlayerId={result.matchedPlayerId} />
+              </div>
+            )}
             <details className="bg-gray-50 border border-gray-200 rounded-xl p-3">
               <summary className="text-xs font-semibold text-gray-500 cursor-pointer">Raw API response</summary>
               <pre className="text-xs text-gray-700 mt-2 whitespace-pre-wrap break-all">{JSON.stringify(result.raw, null, 2)}</pre>
@@ -727,15 +757,27 @@ function MatchesTab({ actor }){
     finally { setProcessingId(null); }
   };
 
-  const verifyResult = async (m, p) => {
-    const key = `${m.id}-${p.user || p.id}`;
-    setVerifyResults(v => ({ ...v, [key]: { loading: true } }));
+  // One check per match (not per player) — the response's `players` +
+  // `matchedPlayerId` already carries the cross-check against both
+  // registered players, so there's no reason to call it twice.
+  const verifyMatch = async (m) => {
+    setVerifyResults(v => ({ ...v, [m.id]: { loading: true } }));
     try {
-      const r = await api.post("/admin/matches/verify-result", { roomCode: m.room_code, claimedWinner: p.name });
-      setVerifyResults(v => ({ ...v, [key]: { loading: false, ...r.data } }));
+      const r = await api.post("/admin/matches/verify-result", { roomCode: m.room_code, matchId: m.id });
+      setVerifyResults(v => ({ ...v, [m.id]: { loading: false, ...r.data } }));
     } catch (e) {
-      setVerifyResults(v => ({ ...v, [key]: { loading: false, error: formatApiError(e.response?.data?.detail) || e.message } }));
+      setVerifyResults(v => ({ ...v, [m.id]: { loading: false, error: formatApiError(e.response?.data?.detail) || e.message } }));
     }
+  };
+
+  // Winner name from the poller's last stored snapshot (ludoroom_last_check)
+  // — shown automatically for flagged matches without an extra API call.
+  const lastCheckWinner = (m) => {
+    const c = m.ludoroom_last_check;
+    if (!c) return null;
+    if (c.owner_status && String(c.owner_status).toLowerCase() === "won") return c.owner_name;
+    if (c.player1_status && String(c.player1_status).toLowerCase() === "won") return c.player1_name;
+    return null;
   };
 
   const openEdit = (m) => {
@@ -862,10 +904,7 @@ function MatchesTab({ actor }){
 
                     {/* Player results + screenshots */}
                     <div className="grid grid-cols-2 gap-3 mb-3">
-                      {[{p: p1, ss: p1ss, label: "Player 1", bg: "bg-blue-50"}, {p: p2, ss: p2ss, label: "Player 2", bg: "bg-red-50"}].map(({p, ss, label, bg}) => {
-                        const vKey = p ? `${m.id}-${p.user || p.id}` : null;
-                        const v = vKey ? verifyResults[vKey] : null;
-                        return (
+                      {[{p: p1, ss: p1ss, label: "Player 1", bg: "bg-blue-50"}, {p: p2, ss: p2ss, label: "Player 2", bg: "bg-red-50"}].map(({p, ss, label, bg}) => (
                         <div key={label} className={`${bg} rounded-xl p-2`}>
                           <p className="text-xs text-gray-500 mb-0.5">{label} ({(p?.name || "?").slice(0,8)}{p?.phone ? ` · ${p.phone}` : ""}):</p>
                           <p className={`font-bold text-sm ${p?.result_claim === "won" ? "text-green-600" : p?.result_claim === "lost" ? "text-red-600" : "text-gray-400"}`}>
@@ -876,29 +915,45 @@ function MatchesTab({ actor }){
                               <img src={ss} alt={label} className="w-16 h-16 object-cover rounded-lg border-2 border-white shadow" onError={e => { e.target.style.display = "none"; }} />
                             </button>
                           )}
-                          {p && m.room_code && (
-                            <div className="mt-1.5">
-                              <Button size="sm" variant="outline" disabled={v?.loading} onClick={() => verifyResult(m, p)}
-                                className="rounded-full border-gray-300 bg-white text-gray-600 text-xs h-6 px-2">
-                                {v?.loading ? "Checking…" : "Verify"}
-                              </Button>
-                              {v && !v.loading && (
-                                v.error ? (
-                                  <p className="text-xs text-red-500 mt-1">{v.error}</p>
-                                ) : v.verified === true ? (
-                                  <p className="text-xs font-bold text-green-600 mt-1">✅ Verified Match</p>
-                                ) : v.verified === false ? (
-                                  <p className="text-xs font-bold text-red-600 mt-1">❌ Mismatch (actual: {v.actualWinner})</p>
-                                ) : (
-                                  <p className="text-xs font-bold text-amber-600 mt-1">⚠️ {v.message || "Could not confirm automatically"}</p>
-                                )
-                              )}
-                            </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* LudoRoom winner check — one check per match, cross-checked
+                        against both registered players (name+phone) so the admin
+                        never has to trust a bare name string. Auto-shows the
+                        poller's last snapshot for flagged matches even before
+                        clicking Verify. */}
+                    {m.room_code && (() => {
+                      const v = verifyResults[m.id];
+                      const autoWinner = !v ? lastCheckWinner(m) : null;
+                      const winnerName = v?.actualWinner || autoWinner;
+                      const players = v?.players || [p1, p2].filter(Boolean).map(p => ({ id: p.user || p.id, name: p.name, phone: p.phone || "" }));
+                      return (
+                        <div className="bg-gray-50 border border-gray-200 rounded-xl p-3 mb-3">
+                          <div className="flex items-center justify-between gap-2 mb-1">
+                            <p className="text-xs font-bold text-gray-600">LudoRoom Result</p>
+                            <Button size="sm" variant="outline" disabled={v?.loading} onClick={() => verifyMatch(m)}
+                              className="rounded-full border-gray-300 bg-white text-gray-600 text-xs h-6 px-2">
+                              {v?.loading ? "Checking…" : "Verify Now"}
+                            </Button>
+                          </div>
+                          {v?.error && <p className="text-xs text-red-500">{v.error}</p>}
+                          {!v?.error && (v?.message || (!winnerName && m.ludoroom_last_check?.table_status)) && (
+                            <p className="text-xs text-amber-600 mb-1">{v?.message || `Status: ${m.ludoroom_last_check.table_status}`}</p>
+                          )}
+                          {winnerName && (
+                            <>
+                              <p className="text-xs text-gray-500 mb-1">
+                                {autoWinner && !v ? "Last auto-check winner name: " : "LudoRoom winner name: "}
+                                <strong className="text-gray-900">{winnerName}</strong>
+                              </p>
+                              <WinnerPlayersCompare actualWinner={winnerName} players={players} matchedPlayerId={v?.matchedPlayerId} />
+                            </>
                           )}
                         </div>
-                        );
-                      })}
-                    </div>
+                      );
+                    })()}
 
                     {/* Cancel reason */}
                     {m.cancel_reason && (

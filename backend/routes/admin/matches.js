@@ -178,9 +178,17 @@ router.post("/:id/resolve", async (req,res)=>{
 // POST /api/admin/matches/verify-result — manual, on-demand only. Called from
 // the admin "Verify" button on a match row; never runs automatically or on a
 // schedule. The automatic player-submitted-result flow is untouched by this.
+//
+// A bare LudoRoom name is ambiguous (typos/near-duplicate names in Ludo King
+// vs. the site), so this cross-checks it against the match's two registered
+// players (name + phone, same enrichment as GET /api/admin/matches) and
+// returns both — the admin decides, never a name string alone. The match is
+// resolved from an explicit matchId if given, else opportunistically by
+// room_code (most recent), so the standalone Verify tab gets the same
+// cross-check even without a matchId.
 router.post("/verify-result", async (req,res)=>{
   try{
-    const {roomCode,claimedWinner}=req.body;
+    const {roomCode,claimedWinner,matchId}=req.body;
     if(!roomCode) return res.status(400).json({detail:"roomCode is required."});
     const raw=await getRoomResult(roomCode);
 
@@ -192,14 +200,33 @@ router.post("/verify-result", async (req,res)=>{
     } else {
       actualWinner=findWinnerName(raw);
       if(actualWinner){
-        verified=actualWinner.trim().toLowerCase()===String(claimedWinner||"").trim().toLowerCase();
+        if(claimedWinner) verified=actualWinner.trim().toLowerCase()===String(claimedWinner).trim().toLowerCase();
       } else {
         message="Match finished hai lekin winner LudoRoom response se clear nahi hai.";
       }
     }
 
-    await logActivity(req,"match_result_verify_checked",roomCode,{claimedWinner,actualWinner,verified,status:raw?.table_status});
-    res.json({roomCode,claimedWinner,actualWinner,verified,status:raw?.table_status,message,raw});
+    let players=null, matchedPlayerId=null;
+    const match = matchId ? await Match.findById(matchId) : await Match.findOne({room_code:roomCode}).sort({createdAt:-1});
+    if(match){
+      const userIds=match.players.map(p=>p.user).filter(Boolean);
+      const users=await User.find({_id:{$in:userIds}}).select("phone");
+      const phoneById=Object.fromEntries(users.map(u=>[u._id.toString(),u.phone||""]));
+      players=match.players.map(p=>({id:p.user?.toString()||p.id,name:p.name,phone:phoneById[p.user?.toString()]||""}));
+      if(actualWinner){
+        const norm=s=>String(s||"").trim().toLowerCase();
+        matchedPlayerId=players.find(p=>norm(p.name)===norm(actualWinner))?.id||null;
+      }
+      if(isRoomFound(raw)){
+        await Match.findByIdAndUpdate(match._id,{$set:{ludoroom_last_check:{
+          table_status:raw.table_status??null, owner_name:raw.owner_name??null, owner_status:raw.owner_status??null,
+          player1_name:raw.player1_name??null, player1_status:raw.player1_status??null, checked_at:new Date(),
+        }}});
+      }
+    }
+
+    await logActivity(req,"match_result_verify_checked",roomCode,{claimedWinner,actualWinner,verified,status:raw?.table_status,matchedPlayerId});
+    res.json({roomCode,claimedWinner,actualWinner,verified,status:raw?.table_status,message,raw,players,matchedPlayerId});
   }catch(e){ res.status(500).json({detail:e.message||"Verification failed."}); }
 });
 
