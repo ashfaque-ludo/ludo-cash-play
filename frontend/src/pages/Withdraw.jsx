@@ -1,13 +1,14 @@
 import React, { useEffect, useState, useCallback } from "react";
-import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { api, fmtINR } from "@/lib/api";
 import { toast } from "sonner";
+import KYCModal from "@/components/KYCModal";
 
-
-// Temporarily disabled — re-enable by flipping this to true when KYC
-// enforcement resumes.
-const KYC_ENFORCED = false;
+// Re-enabled (2026-09-08) — mirrors routes/wallet.js's KYC_ENFORCED, which
+// now accepts "verified" (self-serve Aadhaar OTP) alongside "approved"
+// (admin-reviewed documents).
+const KYC_ENFORCED = true;
+const KYC_PASS_STATUSES = ["approved", "verified"];
 
 const STATUS_STYLE = {
   pending:  "bg-amber-100 text-amber-700",
@@ -22,6 +23,7 @@ export default function Withdraw() {
   const [loading, setLoading] = useState(false);
   const [history, setHistory] = useState([]);
   const [kycStatus, setKycStatus] = useState(null);
+  const [showKycModal, setShowKycModal] = useState(false);
 
   const loadHistory = useCallback(async () => {
     try {
@@ -30,14 +32,16 @@ export default function Withdraw() {
     } catch {}
   }, []);
 
-  useEffect(() => { loadHistory(); }, [loadHistory]);
-  useEffect(() => {
+  const loadKycStatus = useCallback(() => {
     api.get("/kyc/status").then(r => setKycStatus(r.data.status)).catch(() => {});
   }, []);
 
+  useEffect(() => { loadHistory(); }, [loadHistory]);
+  useEffect(() => { loadKycStatus(); }, [loadKycStatus]);
+
   const w = user?.wallet || {};
   const withdrawable = w.winning || 0;
-  const kycApproved = !KYC_ENFORCED || kycStatus === "approved";
+  const kycApproved = !KYC_ENFORCED || KYC_PASS_STATUSES.includes(kycStatus);
 
   const withdrawAll = () => setAmount(String(withdrawable));
 
@@ -77,16 +81,19 @@ export default function Withdraw() {
         <div className="bg-amber-50 border-2 border-amber-400 rounded-2xl p-4 mb-4 text-center">
           <p className="font-bold text-amber-800 mb-1">KYC Required</p>
           <p className="text-sm text-amber-700 mb-3">
-            {kycStatus === "pending"
-              ? "Your KYC is under review. You can withdraw once it's approved."
-              : "Complete KYC verification before withdrawing."}
+            Withdraw karne se pehle KYC complete karein — sirf 2 minute lagte hain (Aadhaar OTP se).
           </p>
-          {kycStatus !== "pending" && (
-            <Link to="/kyc" className="inline-block px-5 py-2.5 rounded-xl bg-amber-600 text-white font-bold text-sm">
-              Complete KYC
-            </Link>
-          )}
+          <button onClick={() => setShowKycModal(true)} className="inline-block px-5 py-2.5 rounded-xl bg-amber-600 text-white font-bold text-sm">
+            Complete KYC
+          </button>
         </div>
+      )}
+
+      {showKycModal && (
+        <KYCModal
+          onClose={() => setShowKycModal(false)}
+          onVerified={() => { setShowKycModal(false); loadKycStatus(); refresh(); }}
+        />
       )}
 
       <div className={`bg-white rounded-2xl border border-gray-200 shadow-sm p-4 space-y-4 mb-4 ${!kycApproved ? "opacity-50 pointer-events-none" : ""}`}>

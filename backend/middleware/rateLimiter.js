@@ -77,4 +77,20 @@ module.exports = {
     max: 5,
     message: { detail: "Hourly limit reached for this action." },
   }),
+
+  // Real-money-adjacent (KYC gates withdrawal) and each call costs IMB
+  // credits — 3 per 10 minutes is enough for normal retries, not enough for
+  // OTP-spam abuse.
+  kycOtpLimiter: rateLimit({
+    ...opts,
+    windowMs: 10 * 60 * 1000,
+    max: 3,
+    message: { detail: "Bahut zyada OTP request ho gaye. 10 minute baad try karein." },
+  }),
+  kycOtpVerifyLimiter: rateLimit({
+    ...opts,
+    windowMs: 10 * 60 * 1000,
+    max: 3,
+    message: { detail: "Bahut zyada verify attempts ho gaye. 10 minute baad try karein." },
+  }),
 };

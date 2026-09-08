@@ -6,6 +6,8 @@ import { toast } from "sonner";
 import { Users, Swords, Loader2 } from "lucide-react";
 import AnnouncementBar from "@/components/AnnouncementBar";
 import { PlayerAvatar, VsBadge, battleRoles } from "@/components/BattleAvatars";
+import KYCModal from "@/components/KYCModal";
+import { ShieldCheck } from "lucide-react";
 
 const COMMISSION = 0.05; // 5%
 
@@ -78,6 +80,8 @@ export default function Dashboard() {
   const [joining, setJoining] = useState(null);
   const [loading, setLoading] = useState(true);
   const [supportNumber, setSupportNumber] = useState("7206638948");
+  const [showKycModal, setShowKycModal] = useState(false);
+  const kycPassed = user && user !== false && ["approved", "verified"].includes(user.kyc_status);
 
   useEffect(() => {
     api.get("/public/payment-info")
@@ -204,6 +208,18 @@ export default function Dashboard() {
 
       <div className="px-3 pt-3 space-y-4">
 
+        {/* KYC nudge — only shown when not yet verified */}
+        {user && user !== false && !kycPassed && (
+          <button
+            onClick={() => setShowKycModal(true)}
+            className="w-full flex items-center gap-2 bg-purple-50 border border-purple-300 rounded-xl px-3 py-2.5 text-left"
+          >
+            <ShieldCheck className="w-4 h-4 text-purple-700 shrink-0" />
+            <span className="flex-1 text-xs font-bold text-purple-800">KYC complete karein — Aadhaar OTP se sirf 2 minute, withdraw ke liye zaroori hai</span>
+            <span className="text-xs px-2.5 py-1 rounded-full bg-purple-700 text-white font-bold shrink-0">Complete</span>
+          </button>
+        )}
+
         {/* Create Battle */}
         <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
           <h2 className="font-black text-gray-900 text-base mb-2">⚔️ Create a Battle!</h2>
@@ -283,6 +299,8 @@ export default function Dashboard() {
         )}
 
       </div>
+
+      {showKycModal && <KYCModal onClose={() => setShowKycModal(false)} onVerified={() => setShowKycModal(false)} />}
     </div>
   );
 }

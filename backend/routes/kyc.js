@@ -4,9 +4,23 @@ const path = require("path");
 const fs = require("fs");
 const User = require("../models/User");
 const KYC = require("../models/KYC");
+const { sendAadhaarOtp, verifyAadhaarOtp } = require("../utils/imbOtp");
 
-// ── In-memory Aadhaar OTP store ───────────────────────────────────────────────
-const aadhaarOtpStore = new Map(); // phone/userId → { otp, aadhaar, expiresAt }
+// ── In-memory Aadhaar OTP session store ───────────────────────────────────────
+// Only holds the IMB request_id + which Aadhaar number it's for while the
+// user is mid-flow — the OTP itself is generated and checked entirely by
+// IMB, never stored here.
+const aadhaarOtpStore = new Map(); // userId → { aadhaar, request_id, expiresAt }
+
+// IMB's Aadhaar-verify response shape isn't publicly documented — these are
+// the field names their other endpoints use elsewhere, checked in order.
+// Verification still succeeds even if no name is found; this is best-effort.
+function extractVerifiedName(body) {
+  return (
+    body?.data?.name || body?.data?.full_name || body?.name || body?.full_name ||
+    body?.result?.name || body?.result?.full_name || ""
+  );
+}
 
 // ── File upload (legacy photo KYC, kept for admin panel) ─────────────────────
 const dir = path.join(__dirname, "../uploads/kyc");
@@ -43,80 +57,85 @@ router.get("/status", async (req, res) => {
       status: user.kyc_status,
       kyc_verified: user.kyc_verified || false,
       aadhaar_last_4: user.aadhaar_last_4 || "",
+      aadhaar_verified_name: user.aadhaar_verified_name || "",
       kyc_verified_at: user.kyc_verified_at || null,
     });
   } catch (e) { res.status(500).json({ detail: "Server error." }); }
 });
 
-// ── POST /api/kyc/send-aadhaar-otp ───────────────────────────────────────────
-// Accepts aadhaar_number (12 digits), generates a dummy OTP and stores it.
-router.post("/send-aadhaar-otp", async (req, res) => {
+// ── POST /api/kyc/send-otp ───────────────────────────────────────────────────
+// Real Aadhaar OTP via IMB — the OTP itself is generated and sent by IMB to
+// the Aadhaar-linked mobile number, not by us.
+router.post("/send-otp", async (req, res) => {
   try {
     const { aadhaar_number } = req.body;
     const clean = (aadhaar_number || "").replace(/\s/g, "");
     if (!/^\d{12}$/.test(clean))
-      return res.status(400).json({ detail: "Enter a valid 12-digit Aadhaar number." });
+      return res.status(400).json({ detail: "Sahi 12-digit Aadhaar number daalein." });
 
-    const otp = String(Math.floor(100000 + Math.random() * 900000));
-    const key = req.user._id.toString();
-    aadhaarOtpStore.set(key, {
-      otp,
+    let result;
+    try {
+      result = await sendAadhaarOtp(clean);
+    } catch (apiErr) {
+      console.error(`[KYC] IMB send-otp failed for user=${req.user._id}:`, apiErr.message);
+      return res.status(502).json({ detail: "OTP bhejne mein dikkat aayi, thodi der baad try karein." });
+    }
+    if (!result.request_id) {
+      console.error(`[KYC] IMB send-otp — no request_id in response for user=${req.user._id}:`, JSON.stringify(result.raw));
+      return res.status(502).json({ detail: "OTP service se response nahi mila, dobara try karein." });
+    }
+
+    aadhaarOtpStore.set(req.user._id.toString(), {
       aadhaar: clean,
-      expiresAt: Date.now() + 5 * 60 * 1000, // 5 min
+      request_id: result.request_id,
+      expiresAt: Date.now() + 10 * 60 * 1000, // 10 min
     });
 
-    // In dev: return OTP in response for testing
-    const isDev = process.env.NODE_ENV !== "production";
-    res.json({
-      ok: true,
-      message: "OTP sent to Aadhaar-linked mobile number.",
-      ...(isDev && { dev_otp: otp }),
-    });
+    await User.findByIdAndUpdate(req.user._id, { kyc_status: "pending" });
+
+    res.json({ ok: true, message: "OTP aapke Aadhaar-linked mobile number par bhej diya gaya hai." });
   } catch (e) {
     res.status(500).json({ detail: e.message || "Server error." });
   }
 });
 
-// ── POST /api/kyc/verify-aadhaar-otp ─────────────────────────────────────────
-// Accepts otp (any 6-digit in dev mode auto-passes).
-router.post("/verify-aadhaar-otp", async (req, res) => {
+// ── POST /api/kyc/verify-otp ─────────────────────────────────────────────────
+router.post("/verify-otp", async (req, res) => {
   try {
     const { otp } = req.body;
     if (!otp || !/^\d{6}$/.test(String(otp)))
-      return res.status(400).json({ detail: "Enter a valid 6-digit OTP." });
+      return res.status(400).json({ detail: "Sahi 6-digit OTP daalein." });
 
     const key = req.user._id.toString();
     const record = aadhaarOtpStore.get(key);
 
-    if (!record) return res.status(400).json({ detail: "No OTP request found. Please resend OTP." });
+    if (!record) return res.status(400).json({ detail: "Pehle OTP bhejein." });
     if (Date.now() > record.expiresAt) {
       aadhaarOtpStore.delete(key);
-      return res.status(400).json({ detail: "OTP expired. Please request a new one." });
+      return res.status(400).json({ detail: "OTP expire ho gaya. Naya OTP mangwayein." });
     }
 
-    // In dev: any 6-digit OTP works. In prod: match exactly.
-    const isDev = process.env.NODE_ENV !== "production";
-    if (!isDev && String(otp) !== record.otp) {
-      return res.status(400).json({ detail: "Invalid OTP. Please try again." });
+    let result;
+    try {
+      result = await verifyAadhaarOtp(record.request_id, String(otp));
+    } catch (apiErr) {
+      console.error(`[KYC] IMB verify-otp failed for user=${req.user._id}:`, apiErr.message);
+      await User.findByIdAndUpdate(req.user._id, { kyc_status: "failed" });
+      return res.status(400).json({ detail: "OTP galat hai ya expire ho gaya. Dobara try karein." });
     }
 
     aadhaarOtpStore.delete(key);
 
-    // OTP only confirms the Aadhaar number is reachable — it is NOT a
-    // substitute for admin review. Withdrawals require kyc_status "approved",
-    // which is only ever set by an admin (routes/admin/kyc.js) after they've
-    // reviewed the uploaded ID photos from POST /kyc/submit.
+    const verifiedName = extractVerifiedName(result);
     await User.findByIdAndUpdate(req.user._id, {
+      kyc_status: "verified",
+      kyc_verified: true,
+      kyc_verified_at: new Date(),
       aadhaar_last_4: record.aadhaar.slice(-4),
+      aadhaar_verified_name: verifiedName,
     });
 
-    await KYC.findOneAndUpdate(
-      { user: req.user._id },
-      { $set: { aadhaar_number: record.aadhaar } },
-      { upsert: true }
-    );
-
-    res.json({ ok: true, message: "Aadhaar number confirmed. Please upload your ID documents for admin verification." });
+    res.json({ ok: true, message: "Aadhaar verify ho gaya! Ab aap withdraw kar sakte hain.", verified_name: verifiedName });
   } catch (e) {
     res.status(500).json({ detail: e.message || "Server error." });
   }

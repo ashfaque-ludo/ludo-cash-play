@@ -15,7 +15,7 @@ const {sanitizeInput}=require("./middleware/validators");
 const {
   general, adminLimiter, authLimiter, otpLimiter,
   otpVerifyLimiter, uploadLimiter, walletLimiter, withdrawLimiter,
-  matchCreateLimiter, strictLimiter,
+  matchCreateLimiter, strictLimiter, kycOtpLimiter, kycOtpVerifyLimiter,
 }=require("./middleware/rateLimiter");
 
 const app=express();
@@ -77,6 +77,8 @@ app.use("/api/wallet/withdraw", withdrawLimiter);
 app.use("/api/wallet", walletLimiter);
 app.use("/api/payments/imb", walletLimiter);
 app.post("/api/matches/create", matchCreateLimiter);
+app.post("/api/kyc/send-otp", kycOtpLimiter);
+app.post("/api/kyc/verify-otp", kycOtpVerifyLimiter);
 app.use("/api/admin/payment-settings/upload-qr", uploadLimiter);
 app.use("/api/admin", adminLimiter);
 app.use("/api/owner", adminLimiter);
@@ -96,9 +98,13 @@ app.use("/api/kyc",auth,require("./routes/kyc"));
 app.use("/api/support",auth,require("./routes/support"));
 app.use(require("./routes/upload"));
 app.use(require("./routes/rooms"));
-// TEST-ONLY: exercises the new IMB OTP integration in isolation, alongside
-// (not replacing) the existing API-King/Firebase OTP flow used by /api/auth.
-app.use("/api/imb-otp-test", require("./routes/imbOtpTest"));
+// TEST-ONLY diagnostic tooling for the IMB OTP integration — separate from
+// the real user-facing flow (POST /api/kyc/send-otp, /verify-otp above).
+// Admin-only + rate-limited: send-aadhaar/send-mobile call IMB for real
+// (real credits, real SMS to a real person), so this can't be left open —
+// an unauthenticated version of this would let anyone spam arbitrary
+// Aadhaar/phone numbers and burn IMB credits.
+app.use("/api/imb-otp-test", auth, requireRole("admin"), strictLimiter, require("./routes/imbOtpTest"));
 
 // Restricted, phone-login staff (Admin > Staff > "Add Restricted Staff")
 // carry a non-empty staff_work and must only ever reach the one /api/admin/*

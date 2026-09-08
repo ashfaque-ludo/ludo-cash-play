@@ -26,9 +26,19 @@ const userSchema = new mongoose.Schema({
   referral_code:   { type: String, unique: true, sparse: true },
   referred_by:     { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
   avatar_url:          { type: String, default: "" },
-  kyc_status:          { type: String, enum: ["not_submitted","pending","approved","rejected"], default: "not_submitted" },
+  // "approved"/"rejected" are set only by an admin after reviewing uploaded ID
+  // photos (routes/admin/kyc.js, legacy POST /kyc/submit flow). "verified"/
+  // "failed" are set automatically by the real-time Aadhaar OTP flow
+  // (routes/kyc.js POST /send-otp + /verify-otp, via IMB) — a self-serve
+  // alternative that doesn't need admin review. Both "approved" and
+  // "verified" satisfy the withdrawal KYC gate (routes/wallet.js).
+  kyc_status:          { type: String, enum: ["not_submitted","pending","approved","rejected","verified","failed"], default: "not_submitted" },
   kyc_verified:        { type: Boolean, default: false },
   aadhaar_last_4:      { type: String, default: "" },
+  // Name IMB's Aadhaar verification returns for the account, if any — not
+  // required for KYC to pass, but useful later for cross-checking a Ludo
+  // King in-app name against a real identity (see utils/resultPoller.js).
+  aadhaar_verified_name: { type: String, default: "" },
   kyc_verified_at:     { type: Date },
   last_login_at:       { type: Date },
   last_login_ip:       { type: String, default: "" },

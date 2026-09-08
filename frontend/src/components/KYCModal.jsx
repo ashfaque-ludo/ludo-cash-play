@@ -1,14 +1,15 @@
 import React, { useState } from "react";
 import { api } from "@/lib/api";
 import { toast } from "sonner";
-import { Shield, CheckCircle, AlertTriangle } from "lucide-react";
+import { Shield, CheckCircle, AlertTriangle, X } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 
-export default function KYCModal() {
+export default function KYCModal({ onClose, onVerified }) {
   const { refresh } = useAuth();
   const [step, setStep] = useState(1); // 1 = aadhaar input, 2 = otp, 3 = success
   const [aadhaar, setAadhaar] = useState("");
   const [otp, setOtp] = useState("");
+  const [verifiedName, setVerifiedName] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -29,15 +30,11 @@ export default function KYCModal() {
     }
     setLoading(true);
     try {
-      const r = await api.post("/kyc/send-aadhaar-otp", { aadhaar_number: clean });
-      if (r.data.dev_otp) {
-        toast.success(`Dev OTP: ${r.data.dev_otp}`, { duration: 15000 });
-      } else {
-        toast.success("OTP sent to Aadhaar-linked mobile!");
-      }
+      await api.post("/kyc/send-otp", { aadhaar_number: clean });
+      toast.success("OTP aapke Aadhaar-linked mobile par bhej diya gaya!");
       setStep(2);
     } catch (e) {
-      setError(e.response?.data?.detail || "Failed to send OTP");
+      setError(e.response?.data?.detail || "OTP bhejne mein dikkat aayi");
     } finally {
       setLoading(false);
     }
@@ -49,10 +46,14 @@ export default function KYCModal() {
     if (otp.length !== 6) { setError("Enter the 6-digit OTP"); return; }
     setLoading(true);
     try {
-      await api.post("/kyc/verify-aadhaar-otp", { otp });
+      const r = await api.post("/kyc/verify-otp", { otp });
+      setVerifiedName(r.data?.verified_name || "");
       setStep(3);
-      // Refresh user so kyc_verified updates everywhere
-      setTimeout(() => refresh(), 500);
+      // Refresh user so kyc_status updates everywhere; hold the success
+      // screen up briefly before telling the parent (e.g. Withdraw.jsx
+      // closes the modal on this and reloads its own KYC status).
+      await refresh();
+      setTimeout(() => onVerified?.(), 2000);
     } catch (e) {
       setError(e.response?.data?.detail || "Invalid OTP");
     } finally {
@@ -61,14 +62,18 @@ export default function KYCModal() {
   };
 
   return (
-    /* Full-screen overlay — cannot be closed */
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4">
-      <div className="w-full max-w-sm bg-white rounded-2xl shadow-2xl overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4" onClick={() => step !== 3 && onClose?.()}>
+      <div className="w-full max-w-sm bg-white rounded-2xl shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
 
         {/* Header */}
-        <div className="bg-gradient-to-r from-red-700 to-black p-5 text-white text-center">
+        <div className="relative bg-gradient-to-r from-red-700 to-black p-5 text-white text-center">
+          {onClose && step !== 3 && (
+            <button onClick={onClose} className="absolute top-3 right-3 w-7 h-7 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center">
+              <X className="w-4 h-4" />
+            </button>
+          )}
           <Shield className="w-10 h-10 mx-auto mb-2 text-yellow-300" />
-          <h2 className="text-xl font-black">KYC Verification Required</h2>
+          <h2 className="text-xl font-black">KYC Verification</h2>
           <p className="text-sm text-white/70 mt-1">
             Verify your identity to withdraw and play
           </p>
@@ -178,6 +183,9 @@ export default function KYCModal() {
                   Your identity has been verified successfully.
                   You can now withdraw your winnings.
                 </p>
+                {verifiedName && (
+                  <p className="text-sm text-gray-600 mt-2">Aadhaar name: <strong className="text-gray-900">{verifiedName}</strong></p>
+                )}
               </div>
               <div className="bg-green-50 border border-green-200 rounded-xl p-3">
                 <p className="text-green-700 text-sm font-semibold">✓ Withdrawals unlocked</p>

@@ -3,9 +3,12 @@ const User = require("../models/User");
 const Transaction = require("../models/Transaction");
 const Promo = require("../models/Promo");
 
-// Temporarily disabled — re-enable by flipping this to true when KYC
-// enforcement resumes.
-const KYC_ENFORCED = false;
+// Re-enabled (2026-09-08) — the Aadhaar OTP flow (routes/kyc.js) now gives
+// users a self-serve path to "verified" via IMB, alongside the existing
+// admin-approved document review ("approved"), so this no longer blocks
+// withdrawals on manual review alone.
+const KYC_ENFORCED = true;
+const KYC_PASS_STATUSES = ["approved", "verified"];
 
 // ── GET /wallet ───────────────────────────────────────────────────────────────
 router.get("/", async (req, res) => {
@@ -29,8 +32,8 @@ router.post("/withdraw", async (req, res) => {
       return res.status(403).json({ detail: 'Your wallet is frozen. Contact support.' });
     }
 
-    if (KYC_ENFORCED && user.kyc_status !== "approved") {
-      return res.status(403).json({ detail: "Complete KYC verification before withdrawing.", kyc_required: true });
+    if (KYC_ENFORCED && !KYC_PASS_STATUSES.includes(user.kyc_status)) {
+      return res.status(403).json({ detail: "Withdraw karne se pehle KYC complete karein.", kyc_required: true });
     }
 
     const withdrawable = user.wallet.winning || 0;

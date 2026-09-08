@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLang } from "@/contexts/LanguageContext";
@@ -11,14 +11,26 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import InstallAppButton from "@/components/InstallAppButton";
+import KYCModal from "@/components/KYCModal";
+
+const KYC_BADGE = {
+  verified: { label: "Verified", cls: "bg-green-100 text-green-700" },
+  approved: { label: "Verified", cls: "bg-green-100 text-green-700" },
+  pending:  { label: "Pending", cls: "bg-amber-100 text-amber-700" },
+  rejected: { label: "Rejected", cls: "bg-red-100 text-red-700" },
+  failed:   { label: "Retry", cls: "bg-red-100 text-red-700" },
+};
 
 export default function Account() {
   const { user, logout } = useAuth();
   const { lang, toggle: toggleLang } = useLang();
   const navigate = useNavigate();
+  const [showKycModal, setShowKycModal] = useState(false);
   const loggedIn = user && user !== false;
   const w = loggedIn ? user.wallet || {} : {};
   const total = (w.deposit || 0) + (w.winning || 0) + (w.bonus || 0);
+  const kycPassed = loggedIn && ["approved", "verified"].includes(user.kyc_status);
+  const kycBadge = loggedIn ? KYC_BADGE[user.kyc_status] : null;
 
   const handleLogout = async () => {
     await logout();
@@ -96,7 +108,23 @@ export default function Account() {
       <div className="px-3 mt-3 space-y-2">
         <MenuSection title="My Profile" items={[
           { to: "/profile", icon: UserIcon, label: "Edit Profile", desc: "Change name, avatar", iconBg: "bg-red-100 text-red-700" },
-        ]} />
+        ]} extra={
+          <button onClick={() => setShowKycModal(true)} className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-amber-50 transition-colors border-b border-gray-50">
+            <div className="w-8 h-8 rounded-xl bg-purple-100 flex items-center justify-center shrink-0 text-purple-700">
+              <Shield className="w-4 h-4" />
+            </div>
+            <div className="flex-1 text-left min-w-0">
+              <div className="text-sm font-medium text-gray-900">KYC Verification</div>
+              <div className="text-xs text-gray-400 mt-0.5">{kycPassed ? "Aadhaar verified" : "Aadhaar OTP se 2 minute mein complete karein"}</div>
+            </div>
+            {kycBadge && (
+              <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${kycBadge.cls}`}>{kycBadge.label}</span>
+            )}
+            {!kycPassed && (
+              <span className="text-xs px-3 py-1 rounded-full bg-gradient-to-r from-red-700 to-black text-white font-bold">Complete KYC</span>
+            )}
+          </button>
+        } />
 
         <MenuSection title="Play" items={[
           { to: "/open-battles", icon: Swords, label: "Open Battles", desc: "Join existing battles", iconBg: "bg-orange-100 text-orange-700" },
@@ -165,6 +193,8 @@ export default function Account() {
           <p className="text-center text-xs text-gray-400 mt-3">MyAkadda v2.0 · Skill gaming platform</p>
         </div>
       </div>
+
+      {showKycModal && <KYCModal onClose={() => setShowKycModal(false)} onVerified={() => setShowKycModal(false)} />}
     </div>
   );
 }
