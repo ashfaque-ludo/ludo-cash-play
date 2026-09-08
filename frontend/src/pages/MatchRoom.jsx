@@ -5,8 +5,6 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { ArrowLeft, Copy } from "lucide-react";
 import CancelBattlePopup from "@/components/CancelBattlePopup";
-import WonPopup from "@/components/WonPopup";
-import LostPopup from "@/components/LostPopup";
 import { PlayerAvatar, VsBadge, battleRoles } from "@/components/BattleAvatars";
 
 // ── Open the installed Ludo King app directly, store fallback only if absent ──
@@ -145,8 +143,6 @@ export default function MatchRoom() {
   const [roomCodeInput, setRoomCodeInput] = useState('');
   const [setting, setSetting] = useState(false);
   const [codeTimer, setCodeTimer] = useState(180);
-  const [showWon, setShowWon] = useState(false);
-  const [showLost, setShowLost] = useState(false);
   const [showCancel, setShowCancel] = useState(false);
 
   const statusRef = React.useRef(null);
@@ -226,11 +222,6 @@ export default function MatchRoom() {
     } catch (e) {
       toast.error(e.response?.data?.detail || 'Failed');
     }
-  };
-
-  const handleResult = async () => {
-    await refresh();
-    await fetchMatch();
   };
 
   if (!match) {
@@ -473,35 +464,18 @@ export default function MatchRoom() {
               🎮 Play in Ludo King
             </button>
 
-            {/* Result buttons */}
+            {/* Manual "I Won / I Lost / Cancel" result-submission removed —
+                LudoRoom auto-polling settles every match on its own now, so
+                players don't need to (and can no longer) self-report. */}
             {isActive && !myResult && (
               <div className="mt-2 pt-3 border-t border-gray-200">
-                <p className="text-center text-gray-600 text-sm font-bold mb-3">Match Status</p>
-                <div className="bg-red-50 border-2 border-red-300 rounded-xl p-3 mb-3">
-                  <p className="text-red-700 text-xs font-bold text-center leading-5">
-                    ⚠️ चेतावनी: कृपया सही रिजल्ट ही अपलोड करें। अगर आपने गलत मैच रिजल्ट अपलोड किया
-                    तो आपके वॉलेट से ₹1000 काट लिए जाएंगे। कृपया ऐसी गलती न करें।
+                <div className="bg-green-50 border-2 border-green-300 rounded-xl p-3 text-center">
+                  <p className="text-green-700 text-sm font-bold leading-5">
+                    ✅ Result 100% Automatic hai — aapko kuch dalne ki zarurat nahi।
                   </p>
-                </div>
-                <div className="grid grid-cols-3 gap-2">
-                  <button
-                    onClick={() => setShowWon(true)}
-                    className="py-3 bg-green-600 hover:bg-green-700 text-white rounded-xl font-black text-sm"
-                  >
-                    I Won
-                  </button>
-                  <button
-                    onClick={() => setShowLost(true)}
-                    className="py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl font-black text-sm"
-                  >
-                    I Lost
-                  </button>
-                  <button
-                    onClick={() => setShowCancel(true)}
-                    className="py-3 bg-gray-700 hover:bg-gray-800 text-white rounded-xl font-black text-sm"
-                  >
-                    Cancel
-                  </button>
+                  <p className="text-green-700 text-xs mt-1 leading-5">
+                    Match khatam hote hi winner ka wallet balance khud-ba-khud, accurately credit ho jayega।
+                  </p>
                 </div>
               </div>
             )}
@@ -599,19 +573,6 @@ export default function MatchRoom() {
         open={showCancel}
         onClose={() => setShowCancel(false)}
         onSubmit={cancelMatch}
-      />
-      <WonPopup
-        open={showWon}
-        onClose={() => setShowWon(false)}
-        matchId={id}
-        prize={match.prize || prizeAmount}
-        onResult={handleResult}
-      />
-      <LostPopup
-        open={showLost}
-        onClose={() => setShowLost(false)}
-        matchId={id}
-        onResult={handleResult}
       />
     </div>
   );

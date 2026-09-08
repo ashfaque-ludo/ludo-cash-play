@@ -197,6 +197,7 @@ export default function Dashboard() {
         <div className="animate-marquee whitespace-nowrap">
           🎮 Play Ludo Win Coins &nbsp;|&nbsp; Support: +91 {supportNumber} &nbsp;|&nbsp; 24x7 Live Help &nbsp;|&nbsp;
           💰 Instant Withdrawal Via UPI/Bank &nbsp;|&nbsp; 🎁 Referral Bonus 1% on All Games &nbsp;|&nbsp;
+          🤖 100% Automatic Result — Result Upload Karne Ki Zarurat Nahi! &nbsp;|&nbsp;
           🎮 Play Ludo Win Coins &nbsp;|&nbsp; Support: +91 {supportNumber} &nbsp;|&nbsp; 24x7 Live Help
         </div>
       </div>
@@ -205,7 +206,10 @@ export default function Dashboard() {
 
         {/* Create Battle */}
         <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
-          <h2 className="font-black text-gray-900 text-base mb-3">⚔️ Create a Battle!</h2>
+          <h2 className="font-black text-gray-900 text-base mb-2">⚔️ Create a Battle!</h2>
+          <div className="bg-green-50 border border-green-300 rounded-lg px-3 py-1.5 mb-3">
+            <p className="text-green-700 text-xs font-bold text-center">✅ Result 100% Automatic — kuch upload karne ki zarurat nahi!</p>
+          </div>
 
           <div className="flex gap-2">
             <div className="flex-1 relative">
