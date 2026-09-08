@@ -40,7 +40,7 @@ const schema = new mongoose.Schema({
   // only state the poller acts on.
   ludoroom_table_id:         { type: String, default: null },
   ludoroom_subscription_id:  { type: String, default: null },
-  result_poll_status:        { type: String, enum: ["none","polling","settled","timeout"], default: "none" },
+  result_poll_status:        { type: String, enum: ["none","polling","extended","settled","timeout"], default: "none" },
   result_poll_started_at:    { type: Date, default: null },
   result_poll_next_attempt_at: { type: Date, default: null },
   result_poll_attempts:      { type: Number, default: 0 },

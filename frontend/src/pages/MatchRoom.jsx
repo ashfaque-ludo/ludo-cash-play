@@ -453,6 +453,12 @@ export default function MatchRoom() {
                 <p className="text-blue-700 text-xs font-bold">Match tracking शुरू हो गया, result का automatically wait किया जा रहा है...</p>
               </div>
             )}
+            {match.result_poll_status === 'extended' && (
+              <div className="bg-blue-50 border border-blue-300 rounded-xl p-3 mb-3 flex items-center gap-2 justify-center">
+                <div className="w-4 h-4 border-2 border-t-blue-600 border-blue-200 rounded-full animate-spin shrink-0" />
+                <p className="text-blue-700 text-xs font-bold">Match thoda लंबा चल रहा है, result ka wait जारी है (auto-tracking abhi bhi chalu hai)...</p>
+              </div>
+            )}
             {match.result_poll_status === 'timeout' && (
               <div className="bg-amber-50 border border-amber-300 rounded-xl p-3 mb-3 text-center">
                 <p className="text-amber-700 text-xs font-bold">⚠️ Automatic result check timeout ho gaya. Admin जल्द ही manually check करके result डालेगा।</p>
@@ -579,12 +585,15 @@ export default function MatchRoom() {
           </div>
         )}
 
-        {/* Admin Review */}
-        {match.status === 'admin_review' && (
+        {/* Admin Review — cancel_reason carries the specific cause (mutual
+            cancel dispute, 2h no-result, or LudoRoom taking longer than
+            usual / needing a manual check), so show that instead of always
+            assuming it's a cancellation. */}
+        {match.status === 'admin_review' && !['extended', 'timeout'].includes(match.result_poll_status) && (
           <div className="bg-white rounded-2xl shadow border-2 border-orange-300 p-5 mb-3">
             <h3 className="font-bold text-orange-700 mb-1">🔍 Under Admin Review</h3>
             <p className="text-sm text-gray-600">
-              Cancellation request submitted. Admin will review and decide the outcome. Please wait.
+              {match.cancel_reason || 'Cancellation request submitted. Admin will review and decide the outcome. Please wait.'}
             </p>
           </div>
         )}
