@@ -4,11 +4,13 @@ const User=require("../../models/User");
 const Transaction=require("../../models/Transaction");
 const {logActivity}=require("../../middleware/activityLogger");
 const {payReferralBonus}=require("../../utils/referral");
-const {getRoomResult}=require("../../utils/ludoKingService");
+const {getRoomResult,isRoomFound,findWinnerName}=require("../../utils/ludoKingService");
 
-// Confirmed RapidAPI "ludo-king-api-room-code" /start response shape:
-// { success, roomCode, tableId, gameType, status, winnerId, owner: {id,name,status} }
-// winnerId is null until the match finishes, so that's the "not decided yet" signal.
+// LudoRoom (ludoroom.in) /api/v1/ludoking/result response shape:
+// { table_status, owner_name, owner_status, owner_chips, player1_name,
+//   player1_status, player1_chips, players_count, table_id, id }
+// table_status is null/absent until the room is found; "Finished" once a
+// winner is decided, at which point owner_status or player1_status is "Won".
 
 // GET /api/admin/matches?status=...
 // status=pending → shows admin_review + awaiting_review + disputed together
@@ -183,17 +185,21 @@ router.post("/verify-result", async (req,res)=>{
     const raw=await getRoomResult(roomCode);
 
     let actualWinner=null, verified=null, message=null;
-    if(!raw||raw.success!==true){
-      message=raw?.message||"Room lookup failed.";
-    } else if(raw.winnerId==null){
-      message="Match abhi khatam nahi hua.";
+    if(!isRoomFound(raw)){
+      message="Room not found ya room code invalid/expired hai.";
+    } else if(String(raw.table_status).toLowerCase()!=="finished"){
+      message=`Match abhi khatam nahi hua (status: ${raw.table_status}).`;
     } else {
-      actualWinner=String(raw.winnerId).trim();
-      verified=actualWinner.toLowerCase()===String(claimedWinner||"").trim().toLowerCase();
+      actualWinner=findWinnerName(raw);
+      if(actualWinner){
+        verified=actualWinner.trim().toLowerCase()===String(claimedWinner||"").trim().toLowerCase();
+      } else {
+        message="Match finished hai lekin winner LudoRoom response se clear nahi hai.";
+      }
     }
 
-    await logActivity(req,"match_result_verify_checked",roomCode,{claimedWinner,actualWinner,verified,status:raw?.status});
-    res.json({roomCode,claimedWinner,actualWinner,verified,status:raw?.status,message,raw});
+    await logActivity(req,"match_result_verify_checked",roomCode,{claimedWinner,actualWinner,verified,status:raw?.table_status});
+    res.json({roomCode,claimedWinner,actualWinner,verified,status:raw?.table_status,message,raw});
   }catch(e){ res.status(500).json({detail:e.message||"Verification failed."}); }
 });
 

@@ -5,6 +5,7 @@ const Transaction = require("../models/Transaction");
 const StakeTable = require("../models/StakeTable");
 const Config = require("../models/Config");
 const { payReferralBonus } = require("../utils/referral");
+const { getRoomResult, isRoomFound } = require("../utils/ludoKingService");
 
 async function getPCT() {
   try {
@@ -588,10 +589,32 @@ router.post("/:id/set-room-code", async (req, res) => {
       return res.status(400).json({ detail: "Cannot set code at this stage." });
     const isCreator = match.players[0]?.user.toString() === req.user._id.toString();
     if (!isCreator) return res.status(403).json({ detail: "Only battle creator can set room code." });
+
+    // Confirm the room actually exists with LudoRoom before we start tracking
+    // it — catches typos/expired codes immediately instead of polling a dead
+    // room code for 20+ minutes before finally giving up.
+    let raw;
+    try {
+      raw = await getRoomResult(trimmed);
+    } catch (apiErr) {
+      console.error(`[ROOM CODE CHECK] match=${match._id} code=${trimmed} API error: ${apiErr.message}`);
+      return res.status(502).json({ detail: "Room check abhi fail ho gaya, thodi der me dobara try karein." });
+    }
+    if (!isRoomFound(raw)) {
+      return res.status(400).json({ detail: "Room code sahi nahi hai ya expire ho gaya, dobara try karein." });
+    }
+
     match.room_code = trimmed;
     if (match.status === "matched") match.status = "in_progress";
+    match.ludoroom_table_id = raw.table_id != null ? String(raw.table_id) : null;
+    match.ludoroom_subscription_id = raw.id != null ? String(raw.id) : null;
+    match.result_poll_status = "polling";
+    match.result_poll_started_at = new Date();
+    match.result_poll_next_attempt_at = new Date();
+    match.result_poll_attempts = 0;
+    match.result_poll_fail_count = 0;
     await match.save();
-    console.log(`[ROOM CODE SET] match=${match._id} code=${trimmed} by=${req.user.phone || req.user._id}`);
+    console.log(`[ROOM CODE SET] match=${match._id} code=${trimmed} by=${req.user.phone || req.user._id} — LudoRoom polling started`);
     res.json({ ok: true, room_code: trimmed, match: serializeMatch(match) });
   } catch (e) {
     res.status(500).json({ detail: e.message || "Server error." });

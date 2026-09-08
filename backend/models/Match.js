@@ -34,6 +34,18 @@ const schema = new mongoose.Schema({
   room_password: { type: String, default: "" },
   started_at:    { type: Date, default: null },
   ended_at:      { type: Date, default: null },
+
+  // LudoRoom auto result-tracking (backend/utils/resultPoller.js). Started
+  // right after set-room-code confirms the room is real; "polling" is the
+  // only state the poller acts on.
+  ludoroom_table_id:         { type: String, default: null },
+  ludoroom_subscription_id:  { type: String, default: null },
+  result_poll_status:        { type: String, enum: ["none","polling","settled","timeout"], default: "none" },
+  result_poll_started_at:    { type: Date, default: null },
+  result_poll_next_attempt_at: { type: Date, default: null },
+  result_poll_attempts:      { type: Number, default: 0 },
+  result_poll_fail_count:    { type: Number, default: 0 },
+  needs_manual_review:       { type: Boolean, default: false },
 }, { timestamps: true });
 
 schema.index({ status: 1, createdAt: -1 });

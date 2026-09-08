@@ -675,7 +675,7 @@ function VerifyResultTab() {
                 {result.verified === true ? "✅ Verified Match" : result.verified === false ? "❌ Mismatch" : "⚠️ Could not confirm automatically"}
               </p>
               {result.message && <p className="text-sm text-gray-600 mt-1">{result.message}</p>}
-              {result.actualWinner && <p className="text-sm text-gray-600 mt-1">Actual winner ID: <strong>{result.actualWinner}</strong></p>}
+              {result.actualWinner && <p className="text-sm text-gray-600 mt-1">Actual winner (LudoRoom): <strong>{result.actualWinner}</strong></p>}
               {claimedWinner && result.actualWinner && <p className="text-sm text-gray-600">Claimed winner: <strong>{result.claimedWinner}</strong></p>}
               {result.status && <p className="text-xs text-gray-500 mt-1">Room status: {result.status}</p>}
             </div>

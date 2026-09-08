@@ -407,7 +407,7 @@ export default function MatchRoom() {
                   disabled={setting || roomCodeInput.length < 6}
                   className="w-full py-3 bg-gradient-to-r from-amber-500 to-orange-500 text-black font-black rounded-xl disabled:opacity-50 mb-3"
                 >
-                  {setting ? 'Setting...' : 'SET ROOM CODE'}
+                  {setting ? 'Checking room...' : 'SET ROOM CODE'}
                 </button>
 
                 <button
@@ -444,6 +444,20 @@ export default function MatchRoom() {
             >
               <Copy className="w-4 h-4" /> Copy Code
             </button>
+
+            {/* Auto result-tracking status — backend polls LudoRoom every ~18s
+                once the room code is confirmed; this just reflects that state. */}
+            {match.result_poll_status === 'polling' && (
+              <div className="bg-blue-50 border border-blue-300 rounded-xl p-3 mb-3 flex items-center gap-2 justify-center">
+                <div className="w-4 h-4 border-2 border-t-blue-600 border-blue-200 rounded-full animate-spin shrink-0" />
+                <p className="text-blue-700 text-xs font-bold">Match tracking शुरू हो गया, result का automatically wait किया जा रहा है...</p>
+              </div>
+            )}
+            {match.result_poll_status === 'timeout' && (
+              <div className="bg-amber-50 border border-amber-300 rounded-xl p-3 mb-3 text-center">
+                <p className="text-amber-700 text-xs font-bold">⚠️ Automatic result check timeout ho gaya. Admin जल्द ही manually check करके result डालेगा।</p>
+              </div>
+            )}
 
             {/* Play button — opens Ludo King for both players */}
             <button

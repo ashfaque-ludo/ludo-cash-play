@@ -38,8 +38,6 @@ const Referral       = lazy(() => import("@/pages/Referral"));
 const Legal          = lazy(() => import("@/pages/Legal"));
 const Admin          = lazy(() => import("@/pages/Admin"));
 const ScreenshotUpload = lazy(() => import("@/pages/ScreenshotUpload"));
-const CreateRoom     = lazy(() => import("@/pages/CreateRoom"));
-const RoomGen        = lazy(() => import("@/pages/RoomGen"));
 const AdminScreenshots = lazy(() => import("@/pages/AdminScreenshots"));
 const Withdraw       = lazy(() => import("@/pages/Withdraw"));
 const History        = lazy(() => import("@/pages/History"));
@@ -158,8 +156,11 @@ function AppLayout() {
           <Route path="/history" element={<ProtectedRoute><History /></ProtectedRoute>} />
           <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
           <Route path="/kyc" element={<ProtectedRoute><KYC /></ProtectedRoute>} />
-          <Route path="/create-room" element={<ProtectedRoute><CreateRoom /></ProtectedRoute>} />
-          <Route path="/room-gen" element={<ProtectedRoute><RoomGen /></ProtectedRoute>} />
+          {/* Legacy standalone room-creation pages — real matches only ever get a
+              room code via MatchRoom's "Set Room Code" step (confirmed live
+              against LudoRoom), so these dead-end straight to the dashboard. */}
+          <Route path="/create-room" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/room-gen" element={<Navigate to="/dashboard" replace />} />
 
           {/* Owner Panel - master owner only */}
           <Route path="/owner-panel" element={<OwnerRoute><OwnerPanel /></OwnerRoute>} />
