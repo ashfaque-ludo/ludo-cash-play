@@ -1,17 +1,36 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { api } from "@/lib/api";
 import { toast } from "sonner";
 import { Shield, CheckCircle, AlertTriangle, X } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 
-export default function KYCModal({ onClose, onVerified }) {
+// viewOnly: render already-verified Aadhaar details instead of the OTP flow —
+// used when Account.jsx opens this for a user whose KYC is already done.
+export default function KYCModal({ onClose, onVerified, viewOnly }) {
   const { refresh } = useAuth();
-  const [step, setStep] = useState(1); // 1 = aadhaar input, 2 = otp, 3 = success
+  const [step, setStep] = useState(viewOnly ? 3 : 1); // 1 = aadhaar input, 2 = otp, 3 = success
   const [aadhaar, setAadhaar] = useState("");
   const [otp, setOtp] = useState("");
   const [verifiedName, setVerifiedName] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [details, setDetails] = useState(null); // { dob, gender, address, photo_url }
+  const [loading, setLoading] = useState(!!viewOnly);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (!viewOnly) return;
+    api.get("/kyc/status")
+      .then(r => {
+        setVerifiedName(r.data?.aadhaar_verified_name || "");
+        setDetails({
+          dob: r.data?.dob || "",
+          gender: r.data?.gender || "",
+          address: r.data?.address || "",
+          photo_url: r.data?.photo_url || "",
+        });
+      })
+      .catch(() => setError("KYC details load nahi ho paaye."))
+      .finally(() => setLoading(false));
+  }, [viewOnly]);
 
   const formatAadhaar = (val) => {
     const digits = val.replace(/\D/g, "").slice(0, 12);
@@ -48,6 +67,12 @@ export default function KYCModal({ onClose, onVerified }) {
     try {
       const r = await api.post("/kyc/verify-otp", { otp });
       setVerifiedName(r.data?.verified_name || "");
+      setDetails({
+        dob: r.data?.dob || "",
+        gender: r.data?.gender || "",
+        address: r.data?.address || "",
+        photo_url: r.data?.photo_url || "",
+      });
       setStep(3);
       // Refresh user so kyc_status updates everywhere; hold the success
       // screen up briefly before telling the parent (e.g. Withdraw.jsx
@@ -62,25 +87,25 @@ export default function KYCModal({ onClose, onVerified }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4" onClick={() => step !== 3 && onClose?.()}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4" onClick={() => (viewOnly || step !== 3) && onClose?.()}>
       <div className="w-full max-w-sm bg-white rounded-2xl shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
 
         {/* Header */}
         <div className="relative bg-gradient-to-r from-red-700 to-black p-5 text-white text-center">
-          {onClose && step !== 3 && (
+          {onClose && (viewOnly || step !== 3) && (
             <button onClick={onClose} className="absolute top-3 right-3 w-7 h-7 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center">
               <X className="w-4 h-4" />
             </button>
           )}
           <Shield className="w-10 h-10 mx-auto mb-2 text-yellow-300" />
-          <h2 className="text-xl font-black">KYC Verification</h2>
+          <h2 className="text-xl font-black">{viewOnly ? "Aadhaar KYC Details" : "KYC Verification"}</h2>
           <p className="text-sm text-white/70 mt-1">
-            Verify your identity to withdraw and play
+            {viewOnly ? "Your verified identity on file" : "Verify your identity to withdraw and play"}
           </p>
         </div>
 
         {/* Step indicators */}
-        <div className="flex items-center justify-center gap-2 py-3 bg-gray-50 border-b border-gray-200">
+        {!viewOnly && <div className="flex items-center justify-center gap-2 py-3 bg-gray-50 border-b border-gray-200">
           {[1, 2, 3].map(s => (
             <div key={s} className="flex items-center gap-2">
               <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${
@@ -93,7 +118,7 @@ export default function KYCModal({ onClose, onVerified }) {
               {s < 3 && <div className={`w-6 h-0.5 ${step > s ? "bg-green-500" : "bg-gray-200"}`} />}
             </div>
           ))}
-        </div>
+        </div>}
 
         <div className="p-5">
           {error && (
@@ -171,27 +196,72 @@ export default function KYCModal({ onClose, onVerified }) {
             </form>
           )}
 
-          {/* Step 3: Success */}
-          {step === 3 && (
+          {/* Step 3: Success / Verified details */}
+          {step === 3 && loading && (
+            <div className="text-center py-10 text-sm text-gray-400">Loading Aadhaar details…</div>
+          )}
+          {step === 3 && !loading && (
             <div className="text-center py-4 space-y-4">
-              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto">
-                <CheckCircle className="w-9 h-9 text-green-500" />
-              </div>
+              {!viewOnly && (
+                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto">
+                  <CheckCircle className="w-9 h-9 text-green-500" />
+                </div>
+              )}
+
+              {details?.photo_url && (
+                <img
+                  src={details.photo_url}
+                  alt="Aadhaar photo"
+                  className="w-24 h-24 rounded-xl object-cover mx-auto border border-gray-200"
+                />
+              )}
+
               <div>
-                <h3 className="text-xl font-black text-gray-900">KYC Verified!</h3>
-                <p className="text-sm text-gray-500 mt-1">
-                  Your identity has been verified successfully.
-                  You can now withdraw your winnings.
-                </p>
-                {verifiedName && (
-                  <p className="text-sm text-gray-600 mt-2">Aadhaar name: <strong className="text-gray-900">{verifiedName}</strong></p>
+                {!viewOnly && <h3 className="text-xl font-black text-gray-900">KYC Verified!</h3>}
+                {!viewOnly && (
+                  <p className="text-sm text-gray-500 mt-1">
+                    Your identity has been verified successfully.
+                    You can now withdraw your winnings.
+                  </p>
                 )}
               </div>
-              <div className="bg-green-50 border border-green-200 rounded-xl p-3">
-                <p className="text-green-700 text-sm font-semibold">✓ Withdrawals unlocked</p>
-                <p className="text-green-700 text-sm font-semibold">✓ Full platform access</p>
-              </div>
-              <p className="text-xs text-gray-400">Redirecting you to the app…</p>
+
+              {(verifiedName || details?.dob || details?.gender || details?.address) && (
+                <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 text-left space-y-2">
+                  {verifiedName && (
+                    <div className="flex justify-between gap-3 text-sm">
+                      <span className="text-gray-500 shrink-0">Name</span>
+                      <span className="text-gray-900 font-semibold text-right">{verifiedName}</span>
+                    </div>
+                  )}
+                  {details?.dob && (
+                    <div className="flex justify-between gap-3 text-sm">
+                      <span className="text-gray-500 shrink-0">DOB</span>
+                      <span className="text-gray-900 font-semibold text-right">{details.dob}</span>
+                    </div>
+                  )}
+                  {details?.gender && (
+                    <div className="flex justify-between gap-3 text-sm">
+                      <span className="text-gray-500 shrink-0">Gender</span>
+                      <span className="text-gray-900 font-semibold text-right">{details.gender}</span>
+                    </div>
+                  )}
+                  {details?.address && (
+                    <div className="flex justify-between gap-3 text-sm">
+                      <span className="text-gray-500 shrink-0">Address</span>
+                      <span className="text-gray-900 font-semibold text-right">{details.address}</span>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {!viewOnly && (
+                <div className="bg-green-50 border border-green-200 rounded-xl p-3">
+                  <p className="text-green-700 text-sm font-semibold">✓ Withdrawals unlocked</p>
+                  <p className="text-green-700 text-sm font-semibold">✓ Full platform access</p>
+                </div>
+              )}
+              {!viewOnly && <p className="text-xs text-gray-400">Redirecting you to the app…</p>}
             </div>
           )}
         </div>

@@ -109,7 +109,7 @@ export default function Account() {
         <MenuSection title="My Profile" items={[
           { to: "/profile", icon: UserIcon, label: "Edit Profile", desc: "Change name, avatar", iconBg: "bg-red-100 text-red-700" },
         ]} extra={
-          <button onClick={() => setShowKycModal(true)} className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-amber-50 transition-colors border-b border-gray-50">
+          <button onClick={() => setShowKycModal(true)} className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-amber-50 transition-colors border-b border-gray-50" title={user?.kyc_verified ? "View your verified Aadhaar details" : undefined}>
             <div className="w-8 h-8 rounded-xl bg-purple-100 flex items-center justify-center shrink-0 text-purple-700">
               <Shield className="w-4 h-4" />
             </div>
@@ -194,7 +194,13 @@ export default function Account() {
         </div>
       </div>
 
-      {showKycModal && <KYCModal onClose={() => setShowKycModal(false)} onVerified={() => setShowKycModal(false)} />}
+      {showKycModal && (
+        <KYCModal
+          viewOnly={!!user?.kyc_verified}
+          onClose={() => setShowKycModal(false)}
+          onVerified={() => setShowKycModal(false)}
+        />
+      )}
     </div>
   );
 }

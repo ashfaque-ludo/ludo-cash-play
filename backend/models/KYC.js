@@ -7,6 +7,14 @@ const s = new mongoose.Schema({
   aadhaar_number: { type: String, default: "" },
   pan_number:     { type: String, default: "" },
   status:         { type: String, enum: ["pending","approved","rejected"], default: "pending" },
+  // Populated automatically from IMB's real-time Aadhaar e-KYC response
+  // (routes/kyc.js POST /verify-otp) — kept here rather than on User so the
+  // photo doesn't get loaded on every authenticated request (auth.js fetches
+  // the full User document on every request).
+  aadhaar_dob:     { type: String, default: "" },
+  aadhaar_gender:  { type: String, default: "" },
+  aadhaar_address: { type: String, default: "" },
+  aadhaar_photo:   { type: String, default: "" },
   admin_note:     { type: String, default: "" },
   reviewed_by:    { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
   reviewed_at:    { type: Date, default: null },

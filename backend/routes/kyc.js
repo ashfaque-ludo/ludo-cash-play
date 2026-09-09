@@ -12,14 +12,19 @@ const { sendAadhaarOtp, verifyAadhaarOtp } = require("../utils/imbOtp");
 // IMB, never stored here.
 const aadhaarOtpStore = new Map(); // userId → { aadhaar, request_id, expiresAt }
 
-// IMB's Aadhaar-verify response shape isn't publicly documented — these are
-// the field names their other endpoints use elsewhere, checked in order.
-// Verification still succeeds even if no name is found; this is best-effort.
-function extractVerifiedName(body) {
-  return (
-    body?.data?.name || body?.data?.full_name || body?.name || body?.full_name ||
-    body?.result?.name || body?.result?.full_name || ""
-  );
+// Confirmed live against IMB's real verify-otp response 2026-09-09:
+// body.data.aadhaar_details = { aadhaar_uid, full_name, dob, gender,
+// address, image_base64 }. Falls back to older guessed shapes so a change
+// on IMB's side degrades gracefully instead of throwing.
+function extractAadhaarDetails(body) {
+  const d = body?.data?.aadhaar_details || body?.data || body?.result || {};
+  return {
+    name: d.full_name || d.name || "",
+    dob: d.dob || "",
+    gender: d.gender || "",
+    address: d.address || "",
+    photoBase64: d.image_base64 || "",
+  };
 }
 
 // ── File upload (legacy photo KYC, kept for admin panel) ─────────────────────
@@ -53,12 +58,17 @@ const kycFields = upload.fields([
 router.get("/status", async (req, res) => {
   try {
     const user = await User.findById(req.user._id);
+    const kyc = user.kyc_verified ? await KYC.findOne({ user: req.user._id }) : null;
     res.json({
       status: user.kyc_status,
       kyc_verified: user.kyc_verified || false,
       aadhaar_last_4: user.aadhaar_last_4 || "",
       aadhaar_verified_name: user.aadhaar_verified_name || "",
       kyc_verified_at: user.kyc_verified_at || null,
+      dob: kyc?.aadhaar_dob || "",
+      gender: kyc?.aadhaar_gender || "",
+      address: kyc?.aadhaar_address || "",
+      photo_url: kyc?.aadhaar_photo || "",
     });
   } catch (e) { res.status(500).json({ detail: "Server error." }); }
 });
@@ -126,16 +136,53 @@ router.post("/verify-otp", async (req, res) => {
 
     aadhaarOtpStore.delete(key);
 
-    const verifiedName = extractVerifiedName(result);
+    const details = extractAadhaarDetails(result);
+
+    let photoUrl = "";
+    if (details.photoBase64) {
+      try {
+        const base64 = details.photoBase64.replace(/^data:image\/\w+;base64,/, "");
+        const filename = `${Date.now()}-${req.user._id}-aadhaar-photo.jpg`;
+        fs.writeFileSync(path.join(dir, filename), Buffer.from(base64, "base64"));
+        const backendUrl = process.env.BACKEND_URL || `${req.protocol}://${req.get("host")}`;
+        photoUrl = `${backendUrl}/uploads/kyc/${filename}`;
+      } catch (fileErr) {
+        console.error(`[KYC] failed to save Aadhaar photo for user=${req.user._id}:`, fileErr.message);
+      }
+    }
+
     await User.findByIdAndUpdate(req.user._id, {
       kyc_status: "verified",
       kyc_verified: true,
       kyc_verified_at: new Date(),
       aadhaar_last_4: record.aadhaar.slice(-4),
-      aadhaar_verified_name: verifiedName,
+      aadhaar_verified_name: details.name,
     });
 
-    res.json({ ok: true, message: "Aadhaar verify ho gaya! Ab aap withdraw kar sakte hain.", verified_name: verifiedName });
+    await KYC.findOneAndUpdate(
+      { user: req.user._id },
+      {
+        $set: {
+          aadhaar_number: record.aadhaar,
+          status: "approved",
+          aadhaar_dob: details.dob,
+          aadhaar_gender: details.gender,
+          aadhaar_address: details.address,
+          ...(photoUrl && { aadhaar_photo: photoUrl }),
+        },
+      },
+      { upsert: true }
+    );
+
+    res.json({
+      ok: true,
+      message: "Aadhaar verify ho gaya! Ab aap withdraw kar sakte hain.",
+      verified_name: details.name,
+      dob: details.dob,
+      gender: details.gender,
+      address: details.address,
+      photo_url: photoUrl,
+    });
   } catch (e) {
     res.status(500).json({ detail: e.message || "Server error." });
   }
