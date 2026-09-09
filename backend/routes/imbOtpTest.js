@@ -1,6 +1,6 @@
 const router = require("express").Router();
 const axios = require("axios");
-const { sendMobileOtp, sendAadhaarOtp } = require("../utils/imbOtp");
+const { sendMobileOtp, sendAadhaarOtp, verifyAadhaarOtp } = require("../utils/imbOtp");
 
 // GET /api/imb-otp-test/my-ip — this server's actual outbound public IP, so
 // it can be whitelisted on IMB's dashboard (IMB rejects OTP calls from any
@@ -45,6 +45,24 @@ router.post("/send-aadhaar", async (req, res) => {
     res.json({ ok: true, ...result });
   } catch (e) {
     console.error("[IMB OTP TEST] send-aadhaar error:", e.message);
+    res.status(502).json({ ok: false, detail: e.message });
+  }
+});
+
+// POST /api/imb-otp-test/verify-aadhaar  { request_id, otp }
+// Exercises verifyAadhaarOtp directly, with the raw IMB error surfaced
+// unswallowed — routes/kyc.js's real verify-otp collapses every failure
+// into one generic "OTP galat hai ya expire ho gaya" message for users.
+router.post("/verify-aadhaar", async (req, res) => {
+  try {
+    const { request_id, otp } = req.body;
+    if (!request_id || !otp) {
+      return res.status(400).json({ detail: "request_id and otp are required." });
+    }
+    const result = await verifyAadhaarOtp(request_id, String(otp));
+    res.json({ ok: true, result });
+  } catch (e) {
+    console.error("[IMB OTP TEST] verify-aadhaar error:", e.message);
     res.status(502).json({ ok: false, detail: e.message });
   }
 });
