@@ -55,11 +55,11 @@ router.post("/send-aadhaar", async (req, res) => {
 // into one generic "OTP galat hai ya expire ho gaya" message for users.
 router.post("/verify-aadhaar", async (req, res) => {
   try {
-    const { request_id, otp } = req.body;
-    if (!request_id || !otp) {
-      return res.status(400).json({ detail: "request_id and otp are required." });
+    const { request_id, otp, aadhaar_number } = req.body;
+    if (!request_id || !otp || !aadhaar_number) {
+      return res.status(400).json({ detail: "request_id, otp and aadhaar_number are required." });
     }
-    const result = await verifyAadhaarOtp(request_id, String(otp));
+    const result = await verifyAadhaarOtp(request_id, String(otp), aadhaar_number);
     res.json({ ok: true, result });
   } catch (e) {
     console.error("[IMB OTP TEST] verify-aadhaar error:", e.message);

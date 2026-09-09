@@ -117,7 +117,7 @@ router.post("/verify-otp", async (req, res) => {
 
     let result;
     try {
-      result = await verifyAadhaarOtp(record.request_id, String(otp));
+      result = await verifyAadhaarOtp(record.request_id, String(otp), record.aadhaar);
     } catch (apiErr) {
       console.error(`[KYC] IMB verify-otp failed for user=${req.user._id}:`, apiErr.message);
       await User.findByIdAndUpdate(req.user._id, { kyc_status: "failed" });

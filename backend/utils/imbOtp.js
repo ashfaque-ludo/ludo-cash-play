@@ -65,15 +65,15 @@ async function sendAadhaarOtp(aadhaarNumber) {
 }
 
 // Verifies an Aadhaar OTP against the request_id from sendAadhaarOtp.
-// NOTE: the exact body shape wasn't documented — { request_id, otp } is a
-// reasonable guess and should be confirmed against IMB's real response once
-// send-otp is tested against their sandbox/live API.
-async function verifyAadhaarOtp(requestId, otp) {
+// Confirmed live against IMB's real API 2026-09-09: verify-otp 422s with
+// "The Aadhaar Number field is required." unless aadhaar_number is also
+// sent alongside request_id and otp.
+async function verifyAadhaarOtp(requestId, otp, aadhaarNumber) {
   let res;
   try {
     res = await axios.post(
       `${BASE_URL}/aadhaar/verify-otp`,
-      { request_id: requestId, otp },
+      { request_id: requestId, otp, aadhaar_number: aadhaarNumber },
       { headers: imbHeaders(), timeout: 8000 }
     );
   } catch (e) {
