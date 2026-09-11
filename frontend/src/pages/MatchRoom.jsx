@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { ArrowLeft, Copy } from "lucide-react";
 import CancelBattlePopup from "@/components/CancelBattlePopup";
 import { PlayerAvatar, VsBadge, battleRoles } from "@/components/BattleAvatars";
+import PageNotice from "@/components/PageNotice";
 
 // ── Open the installed Ludo King app directly, store fallback only if absent ──
 // ludoking.com has no registered Android App Link (no assetlinks.json) or iOS
@@ -287,6 +288,10 @@ export default function MatchRoom() {
           डिपॉजिट किया तो आपकी आईडी को जीर करके ब्लॉक कर दिया जाएगा।
           (केवाईसी नाम व डिपॉजिट नाम और बिलिंग नाम एक होना चाहिए)
         </p>
+      </div>
+
+      <div className="px-3 pt-3">
+        <PageNotice page="matches" />
       </div>
 
       {/* HEADER ROW */}

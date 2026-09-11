@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ShieldCheck, ShieldAlert, Clock, Upload, X } from "lucide-react";
 import { toast } from "sonner";
+import PageNotice from "@/components/PageNotice";
 
 const STATUS_UI = {
   not_submitted: { icon: null,         color: "",               title: "Complete KYC Verification" },
@@ -122,6 +123,8 @@ export default function KYC() {
             </div>
           )}
         </div>
+
+        <PageNotice page="kyc" className="mb-5" />
 
         {kycStatus === "approved" && (
           <Card className="glass-strong border-emerald-500/20 text-white">

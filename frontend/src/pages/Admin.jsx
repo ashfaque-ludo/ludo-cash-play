@@ -2309,7 +2309,7 @@ function SupportMgmtTab() {
   );
 }
 
-const PAGE_NOTICE_LABELS = { withdraw: "Withdrawal", deposit: "Deposit", referral: "Referral" };
+const PAGE_NOTICE_LABELS = { withdraw: "Withdrawal", deposit: "Deposit", referral: "Referral", matches: "Matches", screenshots: "Screenshots", kyc: "KYC", support: "Support" };
 
 function PaymentSettingsTab() {
   const [form, setForm] = useState({ whatsapp_number: "", support_email: "" });

@@ -11,73 +11,6 @@ const QUICK_AMOUNTS = [100, 250, 500, 2000];
 const STATUS_POLL_MS = 3000;
 const STATUS_POLL_MAX_TRIES = 40; // ~2 minutes
 
-// ── Redeem Referral Modal ─────────────────────────────────────────────────────
-function RedeemModal({ balance, onClose, onSuccess }) {
-  const [amount, setAmount] = useState(String(balance));
-  const [target, setTarget] = useState("winning");
-  const [loading, setLoading] = useState(false);
-
-  const handleRedeem = async () => {
-    const amt = parseFloat(amount);
-    if (!amt || amt < 50) return toast.error("Minimum redeem is 50");
-    if (amt > balance) return toast.error("Amount exceeds referral balance");
-    setLoading(true);
-    try {
-      const r = await api.post("/wallet/redeem-referral", { amount: amt, target });
-      toast.success(r.data.message || "Redeemed!");
-      onSuccess?.();
-      onClose();
-    } catch (e) {
-      toast.error(e.response?.data?.detail || "Failed");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 px-0">
-      <div className="w-full max-w-md bg-white rounded-t-2xl p-5 shadow-2xl">
-        <h3 className="font-black text-gray-900 text-lg mb-1">Redeem Referral Balance</h3>
-        <p className="text-sm text-gray-500 mb-4">Available: <strong>{fmtINR(balance)}</strong></p>
-
-        <div className="mb-3">
-          <label className="text-xs font-bold text-gray-600 uppercase tracking-wide block mb-1.5">Amount (min 50)</label>
-          <div className="flex items-center bg-gray-50 rounded-xl border border-gray-300 px-3">
-            <span className="text-gray-500 font-bold mr-1"></span>
-            <input type="text" inputMode="numeric" value={amount}
-              onChange={e => setAmount(e.target.value.replace(/\D/g,""))}
-              className="flex-1 bg-transparent py-3 outline-none text-gray-900 text-lg" />
-          </div>
-        </div>
-
-        <div className="mb-4">
-          <label className="text-xs font-bold text-gray-600 uppercase tracking-wide block mb-2">Move to</label>
-          <div className="grid grid-cols-2 gap-2">
-            {[
-              { id: "winning", label: "Winning Wallet", desc: "Can withdraw" },
-              { id: "deposit", label: "Deposit Wallet", desc: "Play battles" },
-            ].map(opt => (
-              <button key={opt.id} onClick={() => setTarget(opt.id)}
-                className={`p-3 rounded-xl border-2 text-left transition-all ${
-                  target === opt.id ? "border-red-700 bg-red-50" : "border-gray-200 bg-white"
-                }`}>
-                <p className={`text-sm font-bold ${target === opt.id ? "text-red-700" : "text-gray-700"}`}>{opt.label}</p>
-                <p className="text-xs text-gray-400">{opt.desc}</p>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <button onClick={handleRedeem} disabled={loading}
-          className="w-full py-3 bg-gradient-to-r from-red-700 to-black text-white font-black rounded-xl disabled:opacity-50">
-          {loading ? "Processing…" : "Redeem Now"}
-        </button>
-        <button onClick={onClose} className="w-full py-2 text-gray-500 text-sm mt-2">Cancel</button>
-      </div>
-    </div>
-  );
-}
-
 // ── Deposit Flow (IMB — automatic, no screenshot) ────────────────────────────
 function DepositPage({ onBack, initialOrderId }) {
   const { refresh } = useAuth();
@@ -283,8 +216,25 @@ export default function Wallet() {
   const [searchParams, setSearchParams] = useSearchParams();
   const imbOrderId = searchParams.get("imb_order_id");
   const [depositOpen, setDepositOpen] = useState(Boolean(imbOrderId));
-  const [redeemOpen, setRedeemOpen] = useState(false);
   const [withdrawOpen, setWithdrawOpen] = useState(false);
+  const [transferring, setTransferring] = useState(false);
+
+  // Referral earnings go straight into the Deposit wallet — no separate
+  // "redeem" step or choice of target.
+  const moveReferralToDeposit = async () => {
+    const balance = w.referral || 0;
+    if (balance < 50) return toast.error("Minimum 50 required to move to Deposit wallet.");
+    setTransferring(true);
+    try {
+      const r = await api.post("/wallet/redeem-referral", { amount: balance, target: "deposit" });
+      toast.success(r.data.message || "Added to your Deposit wallet!");
+      refresh();
+    } catch (e) {
+      toast.error(e.response?.data?.detail || "Failed");
+    } finally {
+      setTransferring(false);
+    }
+  };
 
   // Strip imb_order_id from the URL once read, so a refresh doesn't re-poll
   // a stale order.
@@ -336,11 +286,12 @@ export default function Wallet() {
       key: "referral",
       label: "Referral Earning",
       amount: w.referral || 0,
-      desc: "Earned through referrals. Redeem to Deposit (play) or Winning (withdraw).",
-      btn: "Redeem",
+      desc: "Earned through referrals. Added directly to your Deposit wallet to play battles.",
+      btn: transferring ? "Adding…" : "Add to Deposit",
       color: "from-[#8B1111] to-[#3B0D0D]",
       icon: "🎁",
-      onClick: () => setRedeemOpen(true),
+      disabled: transferring || (w.referral || 0) < 50,
+      onClick: moveReferralToDeposit,
     },
   ];
 
@@ -377,23 +328,14 @@ export default function Wallet() {
             </div>
             <div className="p-4 flex items-center justify-between gap-3">
               <p className="text-xs text-gray-500 flex-1">{card.desc}</p>
-              <button onClick={card.onClick}
-                className="shrink-0 px-5 py-2.5 bg-gradient-to-r from-red-700 to-black text-white font-bold text-sm rounded-xl hover:opacity-90 transition-all">
+              <button onClick={card.onClick} disabled={card.disabled}
+                className="shrink-0 px-5 py-2.5 bg-gradient-to-r from-red-700 to-black text-white font-bold text-sm rounded-xl hover:opacity-90 transition-all disabled:opacity-50">
                 {card.btn}
               </button>
             </div>
           </div>
         ))}
       </div>
-
-      {/* Redeem modal */}
-      {redeemOpen && (
-        <RedeemModal
-          balance={w.referral || 0}
-          onClose={() => setRedeemOpen(false)}
-          onSuccess={refresh}
-        />
-      )}
     </div>
   );
 }

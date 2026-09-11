@@ -125,7 +125,7 @@ export default function Referral() {
           <li>2. They sign up using your referral link</li>
           <li>3. You earn <strong>1% on EVERY game</strong> they play</li>
           <li>4. Earnings go to your Referral Wallet instantly</li>
-          <li>5. Redeem referral earnings from your Wallet page</li>
+          <li>5. Add your earnings to your Deposit wallet from the Wallet page</li>
         </ol>
       </div>
 

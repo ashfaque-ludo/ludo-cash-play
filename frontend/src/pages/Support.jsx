@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { MessageCircle, Mail, ChevronDown, ChevronUp, Phone } from "lucide-react";
+import PageNotice from "@/components/PageNotice";
 
 const SUPPORT_EMAIL = process.env.REACT_APP_SUPPORT_EMAIL || "support@myakadda.com";
 const BACKEND = process.env.REACT_APP_BACKEND_URL || "";
@@ -87,6 +88,8 @@ export default function Support() {
         <h1 className="text-2xl font-black">Help & Support</h1>
         <p className="text-white/70 text-sm mt-1">24x7 Live Support Available</p>
       </div>
+
+      <PageNotice page="support" className="mb-4" />
 
       {/* Contact Cards */}
       <div className="space-y-3 mb-4">

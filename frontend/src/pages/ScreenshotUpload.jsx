@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Camera, Upload, CheckCircle2, XCircle, X, Sparkles } from "lucide-react";
+import PageNotice from "@/components/PageNotice";
 
 export default function ScreenshotUpload() {
   const [file, setFile] = useState(null);
@@ -57,6 +58,8 @@ export default function ScreenshotUpload() {
           <h1 className="text-3xl font-black">Upload Screenshot</h1>
           <p className="text-slate-400 mt-2 text-sm">Submit your winning screenshot for admin review. Prize is credited after approval.</p>
         </div>
+
+        <PageNotice page="screenshots" className="mb-5" />
 
         <div className="glass-strong rounded-3xl border border-white/10 p-6 fade-up delay-1">
           {/* Drop zone */}
