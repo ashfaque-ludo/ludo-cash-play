@@ -3,6 +3,7 @@ const router = express.Router();
 const StakeTable = require('../models/StakeTable');
 const Config = require('../models/Config');
 const Banner = require('../models/Banner');
+const PageNotice = require('../models/PageNotice');
 const User = require('../models/User');
 const Match = require('../models/Match');
 
@@ -47,6 +48,16 @@ router.get('/battle-banner', async (req, res) => {
   try {
     const text = await Config.get('battle_banner_text', '');
     res.json({ text });
+  } catch (e) {
+    res.json({ text: '' });
+  }
+});
+
+router.get('/page-notice/:page', async (req, res) => {
+  try {
+    if (!PageNotice.PAGES.includes(req.params.page)) return res.json({ text: '' });
+    const notice = await PageNotice.findOne({ page: req.params.page });
+    res.json({ text: notice?.text || '' });
   } catch (e) {
     res.json({ text: '' });
   }

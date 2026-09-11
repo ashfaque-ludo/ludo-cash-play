@@ -115,7 +115,7 @@ function staffWorkGate(req,res,next){
   const work=req.user?.staff_work;
   if(!work) return next();
   const assignment=STAFF_WORK[work];
-  if(assignment && req.baseUrl===assignment.base) return next();
+  if(assignment && (assignment.base==="*" || req.baseUrl===assignment.base)) return next();
   return res.status(403).json({detail:"Your account only has access to its assigned function."});
 }
 

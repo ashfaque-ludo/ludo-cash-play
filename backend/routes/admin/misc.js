@@ -10,6 +10,7 @@ const {logActivity}=require("../../middleware/activityLogger");
 const SupportTicket=require("../../models/SupportTicket");
 const {v4:uuidv4}=require("uuid");
 const {STAFF_WORK}=require("../../config/staffWork");
+const PageNotice=require("../../models/PageNotice");
 
 router.get("/promos", async (req,res)=>{ res.json({promos:await Promo.find().sort({createdAt:-1})}); });
 router.post("/promos", async (req,res)=>{
@@ -204,6 +205,21 @@ router.post("/battle-banner", async (req,res)=>{
   await Config.set("battle_banner_text", text || "");
   await logActivity(req,"battle_banner_updated","",{ text });
   res.json({ ok:true });
+});
+
+// Page notices — admin picks a page (withdraw/deposit/referral) and writes a
+// warning/message; that page shows it to users. One notice per page, upsert
+// by page key so re-saving the same page just updates its text.
+router.get("/page-notices", async (req,res)=>{
+  const notices=await PageNotice.find().sort({page:1});
+  res.json({ notices: notices.map(n=>({...n.toObject(),id:n._id.toString()})), pages: PageNotice.PAGES });
+});
+router.post("/page-notices", async (req,res)=>{
+  const { page, text } = req.body;
+  if(!PageNotice.PAGES.includes(page)) return res.status(400).json({detail:`page must be one of: ${PageNotice.PAGES.join(", ")}`});
+  const notice=await PageNotice.findOneAndUpdate({page},{$set:{text:text||""}},{new:true,upsert:true});
+  await logActivity(req,"page_notice_updated",page,{text});
+  res.json({ok:true,notice:{...notice.toObject(),id:notice._id.toString()}});
 });
 
 module.exports=router;

@@ -10,6 +10,13 @@ const STAFF_WORK = {
   screenshots: { label: "Screenshots", role: "support_agent", base: "/api/admin/screenshots" },
   kyc:         { label: "KYC",         role: "support_agent", base: "/api/admin/kyc" },
   support:     { label: "Support",     role: "support_agent", base: "/api/admin/support" },
+  // base:"*" is special-cased in server.js's staffWorkGate to skip the
+  // single-mount restriction — this account reaches every /api/admin/* mount.
+  // It still can never delete anything: masterOwnerOnlyDelete (server.js)
+  // blocks every DELETE request for accounts that aren't the master owner,
+  // regardless of role, so this grants full read/manage access without ever
+  // opening up destructive actions.
+  admin:       { label: "Admin (All Access)", role: "super_admin", base: "*" },
 };
 
 module.exports = { STAFF_WORK };

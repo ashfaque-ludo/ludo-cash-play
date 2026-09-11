@@ -252,8 +252,8 @@ function BattleHub({ user }) {
 
       {/* Admin-editable notice banner (Admin Panel → Settings → Battle Banner) */}
       {banner && (
-        <div className="mx-3 mt-3 rounded-2xl bg-amber-100 border-2 border-amber-400 p-3">
-          <p className="text-xs font-semibold text-amber-900 text-center leading-5">{banner}</p>
+        <div className="mx-3 mt-3 rounded-2xl bg-red-100 border-2 border-red-400 p-3">
+          <p className="text-xs font-semibold text-red-900 text-center leading-5">{banner}</p>
         </div>
       )}
 

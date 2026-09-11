@@ -9,12 +9,18 @@ module.exports = {
     message: { detail: "Too many requests. Please try later." },
   }),
 
+  // Keyed by phone/email, not IP — Indian mobile carriers put many unrelated
+  // users behind the same public IP (CGNAT), so an IP-based key was locking
+  // out everyone on that IP whenever any one of them mistyped a password.
+  // Now only the specific account that failed 5 times gets the 3-minute
+  // cooldown; everyone else keeps logging in normally.
   authLimiter: rateLimit({
     ...opts,
-    windowMs: 15 * 60 * 1000,
+    windowMs: 3 * 60 * 1000,
     max: 5,
     skipSuccessfulRequests: true,
-    message: { detail: "Too many login attempts. Try after 15 minutes." },
+    keyGenerator: (req) => req.body?.phone || req.body?.email || req.ip,
+    message: { detail: "Bahut zyada galat attempts. 3 minute baad try karein." },
   }),
 
   // Per-phone cooldown was removed (resend is now instant) — this is the
@@ -29,11 +35,15 @@ module.exports = {
     message: { detail: "Too many OTP requests. Please wait a moment." },
   }),
 
+  // Keyed by phone (falls back to IP only for the Firebase-token path, where
+  // the phone isn't known until after verification) — same CGNAT reasoning
+  // as authLimiter above: only the offending phone number gets locked out.
   otpVerifyLimiter: rateLimit({
     ...opts,
-    windowMs: 60 * 1000,
-    max: 10,
-    message: { detail: "Too many OTP attempts. Please wait." },
+    windowMs: 3 * 60 * 1000,
+    max: 5,
+    keyGenerator: (req) => req.body?.phone || req.ip,
+    message: { detail: "Bahut zyada galat attempts. 3 minute baad try karein." },
   }),
 
   uploadLimiter: rateLimit({

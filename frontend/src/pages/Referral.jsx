@@ -4,6 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Copy, Share2, MessageCircle, Users, Wallet, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import AnnouncementBar from "@/components/AnnouncementBar";
+import PageNotice from "@/components/PageNotice";
 
 export default function Referral() {
   const { user } = useAuth();
@@ -64,6 +65,10 @@ export default function Referral() {
       <div className="bg-gradient-to-r from-red-700 to-black text-white p-6 text-center">
         <h1 className="text-2xl font-bold">Refer & Earn</h1>
         <p className="text-white/80 text-sm mt-1">Get 1% on every game your friends play — LIFETIME!</p>
+      </div>
+
+      <div className="mx-4 mt-4">
+        <PageNotice page="referral" />
       </div>
 
       {/* Referral Code Card */}

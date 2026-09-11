@@ -10,6 +10,10 @@ const Promo = require("../models/Promo");
 const KYC_ENFORCED = true;
 const KYC_PASS_STATUSES = ["approved", "verified"];
 
+// Users must always keep this much in their withdrawable (winning) balance —
+// they can never empty it to zero via withdrawal.
+const MIN_WALLET_BALANCE = 100;
+
 // ── GET /wallet ───────────────────────────────────────────────────────────────
 router.get("/", async (req, res) => {
   const user = await User.findById(req.user._id);
@@ -39,6 +43,13 @@ router.post("/withdraw", async (req, res) => {
     const withdrawable = user.wallet.winning || 0;
     if (withdrawable < amount)
       return res.status(400).json({ detail: `Insufficient balance. Withdrawable (winning only): ${withdrawable}.` });
+
+    if (withdrawable - amount < MIN_WALLET_BALANCE) {
+      const maxWithdrawable = Math.max(0, withdrawable - MIN_WALLET_BALANCE);
+      return res.status(400).json({
+        detail: `Aapko apne wallet mein kam se kam ₹${MIN_WALLET_BALANCE} rakhne honge. Aap maximum ₹${maxWithdrawable} nikaal sakte hain.`,
+      });
+    }
 
     if (!upi_id?.trim())
       return res.status(400).json({ detail: "UPI ID required." });

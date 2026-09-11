@@ -4,6 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { api, fmtINR } from "@/lib/api";
 import { toast } from "sonner";
 import { XCircle, Loader2 } from "lucide-react";
+import PageNotice from "@/components/PageNotice";
 
 const QUICK_AMOUNTS = [100, 250, 500, 2000];
 // How long to keep polling for the IMB webhook to land after redirect-back.
@@ -212,6 +213,8 @@ function DepositPage({ onBack, initialOrderId }) {
         <button onClick={onBack} className="text-gray-500 font-semibold">← Back</button>
         <h2 className="font-black text-gray-900">Add</h2>
       </div>
+
+      <PageNotice page="deposit" />
 
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4 space-y-4">
         <div className="grid grid-cols-2 gap-2">

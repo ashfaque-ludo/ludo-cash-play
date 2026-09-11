@@ -32,6 +32,11 @@ const WORK_TAB = {
   screenshots: { label: "Screenshots", icon: Camera, Comp: () => <ScreenshotsTab /> },
   kyc:         { label: "KYC", icon: ShieldCheck, Comp: () => <KycTab /> },
   support:     { label: "Support", icon: Phone, Comp: () => <SupportMgmtTab /> },
+  // No Comp — "admin" isn't a single restricted tab, it unlocks the full
+  // tabbed panel below (see the render gate right after this object), just
+  // like a real admin/super_admin login would see. Only listed here so it
+  // shows up in the "Add Restricted Staff" work dropdown and staff table.
+  admin:       { label: "Admin (All Access)", icon: ShieldCheck, Comp: null },
 };
 
 export default function Admin() {
@@ -40,7 +45,7 @@ export default function Admin() {
   const role = user.role;
   const can = (min) => ({ user:0, support_agent:1, staff_manager:2, admin:3, super_admin:4 }[role] >= { user:0, support_agent:1, staff_manager:2, admin:3, super_admin:4 }[min]);
 
-  if (user.staff_work && WORK_TAB[user.staff_work]) {
+  if (user.staff_work && user.staff_work !== "admin" && WORK_TAB[user.staff_work]) {
     const { label, icon: Icon, Comp } = WORK_TAB[user.staff_work];
     return (
       <div className="min-h-screen pt-24 pb-16 bg-gradient-to-b from-amber-50 to-white">
@@ -2304,25 +2309,44 @@ function SupportMgmtTab() {
   );
 }
 
+const PAGE_NOTICE_LABELS = { withdraw: "Withdrawal", deposit: "Deposit", referral: "Referral" };
+
 function PaymentSettingsTab() {
   const [form, setForm] = useState({ whatsapp_number: "", support_email: "" });
   const [announcement, setAnnouncement] = useState("");
   const [battleBanner, setBattleBanner] = useState("");
   const [busy, setBusy] = useState(false);
+  const [notices, setNotices] = useState([]);
+  const [noticeForm, setNoticeForm] = useState({ page: "", text: "" });
 
   const load = useCallback(async () => {
     try {
-      const [p, a, bb] = await Promise.all([
+      const [p, a, bb, pn] = await Promise.all([
         api.get("/admin/payment-settings"),
         api.get("/admin/announcement"),
         api.get("/admin/battle-banner"),
+        api.get("/admin/page-notices"),
       ]);
       setForm(p.data);
       setAnnouncement(a.data.announcement || "");
       setBattleBanner(bb.data.text || "");
+      setNotices(pn.data.notices || []);
     } catch {}
   }, []);
   useEffect(() => { load(); }, [load]);
+
+  const saveNotice = async () => {
+    if (!noticeForm.page) return toast.error("Select a page");
+    setBusy(true);
+    try {
+      await api.post("/admin/page-notices", noticeForm);
+      toast.success("Page notice saved");
+      setNoticeForm({ page: "", text: "" });
+      load();
+    } catch (e) { toast.error(formatApiError(e.response?.data?.detail) || e.message); }
+    finally { setBusy(false); }
+  };
+  const editNotice = (n) => setNoticeForm({ page: n.page, text: n.text || "" });
 
   const savePayment = async () => {
     setBusy(true);
@@ -2397,6 +2421,39 @@ function PaymentSettingsTab() {
             <p className="text-xs text-gray-500 mt-1">Leave blank to hide the banner.</p>
           </div>
           <Button disabled={busy} onClick={saveBattleBanner} className="rounded-full bg-amber-600 text-white">Save Battle Banner</Button>
+        </CardContent>
+      </Card>
+
+      <Card className="bg-white border-gray-200 shadow-sm text-gray-900">
+        <CardHeader><CardTitle>Page Notices</CardTitle></CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-xs text-gray-500">Select a page (column 1) and write the warning/message users should see there (column 2) — e.g. select "Withdrawal" and write your withdrawal warning.</p>
+          <div className="grid sm:grid-cols-[200px_1fr_auto] gap-2 items-start">
+            <Select value={noticeForm.page} onValueChange={v => setNoticeForm(f => ({ ...f, page: v }))}>
+              <SelectTrigger className="bg-gray-50 border-gray-300 text-gray-900"><SelectValue placeholder="Select page" /></SelectTrigger>
+              <SelectContent className="bg-white border-gray-200 text-gray-900">
+                {Object.entries(PAGE_NOTICE_LABELS).map(([key, label]) => <SelectItem key={key} value={key}>{label}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Textarea value={noticeForm.text} onChange={e => setNoticeForm(f => ({ ...f, text: e.target.value }))}
+              placeholder="Message to show users on this page"
+              className="bg-gray-50 border-gray-300 text-gray-900 resize-none" rows={2} />
+            <Button disabled={busy || !noticeForm.page} onClick={saveNotice} className="rounded-full bg-red-700 text-white">Save</Button>
+          </div>
+
+          <Table>
+            <TableHeader><TableRow className="border-gray-200"><TableHead>Page</TableHead><TableHead>Message</TableHead><TableHead>Actions</TableHead></TableRow></TableHeader>
+            <TableBody>
+              {notices.filter(n => n.text?.trim()).map(n => (
+                <TableRow key={n.page} className="border-gray-200">
+                  <TableCell className="font-semibold">{PAGE_NOTICE_LABELS[n.page] || n.page}</TableCell>
+                  <TableCell className="text-gray-600 text-sm">{n.text}</TableCell>
+                  <TableCell><Button size="sm" variant="outline" onClick={() => editNotice(n)} className="rounded-full">Edit</Button></TableCell>
+                </TableRow>
+              ))}
+              {notices.filter(n => n.text?.trim()).length === 0 && <TableRow><TableCell colSpan={3} className="text-center text-gray-500 py-6">No page notices yet.</TableCell></TableRow>}
+            </TableBody>
+          </Table>
         </CardContent>
       </Card>
     </div>

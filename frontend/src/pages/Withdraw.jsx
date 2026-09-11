@@ -3,12 +3,14 @@ import { useAuth } from "@/contexts/AuthContext";
 import { api, fmtINR } from "@/lib/api";
 import { toast } from "sonner";
 import KYCModal from "@/components/KYCModal";
+import PageNotice from "@/components/PageNotice";
 
 // Re-enabled (2026-09-08) — mirrors routes/wallet.js's KYC_ENFORCED, which
 // now accepts "verified" (self-serve Aadhaar OTP) alongside "approved"
 // (admin-reviewed documents).
 const KYC_ENFORCED = true;
 const KYC_PASS_STATUSES = ["approved", "verified"];
+const MIN_WALLET_BALANCE = 100;
 
 const STATUS_STYLE = {
   pending:  "bg-amber-100 text-amber-700",
@@ -41,14 +43,16 @@ export default function Withdraw() {
 
   const w = user?.wallet || {};
   const withdrawable = w.winning || 0;
+  const maxWithdrawable = Math.max(0, withdrawable - MIN_WALLET_BALANCE);
   const kycApproved = !KYC_ENFORCED || KYC_PASS_STATUSES.includes(kycStatus);
 
-  const withdrawAll = () => setAmount(String(withdrawable));
+  const withdrawAll = () => setAmount(String(maxWithdrawable));
 
   const handleWithdraw = async () => {
     const amt = parseFloat(amount);
     if (!amt || amt < 200) return toast.error("Minimum withdrawal 200");
     if (amt > withdrawable) return toast.error(`Insufficient balance. Withdrawable: ${withdrawable}`);
+    if (withdrawable - amt < MIN_WALLET_BALANCE) return toast.error(`Aapko wallet mein kam se kam ₹${MIN_WALLET_BALANCE} rakhne honge. Max: ${fmtINR(maxWithdrawable)}`);
     if (!upiId.trim()) return toast.error("Enter your UPI ID");
 
     setLoading(true);
@@ -75,7 +79,12 @@ export default function Withdraw() {
         <p className="text-xs text-green-200 mt-0.5">
           Only your Winning wallet can be withdrawn. Deposit, bonus &amp; referral balances can be used to play battles.
         </p>
+        <p className="text-xs text-green-200 mt-1 font-semibold">
+          Aapko apne wallet mein kam se kam {fmtINR(MIN_WALLET_BALANCE)} rakhne honge — max withdrawable: {fmtINR(maxWithdrawable)}
+        </p>
       </div>
+
+      <PageNotice page="withdraw" className="mb-4" />
 
       {kycStatus !== null && !kycApproved && (
         <div className="bg-amber-50 border-2 border-amber-400 rounded-2xl p-4 mb-4 text-center">
@@ -104,7 +113,7 @@ export default function Withdraw() {
               Withdrawal Amount
             </label>
             <button type="button" onClick={withdrawAll} className="text-xs font-bold text-red-700 hover:underline">
-              Withdraw All ({fmtINR(withdrawable)})
+              Withdraw All ({fmtINR(maxWithdrawable)})
             </button>
           </div>
           <div className="flex items-center bg-gray-50 rounded-xl border border-gray-300 px-3 focus-within:border-red-600 focus-within:ring-2 focus-within:ring-red-100 transition-all">
