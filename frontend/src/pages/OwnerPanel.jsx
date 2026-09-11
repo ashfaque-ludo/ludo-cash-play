@@ -514,8 +514,11 @@ function UsersTab() {
               </thead>
               <tbody className="divide-y divide-slate-700/50">
                 {users.map(u => {
-                  const w = u.wallet || { deposit: 0, winning: 0, bonus: 0 };
-                  const total = (w.deposit || 0) + (w.winning || 0) + (w.bonus || 0);
+                  const w = u.wallet || { deposit: 0, winning: 0, bonus: 0, referral: 0 };
+                  // Must include referral — users with real referral earnings and
+                  // little else were showing a near-zero total here even though
+                  // their actual wallet (as seen on their own Wallet page) wasn't.
+                  const total = (w.deposit || 0) + (w.winning || 0) + (w.bonus || 0) + (w.referral || 0);
                   return (
                     <tr key={u.id} className="hover:bg-slate-700/20">
                       <td className="px-4 py-3">
@@ -527,7 +530,7 @@ function UsersTab() {
                           {u.role}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-emerald-400 font-semibold">{fmtINR(total)}</td>
+                      <td className="px-4 py-3 text-emerald-400 font-semibold" title={`Deposit: ${fmtINR(w.deposit||0)} | Winning: ${fmtINR(w.winning||0)} | Bonus: ${fmtINR(w.bonus||0)} | Referral: ${fmtINR(w.referral||0)}`}>{fmtINR(total)}</td>
                       <td className="px-4 py-3">
                         {u.banned
                           ? <span className="bg-red-500/20 text-red-300 px-2 py-0.5 rounded-full text-xs">Banned</span>

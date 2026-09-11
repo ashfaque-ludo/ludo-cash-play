@@ -219,8 +219,11 @@ function UsersTab({ actor }) {
           </TableHeader>
           <TableBody>
             {rows.map(u => {
-              const w = u.wallet || {deposit:0,winning:0,bonus:0};
-              const total = (w.deposit||0)+(w.winning||0)+(w.bonus||0);
+              const w = u.wallet || {deposit:0,winning:0,bonus:0,referral:0};
+              // Must include referral — users with real referral earnings and
+              // little else were showing a near-zero total here even though
+              // their actual wallet (as seen on their own Wallet page) wasn't.
+              const total = (w.deposit||0)+(w.winning||0)+(w.bonus||0)+(w.referral||0);
               const joined = u.createdAt ? new Date(u.createdAt).toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"}) : "—";
               return (
                 <TableRow key={u.id} className="border-gray-200" data-testid={`user-row-${u.email||u.phone}`}>
@@ -231,7 +234,7 @@ function UsersTab({ actor }) {
                   <TableCell className="text-gray-700 font-mono text-xs font-bold">{u.referral_code || "—"}</TableCell>
                   <TableCell className="text-gray-400 text-xs whitespace-nowrap">{joined}</TableCell>
                   <TableCell><Badge variant="outline" className="border-purple-500/30 text-red-700">{u.role}</Badge></TableCell>
-                  <TableCell>{fmtINR(total)}</TableCell>
+                  <TableCell title={`Deposit: ${fmtINR(w.deposit||0)} | Winning: ${fmtINR(w.winning||0)} | Bonus: ${fmtINR(w.bonus||0)} | Referral: ${fmtINR(w.referral||0)}`}>{fmtINR(total)}</TableCell>
                   <TableCell>
                     {u.banned ? <Badge variant="destructive">Banned</Badge> : <Badge variant="outline" className="border-emerald-500/30 text-emerald-300">Active</Badge>}
                     {u.wallet_frozen && <Badge className="ml-1 bg-blue-500/20 text-blue-400 border border-blue-500/30 text-[10px]">Frozen</Badge>}
@@ -349,6 +352,7 @@ function WalletDialog({ open, user, onClose }) {
           <Field label="Winnings" value={w.winning} onChange={v=>setW({...w, winning:v})} />
           <Field label="Bonus" value={w.bonus} onChange={v=>setW({...w, bonus:v})} />
         </div>
+        <p className="text-xs text-gray-500">Referral balance (not editable here): <strong>{fmtINR(user.wallet.referral || 0)}</strong> — moves to Deposit automatically when the user redeems it.</p>
         <div>
           <Label className="text-gray-600">Reason (required)</Label>
           <Input value={reason} onChange={e=>setReason(e.target.value)} className="bg-gray-50 border-gray-300 text-gray-900 mt-1" data-testid="wallet-reason" />
