@@ -26,6 +26,16 @@ export default function Withdraw() {
   const [history, setHistory] = useState([]);
   const [kycStatus, setKycStatus] = useState(null);
   const [showKycModal, setShowKycModal] = useState(false);
+  const [withdrawMin, setWithdrawMin] = useState(200);
+  const [withdrawMax, setWithdrawMax] = useState(100000);
+
+  // Admin Panel → Settings → Withdrawal Limits
+  useEffect(() => {
+    api.get("/public/config").then(r => {
+      if (r.data.withdraw_min) setWithdrawMin(r.data.withdraw_min);
+      if (r.data.withdraw_max) setWithdrawMax(r.data.withdraw_max);
+    }).catch(() => {});
+  }, []);
 
   const loadHistory = useCallback(async () => {
     try {
@@ -50,7 +60,8 @@ export default function Withdraw() {
 
   const handleWithdraw = async () => {
     const amt = parseFloat(amount);
-    if (!amt || amt < 200) return toast.error("Minimum withdrawal 200");
+    if (!amt || amt < withdrawMin) return toast.error(`Minimum withdrawal ${withdrawMin}`);
+    if (amt > withdrawMax) return toast.error(`Maximum withdrawal ${withdrawMax}`);
     if (amt > withdrawable) return toast.error(`Insufficient balance. Withdrawable: ${withdrawable}`);
     if (withdrawable - amt < MIN_WALLET_BALANCE) return toast.error(`Aapko wallet mein kam se kam ₹${MIN_WALLET_BALANCE} rakhne honge. Max: ${fmtINR(maxWithdrawable)}`);
     if (!upiId.trim()) return toast.error("Enter your UPI ID");
@@ -120,7 +131,7 @@ export default function Withdraw() {
             <span className="text-gray-500 font-bold mr-1 text-lg"></span>
             <input type="text" inputMode="numeric" value={amount}
               onChange={e => setAmount(e.target.value.replace(/\D/g,""))}
-              placeholder="Min 200"
+              placeholder={`Min ${withdrawMin}`}
               className="flex-1 bg-transparent py-3 outline-none text-gray-900 text-lg" />
           </div>
         </div>

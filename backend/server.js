@@ -140,6 +140,7 @@ app.use("/api/admin/screenshots",adm,require("./routes/admin/screenshots"));
 app.use("/api/admin/referrals",adm,require("./routes/admin/referrals"));
 app.use("/api/admin/kyc",adm,require("./routes/admin/kyc"));
 app.use("/api/admin/support",adm,require("./routes/admin/support"));
+app.use("/api/admin/support-numbers",adm,require("./routes/admin/supportNumbers"));
 app.use("/api/admin/banners",adm,require("./routes/admin/banners"));
 app.use("/api/admin",adm,require("./routes/admin/misc"));
 

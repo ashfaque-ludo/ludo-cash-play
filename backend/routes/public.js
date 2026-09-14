@@ -6,6 +6,7 @@ const Banner = require('../models/Banner');
 const PageNotice = require('../models/PageNotice');
 const User = require('../models/User');
 const Match = require('../models/Match');
+const SupportNumber = require('../models/SupportNumber');
 
 // Simple in-memory cache: key → { data, exp }
 const _cache = new Map();
@@ -33,9 +34,15 @@ router.get('/config', async (req, res) => {
   try {
     const maintenance = await Config.get('maintenance', { enabled: false, message: '' });
     const whatsapp_number = await Config.get('whatsapp_number', '919090000000');
-    res.json({ maintenance, whatsapp_number });
+    const custom_stake_min = Number(await Config.get('custom_stake_min', 100)) || 100;
+    const custom_stake_max = Number(await Config.get('custom_stake_max', 25000)) || 25000;
+    const deposit_min = Number(await Config.get('deposit_min', 10)) || 10;
+    const deposit_max = Number(await Config.get('deposit_max', 60000)) || 60000;
+    const withdraw_min = Number(await Config.get('withdraw_min', 200)) || 200;
+    const withdraw_max = Number(await Config.get('withdraw_max', 100000)) || 100000;
+    res.json({ maintenance, whatsapp_number, custom_stake_min, custom_stake_max, deposit_min, deposit_max, withdraw_min, withdraw_max });
   } catch {
-    res.json({ maintenance: { enabled: false, message: '' }, whatsapp_number: '919090000000' });
+    res.json({ maintenance: { enabled: false, message: '' }, whatsapp_number: '919090000000', custom_stake_min: 100, custom_stake_max: 25000, deposit_min: 10, deposit_max: 60000, withdraw_min: 200, withdraw_max: 100000 });
   }
 });
 
@@ -80,6 +87,15 @@ router.get('/payment-info', async (req, res) => {
     res.status(500).json({ error: e.message });
   }
 });
+
+// Support page → all active support numbers, each optionally time-windowed.
+// Availability ("is this number live right now") is computed on the client
+// against the viewer's local clock, not here, since start_time/end_time are
+// plain "HH:MM" set by the admin with no timezone attached.
+router.get('/support-numbers', withCache('support-numbers', 30000, async () => {
+  const numbers = await SupportNumber.find({ active: true }).sort({ position: 1, createdAt: 1 });
+  return { numbers: numbers.map(n => ({ id: n._id.toString(), label: n.label, number: n.number, always_available: n.always_available, start_time: n.start_time, end_time: n.end_time })) };
+}));
 
 router.get('/online-count', (req, res) => {
   // Randomize within the cache window so it still looks live

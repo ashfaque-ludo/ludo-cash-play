@@ -15,6 +15,20 @@ async function getPCT() {
   return 5; // default 5%; override via Admin > Payment Settings
 }
 
+// Custom battle stake bounds — editable from Admin > Settings, not tied to
+// the preset stake tables (StakeTable), which have their own admin-set min.
+async function getCustomStakeBounds() {
+  try {
+    const [min, max] = await Promise.all([
+      Config.get("custom_stake_min", 100),
+      Config.get("custom_stake_max", 25000),
+    ]);
+    return { min: Number(min) || 100, max: Number(max) || 25000 };
+  } catch {
+    return { min: 100, max: 25000 };
+  }
+}
+
 async function debit(userId, amount) {
   const user = await User.findById(userId);
   const total = (user.wallet.deposit || 0) + (user.wallet.bonus || 0) + (user.wallet.winning || 0);
@@ -204,8 +218,9 @@ const handleCreate = async (req, res) => {
     if (isCustom) {
       if (!Number.isInteger(stakeAmount) || stakeAmount % 10 !== 0)
         return res.status(400).json({ detail: "Custom stake must be a whole number and multiple of 10." });
-      if (stakeAmount < 100 || stakeAmount > 25000)
-        return res.status(400).json({ detail: "Custom stake must be between 100 and 25,000." });
+      const { min: stakeMin, max: stakeMax } = await getCustomStakeBounds();
+      if (stakeAmount < stakeMin || stakeAmount > stakeMax)
+        return res.status(400).json({ detail: `Custom stake must be between ${stakeMin} and ${stakeMax.toLocaleString("en-IN")}.` });
       label = `Custom ${stakeAmount}`;
       tier = "custom";
     } else {

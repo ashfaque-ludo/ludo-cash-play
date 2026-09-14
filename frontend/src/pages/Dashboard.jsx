@@ -81,12 +81,22 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [supportNumber, setSupportNumber] = useState("7206638948");
   const [showKycModal, setShowKycModal] = useState(false);
+  const [stakeMin, setStakeMin] = useState(100);
+  const [stakeMax, setStakeMax] = useState(25000);
   const kycPassed = user && user !== false && ["approved", "verified"].includes(user.kyc_status);
 
   useEffect(() => {
     api.get("/public/payment-info")
       .then(r => { if (r.data?.whatsapp_number) setSupportNumber(r.data.whatsapp_number.replace(/^91/, "").slice(-10)); })
       .catch(() => {});
+  }, []);
+
+  // Admin Panel → Settings → Battle Stake Limits
+  useEffect(() => {
+    api.get("/public/config").then(r => {
+      if (r.data.custom_stake_min) setStakeMin(r.data.custom_stake_min);
+      if (r.data.custom_stake_max) setStakeMax(r.data.custom_stake_max);
+    }).catch(() => {});
   }, []);
 
   const loadBattles = useCallback(async () => {
@@ -137,8 +147,8 @@ export default function Dashboard() {
 
   const handleCreate = async () => {
     const stake = parseInt(createAmt);
-    if (!stake || stake < 100) return toast.error("Minimum 100");
-    if (stake > 25000) return toast.error("Maximum 25,000");
+    if (!stake || stake < stakeMin) return toast.error(`Minimum ${stakeMin}`);
+    if (stake > stakeMax) return toast.error(`Maximum ${stakeMax.toLocaleString("en-IN")}`);
     if (total < stake) return toast.error("Insufficient balance. Add money first.");
 
     // Show the battle in the list immediately so it doesn't feel like a
@@ -235,7 +245,7 @@ export default function Dashboard() {
                 inputMode="numeric"
                 value={createAmt}
                 onChange={e => setCreateAmt(e.target.value.replace(/\D/g,""))}
-                placeholder="Enter amount (100–25000)"
+                placeholder={`Enter amount (${stakeMin}–${stakeMax})`}
                 className="w-full h-11 pl-7 pr-3 rounded-xl bg-gray-50 border border-gray-300 text-gray-900 outline-none focus:border-red-600 focus:ring-2 focus:ring-red-100 transition-all disabled:opacity-50"
               />
             </div>
@@ -247,7 +257,7 @@ export default function Dashboard() {
               {creating ? <Loader2 className="w-4 h-4 animate-spin" /> : "Set"}
             </button>
           </div>
-          <p className="text-xs text-gray-400 mt-2 text-center">Min 100 · Max 25,000 · Winner gets 95% of prize pool</p>
+          <p className="text-xs text-gray-400 mt-2 text-center">Min {stakeMin} · Max {stakeMax.toLocaleString("en-IN")} · Winner gets 95% of prize pool</p>
         </div>
 
         {/* Open Battles */}

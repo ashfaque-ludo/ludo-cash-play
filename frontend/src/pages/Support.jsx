@@ -58,8 +58,20 @@ function FAQItem({ faq }) {
   );
 }
 
+// A window like 22:00–06:00 wraps past midnight — handle both directions.
+function isNumberAvailable(n) {
+  if (n.always_available || !n.start_time || !n.end_time) return true;
+  const now = new Date();
+  const cur = now.getHours() * 60 + now.getMinutes();
+  const [sh, sm] = n.start_time.split(":").map(Number);
+  const [eh, em] = n.end_time.split(":").map(Number);
+  const start = sh * 60 + sm, end = eh * 60 + em;
+  return start <= end ? (cur >= start && cur < end) : (cur >= start || cur < end);
+}
+
 export default function Support() {
   const [supportWhatsApp, setSupportWhatsApp] = useState("917206638948");
+  const [numbers, setNumbers] = useState([]);
 
   useEffect(() => {
     fetch(`${BACKEND}/api/public/payment-info`, { cache: 'no-store' })
@@ -68,16 +80,23 @@ export default function Support() {
       .catch(() => {});
   }, []);
 
-  const openWhatsApp = () => {
-    window.open(`https://wa.me/${supportWhatsApp}?text=${encodeURIComponent("Hi, I need help with MyAkadda.")}`, "_blank");
+  useEffect(() => {
+    fetch(`${BACKEND}/api/public/support-numbers`, { cache: 'no-store' })
+      .then(r => r.json())
+      .then(d => setNumbers(d.numbers || []))
+      .catch(() => {});
+  }, []);
+
+  const openWhatsApp = (num = supportWhatsApp) => {
+    window.open(`https://wa.me/${num}?text=${encodeURIComponent("Hi, I need help with MyAkadda.")}`, "_blank");
   };
 
   const openEmail = () => {
     window.location.href = `mailto:${SUPPORT_EMAIL}?subject=Support Request - MyAkadda`;
   };
 
-  const callSupport = () => {
-    window.location.href = `tel:+91${supportWhatsApp.replace(/^\+91/, "").replace(/^91/, "")}`;
+  const callSupport = (num = supportWhatsApp) => {
+    window.location.href = `tel:+91${num.replace(/^\+91/, "").replace(/^91/, "")}`;
   };
 
   return (
@@ -124,6 +143,40 @@ export default function Support() {
           </button>
         </div>
       </div>
+
+      {/* Support Numbers — admin-managed, each optionally time-windowed */}
+      {numbers.length > 0 && (
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden mb-4">
+          <div className="px-4 py-3 border-b border-gray-100">
+            <h2 className="font-bold text-gray-900">Support Numbers</h2>
+            <p className="text-xs text-gray-400 mt-0.5">Call or WhatsApp any available number</p>
+          </div>
+          <div className="divide-y divide-gray-100">
+            {numbers.map(n => {
+              const available = isNumberAvailable(n);
+              return (
+                <div key={n.id} className="px-4 py-3 flex items-center gap-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="font-bold text-gray-900 text-sm truncate">{n.label || "Support"}</p>
+                    <p className="text-xs text-gray-500">+91 {n.number}</p>
+                    <p className={`text-xs mt-0.5 font-semibold ${available ? "text-green-600" : "text-gray-400"}`}>
+                      {available ? "● Available now" : n.always_available ? "● Available" : `Available ${n.start_time}–${n.end_time}`}
+                    </p>
+                  </div>
+                  <button onClick={() => openWhatsApp(n.number)} disabled={!available}
+                    className="w-9 h-9 rounded-xl bg-[#25D366] text-white flex items-center justify-center shrink-0 disabled:opacity-30">
+                    💬
+                  </button>
+                  <button onClick={() => callSupport(n.number)} disabled={!available}
+                    className="w-9 h-9 rounded-xl bg-blue-500 text-white flex items-center justify-center shrink-0 disabled:opacity-30">
+                    <Phone className="w-4 h-4" />
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Help Center */}
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden mb-4">

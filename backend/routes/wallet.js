@@ -2,6 +2,7 @@ const router = require("express").Router();
 const User = require("../models/User");
 const Transaction = require("../models/Transaction");
 const Promo = require("../models/Promo");
+const Config = require("../models/Config");
 
 // Re-enabled (2026-09-08) — the Aadhaar OTP flow (routes/kyc.js) now gives
 // users a self-serve path to "verified" via IMB, alongside the existing
@@ -13,6 +14,19 @@ const KYC_PASS_STATUSES = ["approved", "verified"];
 // Users must always keep this much in their withdrawable (winning) balance —
 // they can never empty it to zero via withdrawal.
 const MIN_WALLET_BALANCE = 100;
+
+// Withdrawal amount bounds — editable from Admin > Settings.
+async function getWithdrawBounds() {
+  try {
+    const [min, max] = await Promise.all([
+      Config.get("withdraw_min", 200),
+      Config.get("withdraw_max", 100000),
+    ]);
+    return { min: Number(min) || 200, max: Number(max) || 100000 };
+  } catch {
+    return { min: 200, max: 100000 };
+  }
+}
 
 // ── GET /wallet ───────────────────────────────────────────────────────────────
 router.get("/", async (req, res) => {
@@ -28,7 +42,9 @@ router.post("/withdraw", async (req, res) => {
   try {
     const { upi_id } = req.body;
     const amount = Number(req.body.amount);
-    if (!amount || amount < 200) return res.status(400).json({ detail: "Minimum withdrawal 200." });
+    const { min: wMin, max: wMax } = await getWithdrawBounds();
+    if (!amount || amount < wMin) return res.status(400).json({ detail: `Minimum withdrawal ${wMin}.` });
+    if (amount > wMax) return res.status(400).json({ detail: `Maximum withdrawal ${wMax}.` });
 
     const user = await User.findById(req.user._id);
 

@@ -22,6 +22,10 @@ import DepositsTab from "@/components/admin/DepositsTab";
 
 const ROLES = ["user", "support_agent", "staff_manager", "admin", "super_admin"];
 
+// Each admin function tab gets its own bordered box, with darker (less faded)
+// label text than the default muted tab style.
+const TAB_CLS = "border border-gray-300 text-gray-800 font-semibold data-[state=active]:text-gray-900 data-[state=active]:border-red-400";
+
 // Mirrors backend/config/staffWork.js — a restricted staff account (added via
 // Admin > Staff > "Add Restricted Staff") only ever sees the one function its
 // staff_work is assigned to, nothing else in the admin panel.
@@ -76,28 +80,28 @@ export default function Admin() {
 
         <Tabs defaultValue="analytics" className="mt-6">
           <TabsList className="bg-white border border-gray-200 shadow-sm flex-wrap h-auto p-1 gap-1">
-            {can("staff_manager") && <TabsTrigger value="analytics" data-testid="tab-analytics"><BarChart3 className="w-3.5 h-3.5 mr-1" /> Analytics</TabsTrigger>}
-            <TabsTrigger value="users" data-testid="tab-users"><Users className="w-3.5 h-3.5 mr-1" /> Users</TabsTrigger>
-            {can("staff_manager") && <TabsTrigger value="deposits" data-testid="tab-deposits"><WalletIcon className="w-3.5 h-3.5 mr-1" /> Deposit History</TabsTrigger>}
-            {can("staff_manager") && <TabsTrigger value="withdrawals" data-testid="tab-withdrawals"><ArrowDownToLine className="w-3.5 h-3.5 mr-1" /> Withdrawals</TabsTrigger>}
-            {can("staff_manager") && <TabsTrigger value="withdrawal-history" data-testid="tab-withdrawal-history"><Clock className="w-3.5 h-3.5 mr-1" /> Withdrawal History</TabsTrigger>}
-            <TabsTrigger value="matches" data-testid="tab-matches"><Trophy className="w-3.5 h-3.5 mr-1" /> Matches</TabsTrigger>
-            <TabsTrigger value="verify-result" data-testid="tab-verify-result"><Search className="w-3.5 h-3.5 mr-1" /> Verify Result</TabsTrigger>
-            <TabsTrigger value="screenshots" data-testid="tab-screenshots"><Camera className="w-3.5 h-3.5 mr-1" /> Screenshots</TabsTrigger>
-            <TabsTrigger value="referrals" data-testid="tab-referrals"><Share2 className="w-3.5 h-3.5 mr-1" /> Referrals</TabsTrigger>
-            <TabsTrigger value="kyc" data-testid="tab-kyc"><ShieldCheck className="w-3.5 h-3.5 mr-1" /> KYC</TabsTrigger>
-            {can("admin") && <TabsTrigger value="promos" data-testid="tab-promos"><Tag className="w-3.5 h-3.5 mr-1" /> Promos</TabsTrigger>}
-            {can("admin") && <TabsTrigger value="broadcasts" data-testid="tab-broadcasts"><Megaphone className="w-3.5 h-3.5 mr-1" /> Broadcasts</TabsTrigger>}
-            {can("admin") && <TabsTrigger value="logs" data-testid="tab-logs"><FileText className="w-3.5 h-3.5 mr-1" /> Staff Activity</TabsTrigger>}
-            {can("super_admin") && <TabsTrigger value="tables" data-testid="tab-tables"><Layers className="w-3.5 h-3.5 mr-1" /> Tables</TabsTrigger>}
-            {can("super_admin") && <TabsTrigger value="staff" data-testid="tab-staff"><UserPlus className="w-3.5 h-3.5 mr-1" /> Staff</TabsTrigger>}
-            {can("super_admin") && <TabsTrigger value="settings" data-testid="tab-settings"><Settings className="w-3.5 h-3.5 mr-1" /> Settings</TabsTrigger>}
-            {can("staff_manager") && <TabsTrigger value="penalty" data-testid="tab-penalty"><WalletIcon className="w-3.5 h-3.5 mr-1" /> Penalty/Bonus</TabsTrigger>}
-            {can("super_admin") && <TabsTrigger value="ref-settings" data-testid="tab-ref-settings"><Gift className="w-3.5 h-3.5 mr-1" /> Referral Settings</TabsTrigger>}
-            {can("super_admin") && <TabsTrigger value="commission" data-testid="tab-commission"><Percent className="w-3.5 h-3.5 mr-1" /> Commission</TabsTrigger>}
-            {can("admin") && <TabsTrigger value="banners" data-testid="tab-banners"><Image className="w-3.5 h-3.5 mr-1" /> Banners</TabsTrigger>}
-            <TabsTrigger value="support-mgmt" data-testid="tab-support"><Phone className="w-3.5 h-3.5 mr-1" /> Support</TabsTrigger>
-            {can("admin") && <TabsTrigger value="payment-settings" data-testid="tab-payment"><WalletIcon className="w-3.5 h-3.5 mr-1" /> Settings</TabsTrigger>}
+            {can("staff_manager") && <TabsTrigger value="analytics" data-testid="tab-analytics" className={TAB_CLS}><BarChart3 className="w-3.5 h-3.5 mr-1" /> Analytics</TabsTrigger>}
+            <TabsTrigger value="users" data-testid="tab-users" className={TAB_CLS}><Users className="w-3.5 h-3.5 mr-1" /> Users</TabsTrigger>
+            {can("staff_manager") && <TabsTrigger value="deposits" data-testid="tab-deposits" className={TAB_CLS}><WalletIcon className="w-3.5 h-3.5 mr-1" /> Deposit History</TabsTrigger>}
+            {can("staff_manager") && <TabsTrigger value="withdrawals" data-testid="tab-withdrawals" className={TAB_CLS}><ArrowDownToLine className="w-3.5 h-3.5 mr-1" /> Withdrawals</TabsTrigger>}
+            {can("staff_manager") && <TabsTrigger value="withdrawal-history" data-testid="tab-withdrawal-history" className={TAB_CLS}><Clock className="w-3.5 h-3.5 mr-1" /> Withdrawal History</TabsTrigger>}
+            <TabsTrigger value="matches" data-testid="tab-matches" className={TAB_CLS}><Trophy className="w-3.5 h-3.5 mr-1" /> Matches</TabsTrigger>
+            <TabsTrigger value="verify-result" data-testid="tab-verify-result" className={TAB_CLS}><Search className="w-3.5 h-3.5 mr-1" /> Verify Result</TabsTrigger>
+            <TabsTrigger value="screenshots" data-testid="tab-screenshots" className={TAB_CLS}><Camera className="w-3.5 h-3.5 mr-1" /> Screenshots</TabsTrigger>
+            <TabsTrigger value="referrals" data-testid="tab-referrals" className={TAB_CLS}><Share2 className="w-3.5 h-3.5 mr-1" /> Referrals</TabsTrigger>
+            <TabsTrigger value="kyc" data-testid="tab-kyc" className={TAB_CLS}><ShieldCheck className="w-3.5 h-3.5 mr-1" /> KYC</TabsTrigger>
+            {can("admin") && <TabsTrigger value="promos" data-testid="tab-promos" className={TAB_CLS}><Tag className="w-3.5 h-3.5 mr-1" /> Promos</TabsTrigger>}
+            {can("admin") && <TabsTrigger value="broadcasts" data-testid="tab-broadcasts" className={TAB_CLS}><Megaphone className="w-3.5 h-3.5 mr-1" /> Broadcasts</TabsTrigger>}
+            {can("admin") && <TabsTrigger value="logs" data-testid="tab-logs" className={TAB_CLS}><FileText className="w-3.5 h-3.5 mr-1" /> Staff Activity</TabsTrigger>}
+            {can("super_admin") && <TabsTrigger value="tables" data-testid="tab-tables" className={TAB_CLS}><Layers className="w-3.5 h-3.5 mr-1" /> Tables</TabsTrigger>}
+            {can("super_admin") && <TabsTrigger value="staff" data-testid="tab-staff" className={TAB_CLS}><UserPlus className="w-3.5 h-3.5 mr-1" /> Staff</TabsTrigger>}
+            {can("super_admin") && <TabsTrigger value="settings" data-testid="tab-settings" className={TAB_CLS}><Settings className="w-3.5 h-3.5 mr-1" /> Settings</TabsTrigger>}
+            {can("staff_manager") && <TabsTrigger value="penalty" data-testid="tab-penalty" className={TAB_CLS}><WalletIcon className="w-3.5 h-3.5 mr-1" /> Penalty/Bonus</TabsTrigger>}
+            {can("super_admin") && <TabsTrigger value="ref-settings" data-testid="tab-ref-settings" className={TAB_CLS}><Gift className="w-3.5 h-3.5 mr-1" /> Referral Settings</TabsTrigger>}
+            {can("super_admin") && <TabsTrigger value="commission" data-testid="tab-commission" className={TAB_CLS}><Percent className="w-3.5 h-3.5 mr-1" /> Commission</TabsTrigger>}
+            {can("admin") && <TabsTrigger value="banners" data-testid="tab-banners" className={TAB_CLS}><Image className="w-3.5 h-3.5 mr-1" /> Banners</TabsTrigger>}
+            <TabsTrigger value="support-mgmt" data-testid="tab-support" className={TAB_CLS}><Phone className="w-3.5 h-3.5 mr-1" /> Support</TabsTrigger>
+            {can("admin") && <TabsTrigger value="payment-settings" data-testid="tab-payment" className={TAB_CLS}><WalletIcon className="w-3.5 h-3.5 mr-1" /> Settings</TabsTrigger>}
           </TabsList>
 
           <TabsContent value="analytics"><AnalyticsTab /></TabsContent>
@@ -1194,29 +1198,97 @@ function LogsTab(){
 
 function SettingsTab(){
   const [maint, setMaint] = useState({enabled:false, message:""});
+  const [limits, setLimits] = useState({ custom_stake_min:"100", custom_stake_max:"25000", deposit_min:"10", deposit_max:"60000", withdraw_min:"200", withdraw_max:"100000" });
+  const [limitsBusy, setLimitsBusy] = useState(false);
   useEffect(()=>{ api.get("/public/config").then(r=>setMaint(r.data.maintenance)).catch(()=>{}); }, []);
+  useEffect(()=>{
+    api.get("/admin/limits-settings").then(r=>{
+      setLimits({
+        custom_stake_min: String(r.data.custom_stake_min),
+        custom_stake_max: String(r.data.custom_stake_max),
+        deposit_min: String(r.data.deposit_min),
+        deposit_max: String(r.data.deposit_max),
+        withdraw_min: String(r.data.withdraw_min),
+        withdraw_max: String(r.data.withdraw_max),
+      });
+    }).catch(()=>{});
+  }, []);
   const save = async () => {
     try { await api.post("/admin/maintenance", maint); toast.success("Maintenance updated"); }
     catch (e) { toast.error(formatApiError(e.response?.data?.detail) || e.message); }
   };
+  const saveLimits = async () => {
+    setLimitsBusy(true);
+    try {
+      const payload = Object.fromEntries(Object.entries(limits).map(([k,v]) => [k, Number(v)]));
+      await api.post("/admin/limits-settings", payload);
+      toast.success("Limits updated");
+    } catch (e) { toast.error(formatApiError(e.response?.data?.detail) || e.message); }
+    finally { setLimitsBusy(false); }
+  };
   return (
-    <Card className="bg-white border-gray-200 shadow-sm text-gray-900 mt-5">
-      <CardHeader><CardTitle>Master settings</CardTitle></CardHeader>
-      <CardContent className="space-y-4">
-        <div className="flex items-center justify-between bg-gray-50 border-gray-200 p-4 rounded-2xl">
-          <div>
-            <div className="font-semibold">Maintenance mode</div>
-            <div className="text-xs text-gray-400">Disable site for non-admin users</div>
+    <div className="space-y-5">
+      <Card className="bg-white border-gray-200 shadow-sm text-gray-900 mt-5">
+        <CardHeader><CardTitle>Master settings</CardTitle></CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between bg-gray-50 border-gray-200 p-4 rounded-2xl">
+            <div>
+              <div className="font-semibold">Maintenance mode</div>
+              <div className="text-xs text-gray-400">Disable site for non-admin users</div>
+            </div>
+            <Switch checked={maint.enabled} onCheckedChange={(v)=>setMaint({...maint, enabled:v})} data-testid="maintenance-switch" />
           </div>
-          <Switch checked={maint.enabled} onCheckedChange={(v)=>setMaint({...maint, enabled:v})} data-testid="maintenance-switch" />
-        </div>
-        <div>
-          <Label className="text-gray-600">Public message</Label>
-          <Input value={maint.message} onChange={e=>setMaint({...maint, message:e.target.value})} className="bg-gray-50 border-gray-300 text-gray-900 mt-1" data-testid="maintenance-message" />
-        </div>
-        <Button onClick={save} className="rounded-full bg-gradient-to-r from-red-700 to-black text-white" data-testid="maintenance-save">Save</Button>
-      </CardContent>
-    </Card>
+          <div>
+            <Label className="text-gray-600">Public message</Label>
+            <Input value={maint.message} onChange={e=>setMaint({...maint, message:e.target.value})} className="bg-gray-50 border-gray-300 text-gray-900 mt-1" data-testid="maintenance-message" />
+          </div>
+          <Button onClick={save} className="rounded-full bg-gradient-to-r from-red-700 to-black text-white" data-testid="maintenance-save">Save</Button>
+        </CardContent>
+      </Card>
+
+      <Card className="bg-white border-gray-200 shadow-sm text-gray-900">
+        <CardHeader><CardTitle>Amount limits</CardTitle></CardHeader>
+        <CardContent className="space-y-5">
+          <p className="text-xs text-gray-500">Preset table stakes have their own min per-table (Tables tab). These bounds apply only to custom battle stake, deposit and withdrawal amounts.</p>
+          <div className="grid sm:grid-cols-3 gap-4">
+            <div className="border border-gray-200 rounded-2xl p-3 space-y-2">
+              <div className="text-xs font-bold text-gray-700 uppercase tracking-wide">Custom Battle Stake</div>
+              <div>
+                <Label className="text-gray-500 text-xs">Minimum</Label>
+                <Input type="number" value={limits.custom_stake_min} onChange={e=>setLimits({...limits, custom_stake_min:stripLeadingZero(e.target.value)})} className="bg-gray-50 border-gray-300 text-gray-900 mt-1" />
+              </div>
+              <div>
+                <Label className="text-gray-500 text-xs">Maximum</Label>
+                <Input type="number" value={limits.custom_stake_max} onChange={e=>setLimits({...limits, custom_stake_max:stripLeadingZero(e.target.value)})} className="bg-gray-50 border-gray-300 text-gray-900 mt-1" />
+              </div>
+            </div>
+            <div className="border border-gray-200 rounded-2xl p-3 space-y-2">
+              <div className="text-xs font-bold text-gray-700 uppercase tracking-wide">Deposit</div>
+              <div>
+                <Label className="text-gray-500 text-xs">Minimum</Label>
+                <Input type="number" value={limits.deposit_min} onChange={e=>setLimits({...limits, deposit_min:stripLeadingZero(e.target.value)})} className="bg-gray-50 border-gray-300 text-gray-900 mt-1" />
+              </div>
+              <div>
+                <Label className="text-gray-500 text-xs">Maximum</Label>
+                <Input type="number" value={limits.deposit_max} onChange={e=>setLimits({...limits, deposit_max:stripLeadingZero(e.target.value)})} className="bg-gray-50 border-gray-300 text-gray-900 mt-1" />
+              </div>
+            </div>
+            <div className="border border-gray-200 rounded-2xl p-3 space-y-2">
+              <div className="text-xs font-bold text-gray-700 uppercase tracking-wide">Withdraw</div>
+              <div>
+                <Label className="text-gray-500 text-xs">Minimum</Label>
+                <Input type="number" value={limits.withdraw_min} onChange={e=>setLimits({...limits, withdraw_min:stripLeadingZero(e.target.value)})} className="bg-gray-50 border-gray-300 text-gray-900 mt-1" />
+              </div>
+              <div>
+                <Label className="text-gray-500 text-xs">Maximum</Label>
+                <Input type="number" value={limits.withdraw_max} onChange={e=>setLimits({...limits, withdraw_max:stripLeadingZero(e.target.value)})} className="bg-gray-50 border-gray-300 text-gray-900 mt-1" />
+              </div>
+            </div>
+          </div>
+          <Button disabled={limitsBusy} onClick={saveLimits} className="rounded-full bg-gradient-to-r from-red-700 to-black text-white">Save Limits</Button>
+        </CardContent>
+      </Card>
+    </div>
   );
 }
 
@@ -2142,47 +2214,112 @@ function BannersTab() {
 }
 
 // ─── Support Management Tab ───────────────────────────────────────────────
+// Multiple support numbers, each optionally restricted to a daily time
+// window (else always available). Shown on the user Support page.
 function SupportNumberCard() {
-  const [number, setNumber] = useState("");
-  const [busy, setBusy] = useState(false);
+  const [numbers, setNumbers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const blank = { label: "", number: "", always_available: true, start_time: "09:00", end_time: "21:00" };
+  const [form, setForm] = useState(blank);
 
-  useEffect(() => {
-    api.get("/admin/payment-settings")
-      .then(r => setNumber(r.data.whatsapp_number || ""))
-      .catch(() => {})
-      .finally(() => setLoading(false));
+  const load = useCallback(async () => {
+    setLoading(true);
+    try { const r = await api.get("/admin/support-numbers"); setNumbers(r.data.numbers || []); }
+    catch {} finally { setLoading(false); }
   }, []);
+  useEffect(() => { load(); }, [load]);
 
-  const save = async () => {
+  const add = async () => {
+    if (!form.number.trim()) return toast.error("Enter a mobile number");
     setBusy(true);
     try {
-      await api.post("/admin/payment-settings", { whatsapp_number: number });
-      toast.success("Support number updated");
+      await api.post("/admin/support-numbers", form);
+      toast.success("Support number added");
+      setForm(blank);
+      load();
     } catch (e) { toast.error(formatApiError(e.response?.data?.detail) || e.message); }
     finally { setBusy(false); }
   };
 
+  const patch = async (n, fields) => {
+    try { await api.patch(`/admin/support-numbers/${n.id}`, fields); load(); }
+    catch (e) { toast.error(formatApiError(e.response?.data?.detail) || e.message); }
+  };
+
+  const del = async (id) => {
+    try { await api.delete(`/admin/support-numbers/${id}`); toast.success("Removed"); load(); }
+    catch (e) { toast.error(formatApiError(e.response?.data?.detail) || e.message); }
+  };
+
   return (
     <Card className="bg-white border-gray-200 shadow-sm text-gray-900 mb-4">
-      <CardHeader><CardTitle>Support Number</CardTitle></CardHeader>
-      <CardContent>
-        <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-end">
-          <div className="flex-1 w-full">
-            <Label className="text-gray-600 text-xs">Admin Support Number (WhatsApp / Call)</Label>
-            <Input
-              value={number}
-              onChange={e => setNumber(e.target.value.replace(/\D/g, ""))}
-              disabled={loading}
-              placeholder="917206638948"
-              maxLength={12}
-              className="bg-gray-50 border-gray-300 text-gray-900 mt-1"
-            />
-            <p className="text-xs text-gray-500 mt-1">Format: 91XXXXXXXXXX — shown on the user Support page for WhatsApp/Call.</p>
+      <CardHeader><CardTitle>Support Numbers</CardTitle></CardHeader>
+      <CardContent className="space-y-4">
+        <p className="text-xs text-gray-500">Add as many numbers as you like. Each one can stay available round-the-clock, or only during a time window you set (e.g. 09:00–21:00) — outside that window it won't show as active on the user Support page.</p>
+
+        <div className="p-4 rounded-xl border border-gray-200 bg-gray-50 space-y-3">
+          <div className="grid sm:grid-cols-2 gap-3">
+            <div>
+              <Label className="text-gray-600 text-xs">Label (optional)</Label>
+              <Input value={form.label} onChange={e => setForm(f => ({ ...f, label: e.target.value }))} placeholder="e.g. WhatsApp Support" className="bg-white border-gray-300 text-gray-900 mt-1" />
+            </div>
+            <div>
+              <Label className="text-gray-600 text-xs">Mobile Number *</Label>
+              <Input value={form.number} onChange={e => setForm(f => ({ ...f, number: e.target.value.replace(/\D/g, "") }))} placeholder="9876543210" maxLength={12} className="bg-white border-gray-300 text-gray-900 mt-1" />
+            </div>
           </div>
-          <Button disabled={busy || loading} onClick={save} className="rounded-full bg-gradient-to-r from-red-700 to-black text-white font-bold">
-            {busy ? "Saving…" : "Save Number"}
-          </Button>
+          <div className="flex items-center justify-between bg-white border border-gray-200 rounded-xl p-3">
+            <div>
+              <div className="font-semibold text-sm">Always available</div>
+              <div className="text-xs text-gray-400">Turn off to restrict this number to a time window</div>
+            </div>
+            <Switch checked={form.always_available} onCheckedChange={v => setForm(f => ({ ...f, always_available: v }))} />
+          </div>
+          {!form.always_available && (
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label className="text-gray-600 text-xs">Available From</Label>
+                <Input type="time" value={form.start_time} onChange={e => setForm(f => ({ ...f, start_time: e.target.value }))} className="bg-white border-gray-300 text-gray-900 mt-1" />
+              </div>
+              <div>
+                <Label className="text-gray-600 text-xs">Available Until</Label>
+                <Input type="time" value={form.end_time} onChange={e => setForm(f => ({ ...f, end_time: e.target.value }))} className="bg-white border-gray-300 text-gray-900 mt-1" />
+              </div>
+            </div>
+          )}
+          <Button disabled={busy} onClick={add} className="rounded-full bg-gradient-to-r from-red-700 to-black text-white font-bold">Add Number</Button>
+        </div>
+
+        <div className="space-y-3">
+          {numbers.map(n => (
+            <div key={n.id} className="border border-gray-200 rounded-xl p-3 bg-gray-50 space-y-2">
+              <div className="flex items-center gap-3">
+                <div className="flex-1 min-w-0">
+                  <div className="font-semibold truncate">{n.label || "Support"} — +91 {n.number}</div>
+                  <div className="text-xs text-gray-500">
+                    {n.always_available ? "Always available" : `Available ${n.start_time}–${n.end_time}`}
+                  </div>
+                </div>
+                <Switch checked={n.active} onCheckedChange={v => patch(n, { active: v })} />
+                <Button onClick={() => del(n.id)} size="sm" variant="outline" className="rounded-full border-red-500/30 text-red-500">
+                  <Trash2 className="w-3.5 h-3.5" />
+                </Button>
+              </div>
+              <div className="flex items-center gap-2">
+                <Switch checked={n.always_available} onCheckedChange={v => patch(n, { always_available: v })} />
+                <span className="text-xs text-gray-500">Always available</span>
+                {!n.always_available && (
+                  <>
+                    <Input type="time" defaultValue={n.start_time} onBlur={e => patch(n, { start_time: e.target.value })} className="bg-white border-gray-300 text-gray-900 w-28 h-8 text-xs ml-2" />
+                    <span className="text-xs text-gray-400">to</span>
+                    <Input type="time" defaultValue={n.end_time} onBlur={e => patch(n, { end_time: e.target.value })} className="bg-white border-gray-300 text-gray-900 w-28 h-8 text-xs" />
+                  </>
+                )}
+              </div>
+            </div>
+          ))}
+          {!loading && numbers.length === 0 && <div className="text-gray-500 text-sm text-center py-6">No support numbers yet — add one above.</div>}
         </div>
       </CardContent>
     </Card>

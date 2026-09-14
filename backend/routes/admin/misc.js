@@ -148,6 +148,41 @@ router.post("/payment-settings", async (req,res)=>{
   res.json({ ok:true });
 });
 
+// Amount limits — custom battle stake, deposit, withdrawal. Editable from
+// Admin > Settings. Preset stake tables have their own per-table min (see
+// /stake-tables above); these bounds only apply to CUSTOM stakes.
+router.get("/limits-settings", async (req,res)=>{
+  const [custom_stake_min, custom_stake_max, deposit_min, deposit_max, withdraw_min, withdraw_max] = await Promise.all([
+    Config.get("custom_stake_min", 100),
+    Config.get("custom_stake_max", 25000),
+    Config.get("deposit_min", 10),
+    Config.get("deposit_max", 60000),
+    Config.get("withdraw_min", 200),
+    Config.get("withdraw_max", 100000),
+  ]);
+  res.json({ custom_stake_min, custom_stake_max, deposit_min, deposit_max, withdraw_min, withdraw_max });
+});
+router.post("/limits-settings", async (req,res)=>{
+  if(!req.can("admin")) return res.status(403).json({detail:"admin or above required."});
+  const fields = ["custom_stake_min","custom_stake_max","deposit_min","deposit_max","withdraw_min","withdraw_max"];
+  const updates = {};
+  for (const key of fields) {
+    if (req.body[key] === undefined) continue;
+    const n = Number(req.body[key]);
+    if (isNaN(n) || n < 0) return res.status(400).json({ detail: `${key} must be a positive number.` });
+    updates[key] = n;
+  }
+  if (updates.custom_stake_min !== undefined && updates.custom_stake_max !== undefined && updates.custom_stake_min > updates.custom_stake_max)
+    return res.status(400).json({ detail: "Custom stake min cannot exceed max." });
+  if (updates.deposit_min !== undefined && updates.deposit_max !== undefined && updates.deposit_min > updates.deposit_max)
+    return res.status(400).json({ detail: "Deposit min cannot exceed max." });
+  if (updates.withdraw_min !== undefined && updates.withdraw_max !== undefined && updates.withdraw_min > updates.withdraw_max)
+    return res.status(400).json({ detail: "Withdraw min cannot exceed max." });
+  await Promise.all(Object.entries(updates).map(([k,v]) => Config.set(k, v)));
+  await logActivity(req,"limits_settings_updated","",updates);
+  res.json({ ok:true, ...updates });
+});
+
 // Commission settings
 router.get("/commission-settings", async (req,res)=>{
   const pct = await Config.get("commission_pct", 5);

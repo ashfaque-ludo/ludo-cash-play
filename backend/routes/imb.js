@@ -1,16 +1,28 @@
 const router = require("express").Router();
 const { v4: uuidv4 } = require("uuid");
 const Transaction = require("../models/Transaction");
+const Config = require("../models/Config");
 const { createImbOrder, checkImbOrderStatus } = require("../utils/imbService");
 const { creditImbOrderIfPaid } = require("../utils/imbCredit");
 const { evaluateImbStatus } = require("../utils/imbStatus");
 
-const MIN_AMOUNT = 10;
-const MAX_AMOUNT = 60000;
 const PHONE_RE = /^[6-9]\d{9}$/;
 
 function normalizeMobile(v) {
   return String(v || "").replace(/\D/g, "").replace(/^91/, "").slice(-10);
+}
+
+// Deposit bounds — editable from Admin > Settings.
+async function getDepositBounds() {
+  try {
+    const [min, max] = await Promise.all([
+      Config.get("deposit_min", 10),
+      Config.get("deposit_max", 60000),
+    ]);
+    return { min: Number(min) || 10, max: Number(max) || 60000 };
+  } catch {
+    return { min: 10, max: 60000 };
+  }
 }
 
 // ── POST /create-order ────────────────────────────────────────────────────────
@@ -23,8 +35,9 @@ router.post("/create-order", async (req, res) => {
   try {
     const amount = parseFloat(req.body.amount);
     if (!amount || Number.isNaN(amount)) return res.status(400).json({ detail: "Amount is required." });
-    if (amount < MIN_AMOUNT) return res.status(400).json({ detail: `Minimum deposit is ${MIN_AMOUNT}.` });
-    if (amount > MAX_AMOUNT) return res.status(400).json({ detail: `Maximum deposit is ${MAX_AMOUNT}.` });
+    const { min: depMin, max: depMax } = await getDepositBounds();
+    if (amount < depMin) return res.status(400).json({ detail: `Minimum deposit is ${depMin}.` });
+    if (amount > depMax) return res.status(400).json({ detail: `Maximum deposit is ${depMax}.` });
 
     const mobile = normalizeMobile(req.body.customer_mobile || req.user.phone);
     if (!PHONE_RE.test(mobile)) return res.status(400).json({ detail: "A valid 10-digit mobile number is required." });

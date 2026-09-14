@@ -22,9 +22,19 @@ function DepositPage({ onBack, initialOrderId }) {
   const [pendingList, setPendingList] = useState([]);
   const [orderId] = useState(initialOrderId || null);
   const [result, setResult] = useState(null); // { ok: true|false|null, amount }
+  const [depositMin, setDepositMin] = useState(10);
+  const [depositMax, setDepositMax] = useState(60000);
   const triesRef = useRef(0);
 
   const amt = parseInt(amount) || 0;
+
+  // Admin Panel → Settings → Deposit Limits
+  useEffect(() => {
+    api.get("/public/config").then(r => {
+      if (r.data.deposit_min) setDepositMin(r.data.deposit_min);
+      if (r.data.deposit_max) setDepositMax(r.data.deposit_max);
+    }).catch(() => {});
+  }, []);
 
   const loadPending = useCallback(async () => {
     try {
@@ -83,8 +93,8 @@ function DepositPage({ onBack, initialOrderId }) {
   }, [step, orderId]); // eslint-disable-line
 
   const handlePayNow = async () => {
-    if (!amt || amt < 10) return toast.error("Minimum deposit 10");
-    if (amt > 60000) return toast.error("Maximum deposit 60,000");
+    if (!amt || amt < depositMin) return toast.error(`Minimum deposit ${depositMin}`);
+    if (amt > depositMax) return toast.error(`Maximum deposit ${depositMax.toLocaleString("en-IN")}`);
     setCreating(true);
     try {
       const r = await api.post("/payments/imb/create-order", { amount: amt });

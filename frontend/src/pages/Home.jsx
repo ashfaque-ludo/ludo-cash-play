@@ -92,10 +92,20 @@ function BattleHub({ user }) {
   const [promoBanners, setPromoBanners] = useState([]);
   const [amount, setAmount] = useState("");
   const [busy, setBusy] = useState(false);
+  const [stakeMin, setStakeMin] = useState(100);
+  const [stakeMax, setStakeMax] = useState(25000);
   const prevStatusRef = useRef({});
 
   useEffect(() => {
     api.get("/public/battle-banner").then(r => setBanner(r.data.text || "")).catch(() => {});
+  }, []);
+
+  // Admin Panel → Settings → Battle Stake Limits
+  useEffect(() => {
+    api.get("/public/config").then(r => {
+      if (r.data.custom_stake_min) setStakeMin(r.data.custom_stake_min);
+      if (r.data.custom_stake_max) setStakeMax(r.data.custom_stake_max);
+    }).catch(() => {});
   }, []);
 
   // Admin Panel → Banner Management — active banners (Title/Subtitle/Image/Link/colors)
@@ -163,8 +173,8 @@ function BattleHub({ user }) {
 
   const handleCreate = async () => {
     const stake = parseInt(amount) || 0;
-    if (stake < 100) return toast.error("Minimum 100");
-    if (stake > 25000) return toast.error("Maximum 25,000");
+    if (stake < stakeMin) return toast.error(`Minimum ${stakeMin}`);
+    if (stake > stakeMax) return toast.error(`Maximum ${stakeMax.toLocaleString("en-IN")}`);
     if (total < stake) return toast.error("Insufficient balance");
     setBusy(true);
     try {
@@ -268,7 +278,7 @@ function BattleHub({ user }) {
               inputMode="numeric"
               value={amount}
               onChange={(e) => setAmount(e.target.value.replace(/\D/g, '').slice(0, 5))}
-              placeholder="Enter Amount (100–25000)"
+              placeholder={`Enter Amount (${stakeMin}–${stakeMax})`}
               className="flex-1 bg-transparent outline-none py-3 text-gray-900 text-lg font-bold"
             />
           </div>
