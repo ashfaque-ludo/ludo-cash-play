@@ -35,9 +35,9 @@ router.get("/", async (req, res) => {
 });
 
 // ── POST /wallet/withdraw ─────────────────────────────────────────────────────
-// UPI only — only wallet.winning is withdrawable. Deposit, bonus and referral
-// balances can be used to play battles but never withdrawn directly (referral
-// can still be moved into winning via /wallet/redeem-referral first).
+// UPI only — both deposit and winning balances are withdrawable (bonus and
+// referral are not; referral can be moved into winning via
+// /wallet/redeem-referral first). Deducted from winning first, then deposit.
 router.post("/withdraw", async (req, res) => {
   try {
     const { upi_id } = req.body;
@@ -56,9 +56,9 @@ router.post("/withdraw", async (req, res) => {
       return res.status(403).json({ detail: "Withdraw karne se pehle KYC complete karein.", kyc_required: true });
     }
 
-    const withdrawable = user.wallet.winning || 0;
+    const withdrawable = (user.wallet.winning || 0) + (user.wallet.deposit || 0);
     if (withdrawable < amount)
-      return res.status(400).json({ detail: `Insufficient balance. Withdrawable (winning only): ${withdrawable}.` });
+      return res.status(400).json({ detail: `Insufficient balance. Withdrawable: ${withdrawable}.` });
 
     if (withdrawable - amount < MIN_WALLET_BALANCE) {
       const maxWithdrawable = Math.max(0, withdrawable - MIN_WALLET_BALANCE);
@@ -70,7 +70,9 @@ router.post("/withdraw", async (req, res) => {
     if (!upi_id?.trim())
       return res.status(400).json({ detail: "UPI ID required." });
 
-    user.wallet.winning -= amount;
+    let rem = amount;
+    const fromWinning = Math.min(user.wallet.winning || 0, rem); user.wallet.winning -= fromWinning; rem -= fromWinning;
+    const fromDeposit = Math.min(user.wallet.deposit || 0, rem); user.wallet.deposit -= fromDeposit; rem -= fromDeposit;
     await user.save();
 
     const tx = await Transaction.create({

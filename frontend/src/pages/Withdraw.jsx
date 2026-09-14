@@ -52,7 +52,7 @@ export default function Withdraw() {
   useEffect(() => { loadKycStatus(); }, [loadKycStatus]);
 
   const w = user?.wallet || {};
-  const withdrawable = w.winning || 0;
+  const withdrawable = (w.winning || 0) + (w.deposit || 0);
   const maxWithdrawable = Math.max(0, withdrawable - MIN_WALLET_BALANCE);
   const kycApproved = !KYC_ENFORCED || KYC_PASS_STATUSES.includes(kycStatus);
 

@@ -227,24 +227,6 @@ export default function Wallet() {
   const imbOrderId = searchParams.get("imb_order_id");
   const [depositOpen, setDepositOpen] = useState(Boolean(imbOrderId));
   const [withdrawOpen, setWithdrawOpen] = useState(false);
-  const [transferring, setTransferring] = useState(false);
-
-  // Referral earnings go straight into the Deposit wallet — no separate
-  // "redeem" step or choice of target.
-  const moveReferralToDeposit = async () => {
-    const balance = w.referral || 0;
-    if (balance < 50) return toast.error("Minimum 50 required to move to Deposit wallet.");
-    setTransferring(true);
-    try {
-      const r = await api.post("/wallet/redeem-referral", { amount: balance, target: "deposit" });
-      toast.success(r.data.message || "Added to your Deposit wallet!");
-      refresh();
-    } catch (e) {
-      toast.error(e.response?.data?.detail || "Failed");
-    } finally {
-      setTransferring(false);
-    }
-  };
 
   // Strip imb_order_id from the URL once read, so a refresh doesn't re-poll
   // a stale order.
@@ -276,7 +258,7 @@ export default function Wallet() {
       key: "deposit",
       label: "Deposit Coin",
       amount: w.deposit || 0,
-      desc: "Can be used to play battles. Not withdrawable — only Winning coin can be withdrawn.",
+      desc: "Can be withdrawn to UPI, or used to play battles. Referral earnings are added here automatically.",
       btn: "Add",
       color: "from-blue-600 to-blue-800",
       icon: "💳",
@@ -291,17 +273,6 @@ export default function Wallet() {
       color: "from-green-600 to-green-800",
       icon: "🏆",
       onClick: () => nav("/withdraw"),
-    },
-    {
-      key: "referral",
-      label: "Referral Earning",
-      amount: w.referral || 0,
-      desc: "Earned through referrals. Added directly to your Deposit wallet to play battles.",
-      btn: transferring ? "Adding…" : "Add to Deposit",
-      color: "from-[#8B1111] to-[#3B0D0D]",
-      icon: "🎁",
-      disabled: transferring || (w.referral || 0) < 50,
-      onClick: moveReferralToDeposit,
     },
   ];
 
@@ -323,7 +294,7 @@ export default function Wallet() {
         )}
       </div>
 
-      {/* 3 Wallet Cards */}
+      {/* Wallet Cards */}
       <div className="space-y-3">
         {walletCards.map(card => (
           <div key={card.key} className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
