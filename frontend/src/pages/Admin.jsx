@@ -23,8 +23,11 @@ import DepositsTab from "@/components/admin/DepositsTab";
 const ROLES = ["user", "support_agent", "staff_manager", "admin", "super_admin"];
 
 // Each admin function tab gets its own bordered box, with darker (less faded)
-// label text than the default muted tab style.
-const TAB_CLS = "border border-gray-300 text-gray-800 font-semibold data-[state=active]:text-gray-900 data-[state=active]:border-red-400";
+// label text than the default muted tab style. The base TabsTrigger's active
+// state is bg-background/text-foreground, which resolve to near-black on
+// near-black in this app's dark theme tokens — invisible. Override both so
+// the active tab is yellow instead of turning solid black.
+const TAB_CLS = "border border-gray-300 text-gray-800 font-semibold data-[state=active]:bg-yellow-400 data-[state=active]:text-black data-[state=active]:border-yellow-500 data-[state=active]:shadow-none";
 
 // Mirrors backend/config/staffWork.js — a restricted staff account (added via
 // Admin > Staff > "Add Restricted Staff") only ever sees the one function its
